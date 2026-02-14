@@ -53,7 +53,10 @@
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      min-height: 100dvh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     header {
@@ -62,6 +65,12 @@
       justify-content: space-between;
       padding: 16px 24px;
       border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     header h1 {
@@ -89,10 +98,86 @@
 
     .status-dot.active { background: var(--risk-low); }
 
+    /* Tools panel */
+    .tools-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 300ms ease;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tools-panel[data-collapsed="false"] {
+      max-height: 600px;
+    }
+
+    .tools-panel-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 24px;
+    }
+
+    .tools-toggle {
+      min-height: 44px;
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color var(--transition);
+    }
+
+    .tools-toggle:hover { color: var(--text); }
+    .tools-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .tool-item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      flex: 1 1 280px;
+      max-width: 400px;
+    }
+
+    .tool-item-name {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .tool-item-badges {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .annotation-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+
+    .annotation-badge.read-only { background: #052e16; color: var(--risk-low); }
+    .annotation-badge.idempotent { background: #0c4a6e; color: var(--accent); }
+    .annotation-badge.closed-world { background: #451a03; color: var(--risk-med); }
+
+    .tool-item-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
     .layout {
       display: grid;
       grid-template-columns: 1fr 380px;
-      min-height: calc(100dvh - 57px);
+      flex: 1;
+      min-height: 0;
     }
 
     @media (max-width: 900px) {
@@ -100,7 +185,7 @@
       .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; }
     }
 
-    main { padding: 24px; overflow-y: auto; }
+    main { padding: 24px; overflow-y: auto; min-height: 0; }
 
     .controls {
       display: flex;
@@ -121,6 +206,7 @@
       border: 1px solid var(--border);
       border-radius: 100px;
       cursor: pointer;
+      text-decoration: none;
       transition: background var(--transition), color var(--transition), border-color var(--transition);
     }
 
@@ -421,6 +507,7 @@
       background: var(--surface);
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
 
     .chat-header {
@@ -638,16 +725,132 @@
       font-size: 13px;
       color: var(--text-muted);
     }
+
+    /* Quick action chips */
+    .chat-quick-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 0;
+    }
+
+    .quick-action-chip {
+      min-height: 44px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-align: left;
+      transition: transform var(--transition), background var(--transition);
+    }
+
+    .quick-action-chip:hover { transform: translateX(2px); }
+    .quick-action-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Follow-up suggestions */
+    .followup-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-self: flex-start;
+      padding: 4px 0;
+    }
+
+    .followup-chip {
+      min-height: 36px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .followup-chip:hover { color: var(--text); border-color: var(--text-muted); }
+    .followup-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+    }
+
+    @keyframes toast-slide-up {
+      from { transform: translateY(16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 52px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: toast-slide-up 200ms ease;
+      white-space: nowrap;
+    }
+
+    .toast-message {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .toast-undo {
+      min-height: 44px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .toast-undo:hover { background: var(--accent-dim); }
+    .toast-undo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    @media (max-width: 600px) {
+      .toast-container {
+        left: 16px;
+        right: 16px;
+        transform: none;
+      }
+      .toast { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>WebMCP PoC</h1>
+    <div class="header-left">
+      <h1>WebMCP PoC</h1>
+      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 6 tools</button>
+    </div>
     <div class="status-badge">
       <span class="status-dot" id="status-dot"></span>
       <span id="status-text">Checking...</span>
     </div>
   </header>
+
+  <div class="tools-panel" id="tools-panel" data-collapsed="true">
+    <div class="tools-panel-inner" id="tools-panel-inner"></div>
+  </div>
 
   <div class="layout">
     <main>
@@ -660,6 +863,7 @@
         <div class="chip-separator"></div>
         <button class="chip" data-view="chart">Risk Overview</button>
         <button class="chip" data-filter="high">High Risk Only</button>
+        <a href="trends.html" class="chip">Statewide Trends &#8594;</a>
       </nav>
 
       <div id="display"></div>
@@ -674,15 +878,15 @@
         <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
         <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
       </div>
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-empty">Ask a question about California hospital data.</div>
-      </div>
+      <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-area">
         <textarea id="chat-input" placeholder="Ask about hospitals..." rows="1" aria-label="Chat message"></textarea>
         <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
       </div>
     </aside>
   </div>
+
+  <div class="toast-container" id="toast-container"></div>
 
   <script>
     /* ── Dataset ── */
@@ -692,7 +896,25 @@
     /* ── State ── */
 
     const flaggedHospitals = new Map();
-    let currentView = { type: 'table', data: null, label: null };
+    let currentView = { type: 'table', data: null, label: null, filters: null };
+    let currentToastTimeout = null;
+
+    /* ── Constants ── */
+
+    const QUICK_ACTIONS = [
+      'Show high-risk hospitals',
+      'Compare MLK and Cedars-Sinai',
+      'Show risk chart for Los Angeles',
+      'Flag all hospitals over 70% risk',
+      'Run triage analysis'
+    ];
+
+    const TRIAGE_PROMPT = `Run a full triage analysis of the hospital dataset. Follow these steps in order:
+1. First, call summarize_data to get an overview of the full dataset
+2. Then, call filter_hospitals with risk "high" to see the high-risk hospitals
+3. Compare the two highest-risk hospitals using compare_hospitals
+4. Flag the worst-performing hospital with a note explaining why
+5. Write a brief synthesis of your findings`;
 
     /* ── Utilities ── */
 
@@ -737,15 +959,86 @@
 
     function refreshCurrentView() {
       if (currentView.type === 'table') {
-        renderTable(currentView.data || HOSPITALS, currentView.label);
+        renderTable(currentView.data || HOSPITALS, currentView.label, currentView.filters);
       } else if (currentView.type === 'chart') {
-        renderChart(currentView.data || HOSPITALS, currentView.label);
+        renderChart(currentView.data || HOSPITALS, currentView.label, currentView.filters);
       } else if (currentView.type === 'detail' && currentView.data) {
         renderDetail(currentView.data);
       } else if (currentView.type === 'comparison' && currentView.data) {
         renderComparison(currentView.data[0], currentView.data[1]);
       }
     }
+
+    /* ── URL State ── */
+
+    function encodeViewToHash() {
+      const params = new URLSearchParams();
+      params.set('view', currentView.type);
+      const f = currentView.filters || {};
+
+      if (currentView.type === 'table') {
+        if (f.county) params.set('county', f.county);
+        if (f.risk) params.set('risk', f.risk);
+      } else if (currentView.type === 'chart') {
+        if (f.county) params.set('county', f.county);
+      } else if (currentView.type === 'detail' && currentView.data) {
+        params.set('name', currentView.data.name);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        params.set('h1', currentView.data[0].name);
+        params.set('h2', currentView.data[1].name);
+      }
+
+      history.replaceState(null, '', '#' + params.toString());
+    }
+
+    function decodeHashToView() {
+      const hash = location.hash.slice(1);
+      if (!hash) return false;
+
+      const params = new URLSearchParams(hash);
+      const view = params.get('view');
+
+      if (view === 'table') {
+        const county = params.get('county');
+        const risk = params.get('risk');
+        if (county) {
+          renderTable(filterData({ county }), `hospitals in ${county}`, { county });
+        } else if (risk) {
+          renderTable(filterData({ risk }), `${risk}-risk hospitals`, { risk });
+        } else {
+          renderTable(HOSPITALS);
+        }
+        return true;
+      }
+
+      if (view === 'chart') {
+        const county = params.get('county');
+        if (county) {
+          renderChart(filterData({ county }), county, { county });
+        } else {
+          renderChart(HOSPITALS);
+        }
+        return true;
+      }
+
+      if (view === 'detail') {
+        const name = params.get('name');
+        const h = HOSPITALS.find(h => h.name === name);
+        if (h) { renderDetail(h); return true; }
+      }
+
+      if (view === 'compare') {
+        const h1 = HOSPITALS.find(h => h.name === params.get('h1'));
+        const h2 = HOSPITALS.find(h => h.name === params.get('h2'));
+        if (h1 && h2) { renderComparison(h1, h2); return true; }
+      }
+
+      return false;
+    }
+
+    window.addEventListener('hashchange', () => {
+      if (HOSPITALS.length) decodeHashToView();
+    });
 
     /* ── Rendering ── */
 
@@ -761,8 +1054,8 @@
       `;
     }
 
-    function renderTable(hospitals, label) {
-      currentView = { type: 'table', data: hospitals, label };
+    function renderTable(hospitals, label, filters) {
+      currentView = { type: 'table', data: hospitals, label, filters };
       const summary = label || `${hospitals.length} hospitals`;
       display.innerHTML = `
         <div class="summary-row">
@@ -796,10 +1089,11 @@
           </tbody>
         </table>
       `;
+      encodeViewToHash();
     }
 
-    function renderChart(hospitals, label) {
-      currentView = { type: 'chart', data: hospitals, label };
+    function renderChart(hospitals, label, filters) {
+      currentView = { type: 'chart', data: hospitals, label, filters };
       const tiers = { low: 0, medium: 0, high: 0 };
       hospitals.forEach(h => tiers[riskTier(h.riskProbability)]++);
       const max = Math.max(tiers.low, tiers.medium, tiers.high, 1);
@@ -831,13 +1125,14 @@
           </div>
         </div>
       `;
+      encodeViewToHash();
     }
 
     function renderDetail(hospital) {
       const h = hospital;
       const tier = riskTier(h.riskProbability);
       const flag = flaggedHospitals.get(h.name);
-      currentView = { type: 'detail', data: h, label: null };
+      currentView = { type: 'detail', data: h, label: null, filters: null };
 
       display.innerHTML = `
         <button class="back-btn" onclick="renderTable(HOSPITALS)">&#8592; Back to list</button>
@@ -890,10 +1185,11 @@
           </div>
         </div>
       `;
+      encodeViewToHash();
     }
 
     function renderComparison(h1, h2) {
-      currentView = { type: 'comparison', data: [h1, h2], label: null };
+      currentView = { type: 'comparison', data: [h1, h2], label: null, filters: null };
 
       const metrics = [
         { label: 'Risk Probability', key: 'riskProbability', format: v => pct(v * 100), lowerBetter: true },
@@ -934,6 +1230,7 @@
           </tbody>
         </table>
       `;
+      encodeViewToHash();
     }
 
     /* ── Global detail handler (called from table rows) ── */
@@ -963,13 +1260,180 @@
       });
     }
 
+    /* ── Toast ── */
+
+    function showToast(message, onUndo) {
+      dismissToast();
+
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+
+      const msgSpan = document.createElement('span');
+      msgSpan.className = 'toast-message';
+      msgSpan.textContent = message;
+      toast.appendChild(msgSpan);
+
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'toast-undo';
+      undoBtn.textContent = 'Undo';
+      undoBtn.addEventListener('click', () => {
+        dismissToast();
+        onUndo();
+      });
+      toast.appendChild(undoBtn);
+
+      container.appendChild(toast);
+      currentToastTimeout = setTimeout(dismissToast, 5000);
+    }
+
+    function dismissToast() {
+      if (currentToastTimeout) {
+        clearTimeout(currentToastTimeout);
+        currentToastTimeout = null;
+      }
+      document.getElementById('toast-container').innerHTML = '';
+    }
+
+    /* ── Quick actions ── */
+
+    function renderQuickActions() {
+      const container = document.createElement('div');
+      container.className = 'chat-quick-actions';
+      container.id = 'quick-actions';
+
+      QUICK_ACTIONS.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.className = 'quick-action-chip';
+        btn.textContent = prompt;
+        btn.addEventListener('click', () => {
+          const actual = prompt === 'Run triage analysis' ? TRIAGE_PROMPT : prompt;
+          sendMessage({ display: prompt, prompt: actual });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+    }
+
+    /* ── Follow-up suggestions ── */
+
+    function getFollowupSuggestions() {
+      const suggestions = [];
+
+      switch (currentView.type) {
+        case 'table': {
+          suggestions.push('Show risk chart');
+          const highRisk = (currentView.data || HOSPITALS)
+            .filter(h => riskTier(h.riskProbability) === 'high')
+            .sort((a, b) => b.riskProbability - a.riskProbability);
+          if (highRisk.length >= 2) {
+            suggestions.push(`Compare ${highRisk[0].name} and ${highRisk[1].name}`);
+          }
+          break;
+        }
+        case 'chart':
+          suggestions.push('Show table view');
+          suggestions.push('Filter to high risk only');
+          break;
+        case 'detail': {
+          const h = currentView.data;
+          suggestions.push(`Flag ${h.name}`);
+          const similar = HOSPITALS
+            .filter(other => other.name !== h.name)
+            .sort((a, b) =>
+              Math.abs(a.riskProbability - h.riskProbability) - Math.abs(b.riskProbability - h.riskProbability)
+            );
+          if (similar.length) {
+            suggestions.push(`Compare with ${similar[0].name}`);
+          }
+          break;
+        }
+        case 'comparison': {
+          const [h1, h2] = currentView.data;
+          const worse = h1.riskProbability > h2.riskProbability ? h1 : h2;
+          suggestions.push(`Show detail for ${worse.name}`);
+          suggestions.push(`Flag ${worse.name}`);
+          break;
+        }
+      }
+
+      return suggestions.slice(0, 2);
+    }
+
+    function renderFollowupSuggestions() {
+      clearFollowupSuggestions();
+      const suggestions = getFollowupSuggestions();
+      if (!suggestions.length) return;
+
+      const container = document.createElement('div');
+      container.className = 'followup-suggestions';
+      container.id = 'followup-suggestions';
+
+      suggestions.forEach(text => {
+        const btn = document.createElement('button');
+        btn.className = 'followup-chip';
+        btn.textContent = text;
+        btn.addEventListener('click', () => {
+          sendMessage({ prompt: text });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function clearFollowupSuggestions() {
+      const existing = document.getElementById('followup-suggestions');
+      if (existing) existing.remove();
+    }
+
+    /* ── Tools panel ── */
+
+    function renderToolsPanel() {
+      const inner = document.getElementById('tools-panel-inner');
+      const toggle = document.getElementById('tools-toggle');
+      toggle.innerHTML = `&#9660; ${TOOL_DEFS.length} tools`;
+
+      inner.innerHTML = TOOL_DEFS.map(t => {
+        const badges = [];
+        if (t.readOnlyHint) badges.push('<span class="annotation-badge read-only">read-only</span>');
+        if (t.idempotentHint) badges.push('<span class="annotation-badge idempotent">idempotent</span>');
+        if (!t.openWorldHint) badges.push('<span class="annotation-badge closed-world">closed-world</span>');
+        const desc = t.description.split('.')[0] + '.';
+        return `
+          <div class="tool-item">
+            <div class="tool-item-name">${t.name}</div>
+            <div class="tool-item-badges">${badges.join('')}</div>
+            <div class="tool-item-desc">${desc}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleToolsPanel() {
+      const panel = document.getElementById('tools-panel');
+      const toggle = document.getElementById('tools-toggle');
+      const collapsed = panel.dataset.collapsed === 'true';
+      panel.dataset.collapsed = collapsed ? 'false' : 'true';
+      toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+      toggle.innerHTML = `${collapsed ? '&#9650;' : '&#9660;'} ${TOOL_DEFS.length} tools`;
+    }
+
+    document.getElementById('tools-toggle').addEventListener('click', toggleToolsPanel);
+
     /* ── Shared tool definitions ── */
 
     const TOOL_DEFS = [
       {
         name: 'filter_hospitals',
+        title: 'Filter Hospitals',
         description: 'Filter and display California hospitals on the page. Renders a table showing matching hospitals with risk tier, Medi-Cal share, equity burden score, and operating margin. The user can then click any row to see full details.',
         readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
@@ -985,14 +1449,18 @@
           if (input.risk) parts.push(`${input.risk} risk`);
           if (input.search) parts.push(`matching "${input.search}"`);
           const label = parts.length ? parts.join(', ') : 'all hospitals';
-          renderTable(filtered, label);
+          renderTable(filtered, label, { county: input.county, risk: input.risk });
           return { displayed: true, count: filtered.length, summary: `Rendered ${filtered.length} hospitals (${label}). User can now see the table and click any row for details.` };
         }
       },
       {
         name: 'show_risk_chart',
+        title: 'Risk Chart',
         description: 'Display a visual bar chart showing the distribution of hospital financial risk tiers (low/medium/high). Renders directly on the page so the user can see the breakdown visually.',
         readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
@@ -1002,7 +1470,7 @@
         exec: async (input) => {
           const hospitals = input.county ? filterData({ county: input.county }) : HOSPITALS;
           const label = input.county || 'all hospitals';
-          renderChart(hospitals, label);
+          renderChart(hospitals, label, { county: input.county });
           const tiers = { low: 0, medium: 0, high: 0 };
           hospitals.forEach(h => tiers[riskTier(h.riskProbability)]++);
           return { displayed: true, summary: `Chart displayed: ${tiers.low} low, ${tiers.medium} medium, ${tiers.high} high risk (${label}).`, distribution: tiers };
@@ -1010,8 +1478,12 @@
       },
       {
         name: 'show_hospital_detail',
+        title: 'Hospital Detail',
         description: 'Display a detailed profile card for a specific hospital, showing risk probability, equity burden score, operating margin, payer mix breakdown, occupancy, and bed count. Renders visually on the page.',
         readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
@@ -1029,8 +1501,12 @@
       },
       {
         name: 'flag_hospital',
+        title: 'Flag Hospital',
         description: 'Flag or unflag a hospital with a note. Flagged hospitals display an amber indicator dot in tables and detail views. Use this to mark hospitals that warrant attention or follow-up.',
         readOnlyHint: false,
+        idempotentHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
@@ -1045,23 +1521,34 @@
           if (!hospital) return { summary: `No hospital found matching "${input.name}".` };
 
           if (input.unflag) {
+            const previousFlag = flaggedHospitals.get(hospital.name);
             flaggedHospitals.delete(hospital.name);
             refreshCurrentView();
+            showToast('Flag removed', () => {
+              flaggedHospitals.set(hospital.name, previousFlag || { note: 'Flagged for review', timestamp: Date.now() });
+              refreshCurrentView();
+            });
             return { summary: `Removed flag from ${hospital.name}.` };
           }
 
-          flaggedHospitals.set(hospital.name, {
-            note: input.note || 'Flagged for review',
-            timestamp: Date.now()
-          });
+          const flagData = { note: input.note || 'Flagged for review', timestamp: Date.now() };
+          flaggedHospitals.set(hospital.name, flagData);
           refreshCurrentView();
+          showToast('Hospital flagged', () => {
+            flaggedHospitals.delete(hospital.name);
+            refreshCurrentView();
+          });
           return { summary: `Flagged ${hospital.name}: "${input.note || 'Flagged for review'}".` };
         }
       },
       {
         name: 'compare_hospitals',
+        title: 'Compare Hospitals',
         description: 'Display a side-by-side comparison table of two hospitals across key metrics: risk probability, equity burden, operating margin, Medi-Cal share, occupancy rate, and licensed beds. Better values are highlighted in green.',
         readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
@@ -1078,6 +1565,53 @@
           renderComparison(h1, h2);
           return { displayed: true, summary: `Comparing ${h1.name} vs ${h2.name}. Key differences: risk ${pct(h1.riskProbability * 100)} vs ${pct(h2.riskProbability * 100)}, margin ${fmt(h1.operatingMargin)}% vs ${fmt(h2.operatingMargin)}%.` };
         }
+      },
+      {
+        name: 'summarize_data',
+        title: 'Summarize Data',
+        description: 'Compute aggregate statistics for the hospital dataset. Returns numerical summaries (averages, distributions, extremes) without rendering any visualization. Use this to analyze data before deciding what to show.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            county: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Limit summary to a specific county' }
+          }
+        },
+        exec: async (input) => {
+          const data = input.county ? filterData({ county: input.county }) : HOSPITALS;
+          const avg = (fn) => data.reduce((s, h) => s + fn(h), 0) / data.length;
+
+          const avgMargin = avg(h => h.operatingMargin);
+          const avgRisk = avg(h => h.riskProbability);
+          const avgEquityBurden = avg(h => h.equityBurdenScore);
+          const avgOccupancy = avg(h => h.occupancyRate);
+          const totalBeds = data.reduce((s, h) => s + h.licensedBeds, 0);
+
+          const riskDistribution = { low: 0, medium: 0, high: 0 };
+          data.forEach(h => riskDistribution[riskTier(h.riskProbability)]++);
+
+          const sorted = [...data].sort((a, b) => b.riskProbability - a.riskProbability);
+          const highestRisk = sorted[0];
+          const lowestRisk = sorted[sorted.length - 1];
+
+          const scope = input.county || 'all counties';
+          return {
+            scope,
+            count: data.length,
+            avgMargin: +avgMargin.toFixed(1),
+            avgRisk: +avgRisk.toFixed(2),
+            avgEquityBurden: +avgEquityBurden.toFixed(0),
+            avgOccupancy: +avgOccupancy.toFixed(1),
+            totalBeds,
+            riskDistribution,
+            highestRisk: { name: highestRisk.name, risk: highestRisk.riskProbability },
+            lowestRisk: { name: lowestRisk.name, risk: lowestRisk.riskProbability },
+            summary: `${data.length} hospitals (${scope}): avg risk ${(avgRisk * 100).toFixed(0)}%, avg margin ${avgMargin.toFixed(1)}%, ${riskDistribution.high} high-risk. Highest: ${highestRisk.name} (${(highestRisk.riskProbability * 100).toFixed(0)}%), lowest: ${lowestRisk.name} (${(lowestRisk.riskProbability * 100).toFixed(0)}%).`
+          };
+        }
       }
     ];
 
@@ -1093,10 +1627,10 @@
           renderTable(HOSPITALS);
         } else if (filter === 'high') {
           const filtered = filterData({ risk: 'high' });
-          renderTable(filtered, 'high-risk hospitals');
+          renderTable(filtered, 'high-risk hospitals', { risk: 'high' });
         } else {
           const filtered = filterData({ county: filter });
-          renderTable(filtered, `hospitals in ${filter}`);
+          renderTable(filtered, `hospitals in ${filter}`, { county: filter });
         }
       });
     });
@@ -1126,7 +1660,13 @@
           name: t.name,
           description: t.description,
           inputSchema: t.schema,
-          annotations: { readOnlyHint: t.readOnlyHint },
+          annotations: {
+            title: t.title,
+            readOnlyHint: t.readOnlyHint,
+            destructiveHint: t.destructiveHint,
+            idempotentHint: t.idempotentHint,
+            openWorldHint: t.openWorldHint
+          },
           execute: t.exec
         }))
       });
@@ -1150,7 +1690,8 @@ Rules:
 - No markdown formatting — this renders as plain text in a chat bubble.
 - No greetings, filler, or preamble.
 - You can flag hospitals to mark them for attention. Use flag_hospital when the user wants to mark, note, or bookmark a hospital.
-- You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.`;
+- You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.
+- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.`;
     const CLAUDE_TOOLS = TOOL_DEFS.map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
 
     let conversationMessages = [];
@@ -1169,7 +1710,8 @@ Rules:
     // Chat reset
     chatReset.addEventListener('click', () => {
       conversationMessages = [];
-      chatMessages.innerHTML = '<div class="chat-empty">Ask a question about California hospital data.</div>';
+      chatMessages.innerHTML = '';
+      renderQuickActions();
     });
 
     // Auto-resize textarea
@@ -1185,7 +1727,7 @@ Rules:
       }
     });
 
-    chatSend.addEventListener('click', sendMessage);
+    chatSend.addEventListener('click', () => sendMessage());
 
     function appendMessage(type, content) {
       const empty = chatMessages.querySelector('.chat-empty');
@@ -1229,8 +1771,9 @@ Rules:
       chatInput.disabled = !enabled;
     }
 
-    async function sendMessage() {
-      const text = chatInput.value.trim();
+    async function sendMessage(opts = {}) {
+      const text = opts.prompt || chatInput.value.trim();
+      const displayText = opts.display || text;
       const apiKey = apiKeyInput.value.trim();
       if (!text || chatBusy) return;
 
@@ -1239,7 +1782,11 @@ Rules:
         return;
       }
 
-      appendMessage('user', text);
+      const quickActions = document.getElementById('quick-actions');
+      if (quickActions) quickActions.remove();
+      clearFollowupSuggestions();
+
+      appendMessage('user', displayText);
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
@@ -1390,6 +1937,7 @@ Rules:
         const toolUses = contentBlocks.filter(b => b.type === 'tool_use');
         if (toolUses.length === 0) {
           hideSpinner();
+          renderFollowupSuggestions();
           return;
         }
 
@@ -1401,7 +1949,7 @@ Rules:
           if (def) {
             result = await def.exec(tu.input);
             appendToolMsg(tu.name, tu.input, result.summary);
-            scrollDisplayIntoView();
+            if (result.displayed) scrollDisplayIntoView();
           } else {
             result = { error: `Unknown tool: ${tu.name}` };
           }
@@ -1431,8 +1979,13 @@ Rules:
         return;
       }
 
-      renderTable(HOSPITALS);
+      if (!decodeHashToView()) {
+        renderTable(HOSPITALS);
+      }
+
       registerTools();
+      renderToolsPanel();
+      renderQuickActions();
     }
 
     init();

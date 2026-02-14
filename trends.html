@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>WebMCP PoC — Statewide Trends</title>
+  <script>
+    if ('modelContext' in navigator) {
+      delete navigator.modelContext;
+      if ('modelContext' in navigator) {
+        Object.defineProperty(navigator, 'modelContext', {
+          value: undefined,
+          writable: true,
+          configurable: true
+        });
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-alt: #334155;
+      --border: #475569;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: #0c4a6e;
+      --risk-low: #22c55e;
+      --risk-med: #f59e0b;
+      --risk-high: #ef4444;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+      --transition: 150ms ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100dvh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 14px;
+      font-size: 13px;
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      transition: background var(--transition);
+    }
+
+    .nav-link:hover { background: var(--accent-dim); }
+    .nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      background: var(--surface);
+      border-radius: 100px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-dot.active { background: var(--risk-low); }
+
+    main {
+      padding: 24px;
+      max-width: 1000px;
+    }
+
+    section { margin-bottom: 40px; }
+
+    section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    /* Loading skeleton */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .skeleton-row {
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%);
+      background-size: 800px 44px;
+      animation: shimmer 1.5s infinite linear;
+    }
+
+    /* County trends table */
+    .county-trends-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .county-trends-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .county-trends-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--surface-alt);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .county-trends-table tbody tr {
+      transition: background var(--transition);
+    }
+
+    .county-trends-table tbody tr:hover { background: var(--surface); }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+    }
+
+    .summary-card-value {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+
+    .summary-card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .summary-card-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+    }
+
+    .risk-badge.low { background: #052e16; color: var(--risk-low); }
+    .risk-badge.medium { background: #451a03; color: var(--risk-med); }
+    .risk-badge.high { background: #450a0a; color: var(--risk-high); }
+
+    .view-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>Statewide Trends</h1>
+      <a href="index.html" class="nav-link">&#8592; Hospital Explorer</a>
+    </div>
+    <div class="status-badge">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Checking...</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="county-trends">
+      <h2>County Comparison</h2>
+      <div id="county-trends-content">
+        <div class="loading-skeleton">
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row" style="animation-delay: 80ms"></div>
+          <div class="skeleton-row" style="animation-delay: 160ms"></div>
+          <div class="skeleton-row" style="animation-delay: 240ms"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="statewide-summary">
+      <h2>Statewide Overview</h2>
+      <div id="statewide-content">
+        <div class="loading-skeleton">
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row" style="animation-delay: 80ms"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let HOSPITALS = [];
+
+    function riskTier(p) {
+      if (p >= 0.65) return 'high';
+      if (p >= 0.35) return 'medium';
+      return 'low';
+    }
+
+    function fmt(n, decimals = 1) {
+      return n.toFixed(decimals);
+    }
+
+    /* ── Rendering ── */
+
+    function renderCountyTrendsTable(trends) {
+      document.getElementById('county-trends-content').innerHTML = `
+        <table class="county-trends-table">
+          <thead>
+            <tr>
+              <th>County</th>
+              <th>Hospitals</th>
+              <th>Avg Risk</th>
+              <th>Avg Margin</th>
+              <th>Avg Equity Burden</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${trends.map(t => {
+              const tier = riskTier(t.avgRisk);
+              return `
+              <tr>
+                <td>${t.county}</td>
+                <td>${t.count}</td>
+                <td><span class="risk-badge ${tier}">${fmt(t.avgRisk * 100)}%</span></td>
+                <td style="color: ${t.avgMargin < 0 ? 'var(--risk-high)' : 'var(--risk-low)'}">${fmt(t.avgMargin)}%</td>
+                <td>${fmt(t.avgEquityBurden, 0)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderStatewideCards(data) {
+      document.getElementById('statewide-content').innerHTML = `
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-card-label">Total Hospitals</div>
+            <div class="summary-card-value">${data.totalHospitals}</div>
+            <div class="summary-card-meta">across 4 counties</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Total Licensed Beds</div>
+            <div class="summary-card-value">${data.totalBeds.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Average Risk</div>
+            <div class="summary-card-value" style="color: ${data.avgRisk >= 0.65 ? 'var(--risk-high)' : data.avgRisk >= 0.35 ? 'var(--risk-med)' : 'var(--risk-low)'}">${fmt(data.avgRisk * 100)}%</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Risk Distribution</div>
+            <div class="summary-card-value">${data.riskDistribution.high} <span style="font-size:14px;color:var(--text-muted)">high-risk</span></div>
+            <div class="summary-card-meta">${data.riskDistribution.medium} medium, ${data.riskDistribution.low} low</div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ── Tool definitions ── */
+
+    const TOOL_DEFS = [
+      {
+        name: 'show_county_trends',
+        title: 'County Trends',
+        description: 'Show a comparison table of aggregate metrics by county, including average risk, margin, and equity burden.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const counties = {};
+          HOSPITALS.forEach(h => {
+            if (!counties[h.county]) counties[h.county] = [];
+            counties[h.county].push(h);
+          });
+
+          const trends = Object.entries(counties).map(([county, hospitals]) => {
+            const avg = (fn) => hospitals.reduce((s, h) => s + fn(h), 0) / hospitals.length;
+            return {
+              county,
+              count: hospitals.length,
+              avgRisk: avg(h => h.riskProbability),
+              avgMargin: avg(h => h.operatingMargin),
+              avgEquityBurden: avg(h => h.equityBurdenScore)
+            };
+          });
+
+          renderCountyTrendsTable(trends);
+          return { displayed: true, summary: `Showing county trends for ${trends.length} counties.` };
+        }
+      },
+      {
+        name: 'show_statewide_summary',
+        title: 'Statewide Summary',
+        description: 'Show summary cards with statewide aggregate metrics including total hospitals, beds, average risk, and risk distribution.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const avg = (fn) => HOSPITALS.reduce((s, h) => s + fn(h), 0) / HOSPITALS.length;
+          const riskDist = { low: 0, medium: 0, high: 0 };
+          HOSPITALS.forEach(h => riskDist[riskTier(h.riskProbability)]++);
+
+          const data = {
+            totalHospitals: HOSPITALS.length,
+            totalBeds: HOSPITALS.reduce((s, h) => s + h.licensedBeds, 0),
+            avgRisk: avg(h => h.riskProbability),
+            riskDistribution: riskDist
+          };
+
+          renderStatewideCards(data);
+          return { displayed: true, summary: `Showing statewide summary: ${HOSPITALS.length} hospitals, ${riskDist.high} high-risk.` };
+        }
+      }
+    ];
+
+    /* ── WebMCP registration ── */
+
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+
+    function registerTools() {
+      if (!('modelContext' in navigator)) {
+        statusText.textContent = 'WebMCP not detected';
+        return;
+      }
+
+      statusDot.classList.add('active');
+      statusText.textContent = 'WebMCP active';
+
+      navigator.modelContext.provideContext({
+        tools: TOOL_DEFS.map(t => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.schema,
+          annotations: {
+            title: t.title,
+            readOnlyHint: t.readOnlyHint,
+            destructiveHint: t.destructiveHint,
+            idempotentHint: t.idempotentHint,
+            openWorldHint: t.openWorldHint
+          },
+          execute: t.exec
+        }))
+      });
+    }
+
+    /* ── Init ── */
+
+    async function init() {
+      try {
+        const res = await fetch('hospitals.json');
+        HOSPITALS = await res.json();
+      } catch (err) {
+        document.getElementById('county-trends-content').innerHTML =
+          `<p style="color:var(--risk-high)">Failed to load data: ${err.message}</p>`;
+        return;
+      }
+
+      // Render both views immediately on load
+      const counties = {};
+      HOSPITALS.forEach(h => {
+        if (!counties[h.county]) counties[h.county] = [];
+        counties[h.county].push(h);
+      });
+
+      const trends = Object.entries(counties).map(([county, hospitals]) => {
+        const avg = (fn) => hospitals.reduce((s, h) => s + fn(h), 0) / hospitals.length;
+        return {
+          county,
+          count: hospitals.length,
+          avgRisk: avg(h => h.riskProbability),
+          avgMargin: avg(h => h.operatingMargin),
+          avgEquityBurden: avg(h => h.equityBurdenScore)
+        };
+      });
+      renderCountyTrendsTable(trends);
+
+      const avg = (fn) => HOSPITALS.reduce((s, h) => s + fn(h), 0) / HOSPITALS.length;
+      const riskDist = { low: 0, medium: 0, high: 0 };
+      HOSPITALS.forEach(h => riskDist[riskTier(h.riskProbability)]++);
+      renderStatewideCards({
+        totalHospitals: HOSPITALS.length,
+        totalBeds: HOSPITALS.reduce((s, h) => s + h.licensedBeds, 0),
+        avgRisk: avg(h => h.riskProbability),
+        riskDistribution: riskDist
+      });
+
+      registerTools();
+    }
+
+    init();
+  </script>
+</body>
+</html>
