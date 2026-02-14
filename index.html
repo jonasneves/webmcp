@@ -34,6 +34,7 @@
       --risk-low: #22c55e;
       --risk-med: #f59e0b;
       --risk-high: #ef4444;
+      --flag: #f59e0b;
       --radius: 8px;
       --radius-lg: 12px;
       --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -136,6 +137,26 @@
 
     #display { min-height: 200px; }
 
+    /* Loading skeleton */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .skeleton-row {
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%);
+      background-size: 800px 44px;
+      animation: shimmer 1.5s infinite linear;
+    }
+
     /* Table view */
     .hospital-table {
       width: 100%;
@@ -169,6 +190,12 @@
     .hospital-table tbody tr:hover { background: var(--surface); }
     .hospital-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
+    .hospital-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .risk-badge {
       display: inline-block;
       padding: 2px 10px;
@@ -181,6 +208,22 @@
     .risk-badge.low { background: #052e16; color: var(--risk-low); }
     .risk-badge.medium { background: #451a03; color: var(--risk-med); }
     .risk-badge.high { background: #450a0a; color: var(--risk-high); }
+
+    /* Flag dot */
+    .flag-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--flag);
+      flex-shrink: 0;
+    }
+
+    .flag-note {
+      padding: 8px 24px 0;
+      font-size: 13px;
+      color: var(--flag);
+      font-style: italic;
+    }
 
     /* Chart view */
     .chart-container { max-width: 600px; }
@@ -218,6 +261,45 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Comparison view */
+    .compare-table {
+      width: 100%;
+      max-width: 640px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .compare-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .compare-metric {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .compare-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .compare-better {
+      color: var(--risk-low);
+      font-weight: 700;
+    }
+
     /* Detail view */
     .detail-card {
       max-width: 640px;
@@ -232,6 +314,9 @@
     }
 
     .detail-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-size: 20px;
       font-weight: 600;
       margin-bottom: 4px;
@@ -339,7 +424,10 @@
     }
 
     .chat-header {
-      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -347,6 +435,26 @@
       color: var(--text-muted);
       border-bottom: 1px solid var(--surface-alt);
     }
+
+    .chat-reset {
+      min-width: 44px;
+      min-height: 32px;
+      padding: 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .chat-reset:hover { color: var(--text); border-color: var(--text-muted); }
+    .chat-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .api-key-bar {
       display: flex;
@@ -440,6 +548,19 @@
 
     .msg-tool-name { color: var(--accent); font-weight: 600; }
     .msg-tool-result { color: var(--risk-low); }
+
+    .msg-context {
+      align-self: center;
+      padding: 6px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: none;
+      border: 1px dashed var(--border);
+      border-radius: 100px;
+    }
 
     .msg-error {
       align-self: center;
@@ -545,7 +666,10 @@
     </main>
 
     <aside class="chat-panel">
-      <div class="chat-header">Chat</div>
+      <div class="chat-header">
+        <span>Chat</span>
+        <button class="chat-reset" id="chat-reset">Clear</button>
+      </div>
       <div class="api-key-bar">
         <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
         <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
@@ -561,25 +685,14 @@
   </div>
 
   <script>
-    /* ── Dataset (representative subset of CA hospital data) ── */
+    /* ── Dataset ── */
 
-    const HOSPITALS = [
-      { name: "MLK Community Hospital", county: "Los Angeles", type: "General Acute", ownership: "Non-Profit", mediCalPct: 65.7, medicarePct: 18.2, commercialPct: 10.1, otherPct: 6.0, operatingMargin: -8.2, equityBurdenScore: 82, riskProbability: 0.78, licensedBeds: 131, occupancyRate: 107.5 },
-      { name: "Cedars-Sinai Medical Center", county: "Los Angeles", type: "General Acute", ownership: "Non-Profit", mediCalPct: 8.3, medicarePct: 32.1, commercialPct: 51.4, otherPct: 8.2, operatingMargin: 12.1, equityBurdenScore: 14, riskProbability: 0.08, licensedBeds: 886, occupancyRate: 78.3 },
-      { name: "LAC+USC Medical Center", county: "Los Angeles", type: "General Acute", ownership: "Government", mediCalPct: 72.1, medicarePct: 15.8, commercialPct: 5.2, otherPct: 6.9, operatingMargin: -11.4, equityBurdenScore: 89, riskProbability: 0.85, licensedBeds: 600, occupancyRate: 95.2 },
-      { name: "Providence Holy Cross", county: "Los Angeles", type: "General Acute", ownership: "Non-Profit", mediCalPct: 38.5, medicarePct: 28.9, commercialPct: 24.6, otherPct: 8.0, operatingMargin: 1.2, equityBurdenScore: 45, riskProbability: 0.42, licensedBeds: 377, occupancyRate: 67.1 },
-      { name: "Centinela Hospital", county: "Los Angeles", type: "General Acute", ownership: "For-Profit", mediCalPct: 44.2, medicarePct: 30.1, commercialPct: 18.7, otherPct: 7.0, operatingMargin: -2.3, equityBurdenScore: 58, riskProbability: 0.51, licensedBeds: 369, occupancyRate: 71.8 },
-      { name: "Zuckerberg SF General", county: "San Francisco", type: "General Acute", ownership: "Government", mediCalPct: 55.3, medicarePct: 22.4, commercialPct: 14.1, otherPct: 8.2, operatingMargin: -6.7, equityBurdenScore: 74, riskProbability: 0.72, licensedBeds: 284, occupancyRate: 88.9 },
-      { name: "UCSF Medical Center", county: "San Francisco", type: "General Acute", ownership: "Non-Profit", mediCalPct: 12.6, medicarePct: 29.8, commercialPct: 48.3, otherPct: 9.3, operatingMargin: 8.4, equityBurdenScore: 18, riskProbability: 0.11, licensedBeds: 600, occupancyRate: 82.1 },
-      { name: "Chinese Hospital", county: "San Francisco", type: "General Acute", ownership: "Non-Profit", mediCalPct: 35.2, medicarePct: 38.4, commercialPct: 19.8, otherPct: 6.6, operatingMargin: 0.8, equityBurdenScore: 41, riskProbability: 0.38, licensedBeds: 54, occupancyRate: 58.3 },
-      { name: "UC Davis Medical Center", county: "Sacramento", type: "General Acute", ownership: "Non-Profit", mediCalPct: 18.9, medicarePct: 31.2, commercialPct: 40.1, otherPct: 9.8, operatingMargin: 5.6, equityBurdenScore: 22, riskProbability: 0.14, licensedBeds: 627, occupancyRate: 85.7 },
-      { name: "Mercy General Hospital", county: "Sacramento", type: "General Acute", ownership: "Non-Profit", mediCalPct: 28.4, medicarePct: 34.7, commercialPct: 29.3, otherPct: 7.6, operatingMargin: 2.1, equityBurdenScore: 35, riskProbability: 0.29, licensedBeds: 342, occupancyRate: 72.4 },
-      { name: "Sutter Medical Center", county: "Sacramento", type: "General Acute", ownership: "Non-Profit", mediCalPct: 15.3, medicarePct: 33.5, commercialPct: 42.8, otherPct: 8.4, operatingMargin: 7.3, equityBurdenScore: 19, riskProbability: 0.12, licensedBeds: 523, occupancyRate: 76.9 },
-      { name: "UC San Diego Health", county: "San Diego", type: "General Acute", ownership: "Non-Profit", mediCalPct: 14.7, medicarePct: 28.3, commercialPct: 47.9, otherPct: 9.1, operatingMargin: 9.2, equityBurdenScore: 16, riskProbability: 0.09, licensedBeds: 808, occupancyRate: 84.2 },
-      { name: "Sharp Memorial Hospital", county: "San Diego", type: "General Acute", ownership: "Non-Profit", mediCalPct: 19.8, medicarePct: 35.2, commercialPct: 36.4, otherPct: 8.6, operatingMargin: 4.8, equityBurdenScore: 24, riskProbability: 0.18, licensedBeds: 457, occupancyRate: 79.5 },
-      { name: "Scripps Mercy Hospital", county: "San Diego", type: "General Acute", ownership: "Non-Profit", mediCalPct: 32.1, medicarePct: 31.8, commercialPct: 28.5, otherPct: 7.6, operatingMargin: 1.4, equityBurdenScore: 38, riskProbability: 0.34, licensedBeds: 511, occupancyRate: 74.1 },
-      { name: "El Centro Regional Medical Center", county: "San Diego", type: "General Acute", ownership: "District", mediCalPct: 58.9, medicarePct: 24.6, commercialPct: 9.8, otherPct: 6.7, operatingMargin: -9.1, equityBurdenScore: 78, riskProbability: 0.74, licensedBeds: 161, occupancyRate: 92.3 },
-    ];
+    let HOSPITALS = [];
+
+    /* ── State ── */
+
+    const flaggedHospitals = new Map();
+    let currentView = { type: 'table', data: null, label: null };
 
     /* ── Utilities ── */
 
@@ -614,11 +727,42 @@
       });
     }
 
+    function scrollDisplayIntoView() {
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        display.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function refreshCurrentView() {
+      if (currentView.type === 'table') {
+        renderTable(currentView.data || HOSPITALS, currentView.label);
+      } else if (currentView.type === 'chart') {
+        renderChart(currentView.data || HOSPITALS, currentView.label);
+      } else if (currentView.type === 'detail' && currentView.data) {
+        renderDetail(currentView.data);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        renderComparison(currentView.data[0], currentView.data[1]);
+      }
+    }
+
     /* ── Rendering ── */
 
     const display = document.getElementById('display');
 
+    function renderSkeleton() {
+      display.innerHTML = `
+        <div class="loading-skeleton">
+          ${Array.from({ length: 8 }, (_, i) =>
+            `<div class="skeleton-row" style="animation-delay: ${i * 80}ms"></div>`
+          ).join('')}
+        </div>
+      `;
+    }
+
     function renderTable(hospitals, label) {
+      currentView = { type: 'table', data: hospitals, label };
       const summary = label || `${hospitals.length} hospitals`;
       display.innerHTML = `
         <div class="summary-row">
@@ -637,22 +781,25 @@
             </tr>
           </thead>
           <tbody>
-            ${hospitals.map(h => `
+            ${hospitals.map(h => {
+              const isFlagged = flaggedHospitals.has(h.name);
+              return `
               <tr tabindex="0" data-name="${h.name}" onclick="showDetail('${h.name.replace(/'/g, "\\'")}')" onkeydown="if(event.key==='Enter')showDetail('${h.name.replace(/'/g, "\\'")}')">
-                <td>${h.name}</td>
+                <td><span class="hospital-name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${h.name}</span></td>
                 <td>${h.county}</td>
                 <td><span class="risk-badge ${riskTier(h.riskProbability)}">${riskTier(h.riskProbability)}</span></td>
                 <td>${pct(h.mediCalPct)}</td>
                 <td>${h.equityBurdenScore}</td>
                 <td style="color: ${h.operatingMargin < 0 ? 'var(--risk-high)' : 'var(--risk-low)'}">${fmt(h.operatingMargin)}%</td>
-              </tr>
-            `).join('')}
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       `;
     }
 
     function renderChart(hospitals, label) {
+      currentView = { type: 'chart', data: hospitals, label };
       const tiers = { low: 0, medium: 0, high: 0 };
       hospitals.forEach(h => tiers[riskTier(h.riskProbability)]++);
       const max = Math.max(tiers.low, tiers.medium, tiers.high, 1);
@@ -689,14 +836,17 @@
     function renderDetail(hospital) {
       const h = hospital;
       const tier = riskTier(h.riskProbability);
+      const flag = flaggedHospitals.get(h.name);
+      currentView = { type: 'detail', data: h, label: null };
 
       display.innerHTML = `
         <button class="back-btn" onclick="renderTable(HOSPITALS)">&#8592; Back to list</button>
         <div class="detail-card">
           <div class="detail-header">
-            <h2>${h.name}</h2>
+            <h2>${flag ? '<span class="flag-dot"></span>' : ''}${h.name}</h2>
             <p class="detail-meta">${h.county} &middot; ${h.type} &middot; ${h.ownership} &middot; <span class="risk-badge ${tier}">${tier} risk</span></p>
           </div>
+          ${flag ? `<p class="flag-note">${flag.note}</p>` : ''}
           <div class="detail-grid">
             <div class="detail-cell">
               <div class="detail-cell-label">Risk Probability</div>
@@ -742,11 +892,75 @@
       `;
     }
 
+    function renderComparison(h1, h2) {
+      currentView = { type: 'comparison', data: [h1, h2], label: null };
+
+      const metrics = [
+        { label: 'Risk Probability', key: 'riskProbability', format: v => pct(v * 100), lowerBetter: true },
+        { label: 'Equity Burden', key: 'equityBurdenScore', format: v => `${v} / 100`, lowerBetter: true },
+        { label: 'Operating Margin', key: 'operatingMargin', format: v => `${fmt(v)}%`, lowerBetter: false },
+        { label: 'Medi-Cal Share', key: 'mediCalPct', format: v => pct(v), lowerBetter: true },
+        { label: 'Occupancy Rate', key: 'occupancyRate', format: v => pct(v), lowerBetter: false },
+        { label: 'Licensed Beds', key: 'licensedBeds', format: v => v, lowerBetter: false },
+      ];
+
+      function betterClass(v1, v2, lowerBetter) {
+        if (v1 === v2) return ['', ''];
+        const v1Wins = lowerBetter ? v1 < v2 : v1 > v2;
+        return v1Wins ? ['compare-better', ''] : ['', 'compare-better'];
+      }
+
+      display.innerHTML = `
+        <button class="back-btn" onclick="renderTable(HOSPITALS)">&#8592; Back to list</button>
+        <p class="view-label">Comparing two hospitals</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>${h1.name}</th>
+              <th>${h2.name}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${metrics.map(m => {
+              const [c1, c2] = betterClass(h1[m.key], h2[m.key], m.lowerBetter);
+              return `
+              <tr>
+                <td class="compare-metric">${m.label}</td>
+                <td class="compare-value ${c1}">${m.format(h1[m.key])}</td>
+                <td class="compare-value ${c2}">${m.format(h2[m.key])}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
     /* ── Global detail handler (called from table rows) ── */
 
     function showDetail(name) {
       const h = HOSPITALS.find(h => h.name === name);
-      if (h) renderDetail(h);
+      if (!h) return;
+      renderDetail(h);
+      injectViewingContext(name);
+    }
+
+    /* ── Bidirectional context ── */
+
+    function injectViewingContext(name) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const el = document.createElement('div');
+      el.className = 'msg msg-context';
+      el.textContent = `Viewing ${name}`;
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      conversationMessages.push({
+        role: 'user',
+        content: `[User is now viewing the detail card for ${name}]`
+      });
     }
 
     /* ── Shared tool definitions ── */
@@ -755,6 +969,7 @@
       {
         name: 'filter_hospitals',
         description: 'Filter and display California hospitals on the page. Renders a table showing matching hospitals with risk tier, Medi-Cal share, equity burden score, and operating margin. The user can then click any row to see full details.',
+        readOnlyHint: true,
         schema: {
           type: 'object',
           properties: {
@@ -777,6 +992,7 @@
       {
         name: 'show_risk_chart',
         description: 'Display a visual bar chart showing the distribution of hospital financial risk tiers (low/medium/high). Renders directly on the page so the user can see the breakdown visually.',
+        readOnlyHint: true,
         schema: {
           type: 'object',
           properties: {
@@ -795,6 +1011,7 @@
       {
         name: 'show_hospital_detail',
         description: 'Display a detailed profile card for a specific hospital, showing risk probability, equity burden score, operating margin, payer mix breakdown, occupancy, and bed count. Renders visually on the page.',
+        readOnlyHint: true,
         schema: {
           type: 'object',
           properties: {
@@ -808,6 +1025,58 @@
           renderDetail(hospital);
           const tier = riskTier(hospital.riskProbability);
           return { displayed: true, summary: `Showing ${hospital.name} — ${tier} risk, equity burden ${hospital.equityBurdenScore}/100, margin ${fmt(hospital.operatingMargin)}%.` };
+        }
+      },
+      {
+        name: 'flag_hospital',
+        description: 'Flag or unflag a hospital with a note. Flagged hospitals display an amber indicator dot in tables and detail views. Use this to mark hospitals that warrant attention or follow-up.',
+        readOnlyHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Hospital name (partial match supported)' },
+            note: { type: 'string', description: 'Reason for flagging (displayed on detail card)' },
+            unflag: { type: 'boolean', description: 'Set to true to remove the flag' }
+          },
+          required: ['name']
+        },
+        exec: async (input) => {
+          const hospital = HOSPITALS.find(h => matchName(h, input.name));
+          if (!hospital) return { summary: `No hospital found matching "${input.name}".` };
+
+          if (input.unflag) {
+            flaggedHospitals.delete(hospital.name);
+            refreshCurrentView();
+            return { summary: `Removed flag from ${hospital.name}.` };
+          }
+
+          flaggedHospitals.set(hospital.name, {
+            note: input.note || 'Flagged for review',
+            timestamp: Date.now()
+          });
+          refreshCurrentView();
+          return { summary: `Flagged ${hospital.name}: "${input.note || 'Flagged for review'}".` };
+        }
+      },
+      {
+        name: 'compare_hospitals',
+        description: 'Display a side-by-side comparison table of two hospitals across key metrics: risk probability, equity burden, operating margin, Medi-Cal share, occupancy rate, and licensed beds. Better values are highlighted in green.',
+        readOnlyHint: true,
+        schema: {
+          type: 'object',
+          properties: {
+            hospital1: { type: 'string', description: 'First hospital name (partial match)' },
+            hospital2: { type: 'string', description: 'Second hospital name (partial match)' }
+          },
+          required: ['hospital1', 'hospital2']
+        },
+        exec: async (input) => {
+          const h1 = HOSPITALS.find(h => matchName(h, input.hospital1));
+          const h2 = HOSPITALS.find(h => matchName(h, input.hospital2));
+          if (!h1) return { displayed: false, summary: `No hospital found matching "${input.hospital1}".` };
+          if (!h2) return { displayed: false, summary: `No hospital found matching "${input.hospital2}".` };
+          renderComparison(h1, h2);
+          return { displayed: true, summary: `Comparing ${h1.name} vs ${h2.name}. Key differences: risk ${pct(h1.riskProbability * 100)} vs ${pct(h2.riskProbability * 100)}, margin ${fmt(h1.operatingMargin)}% vs ${fmt(h2.operatingMargin)}%.` };
         }
       }
     ];
@@ -857,7 +1126,7 @@
           name: t.name,
           description: t.description,
           inputSchema: t.schema,
-          annotations: { readOnlyHint: true },
+          annotations: { readOnlyHint: t.readOnlyHint },
           execute: t.exec
         }))
       });
@@ -868,17 +1137,20 @@
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const chatSend = document.getElementById('chat-send');
+    const chatReset = document.getElementById('chat-reset');
     const apiKeyInput = document.getElementById('api-key');
     const keyToggle = document.getElementById('key-toggle');
 
-    const SYSTEM_PROMPT = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards) directly on the page — the user already sees the full result. You only receive a brief summary.
+    const SYSTEM_PROMPT = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
 
 Rules:
 - 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
 - Call tools eagerly. If the user asks to see data, call the tool — don't narrate what you're about to do.
 - End with a short follow-up suggestion (one line) so the user knows what else they can explore.
 - No markdown formatting — this renders as plain text in a chat bubble.
-- No greetings, filler, or preamble.`;
+- No greetings, filler, or preamble.
+- You can flag hospitals to mark them for attention. Use flag_hospital when the user wants to mark, note, or bookmark a hospital.
+- You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.`;
     const CLAUDE_TOOLS = TOOL_DEFS.map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
 
     let conversationMessages = [];
@@ -892,6 +1164,12 @@ Rules:
       const hidden = apiKeyInput.type === 'password';
       apiKeyInput.type = hidden ? 'text' : 'password';
       keyToggle.textContent = hidden ? 'Hide' : 'Show';
+    });
+
+    // Chat reset
+    chatReset.addEventListener('click', () => {
+      conversationMessages = [];
+      chatMessages.innerHTML = '<div class="chat-empty">Ask a question about California hospital data.</div>';
     });
 
     // Auto-resize textarea
@@ -910,7 +1188,6 @@ Rules:
     chatSend.addEventListener('click', sendMessage);
 
     function appendMessage(type, content) {
-      // Clear empty state
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
@@ -972,66 +1249,13 @@ Rules:
 
       await runConversation(apiKey);
 
-      hideSpinner();
       setInputEnabled(true);
       chatInput.focus();
     }
 
-    async function runConversation(apiKey) {
-      while (true) {
-        let response;
-        try {
-          response = await callClaudeAPI(apiKey, conversationMessages);
-        } catch (err) {
-          hideSpinner();
-          appendMessage('error', err.message);
-          return;
-        }
+    /* ── Streaming API ── */
 
-        conversationMessages.push({ role: 'assistant', content: response.content });
-
-        // Collect text blocks
-        const textParts = response.content
-          .filter(b => b.type === 'text')
-          .map(b => b.text)
-          .join('\n');
-
-        // Collect tool_use blocks
-        const toolUses = response.content.filter(b => b.type === 'tool_use');
-
-        if (toolUses.length === 0) {
-          hideSpinner();
-          if (textParts) appendMessage('assistant', textParts);
-          return;
-        }
-
-        // Show any text before tool calls
-        if (textParts) appendMessage('assistant', textParts);
-
-        // Execute tools and gather results
-        const toolResults = [];
-        for (const tu of toolUses) {
-          const def = TOOL_DEFS.find(t => t.name === tu.name);
-          let result;
-          if (def) {
-            result = await def.exec(tu.input);
-            appendToolMsg(tu.name, tu.input, result.summary);
-          } else {
-            result = { error: `Unknown tool: ${tu.name}` };
-          }
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: tu.id,
-            content: JSON.stringify(result)
-          });
-        }
-
-        conversationMessages.push({ role: 'user', content: toolResults });
-        // Loop to send tool results back
-      }
-    }
-
-    async function callClaudeAPI(apiKey, messages) {
+    async function streamClaudeAPI(apiKey, messages) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -1045,7 +1269,8 @@ Rules:
           max_tokens: 1024,
           system: SYSTEM_PROMPT,
           messages,
-          tools: CLAUDE_TOOLS
+          tools: CLAUDE_TOOLS,
+          stream: true
         })
       });
 
@@ -1054,13 +1279,163 @@ Rules:
         throw new Error(`API ${res.status}: ${body.slice(0, 200)}`);
       }
 
-      return res.json();
+      return res.body;
+    }
+
+    async function* parseSSEStream(body) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        let currentEvent = null;
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data && currentEvent) {
+              try {
+                yield { event: currentEvent, data: JSON.parse(data) };
+              } catch {}
+            }
+            currentEvent = null;
+          }
+        }
+      }
+    }
+
+    async function runConversation(apiKey) {
+      while (true) {
+        let body;
+        try {
+          body = await streamClaudeAPI(apiKey, conversationMessages);
+        } catch (err) {
+          hideSpinner();
+          appendMessage('error', err.message);
+          return;
+        }
+
+        // Parse the stream
+        const contentBlocks = [];
+        let currentTextEl = null;
+        let currentTextContent = '';
+        let currentToolInput = '';
+        let currentBlockType = null;
+        let stopReason = null;
+
+        for await (const { event, data } of parseSSEStream(body)) {
+          switch (event) {
+            case 'content_block_start': {
+              const block = data.content_block;
+              currentBlockType = block.type;
+              if (block.type === 'text') {
+                hideSpinner();
+                currentTextContent = block.text || '';
+                currentTextEl = appendMessage('assistant', currentTextContent);
+              } else if (block.type === 'tool_use') {
+                contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
+                currentToolInput = '';
+              }
+              break;
+            }
+
+            case 'content_block_delta': {
+              if (data.delta.type === 'text_delta') {
+                currentTextContent += data.delta.text;
+                if (currentTextEl) currentTextEl.textContent = currentTextContent;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+              } else if (data.delta.type === 'input_json_delta') {
+                currentToolInput += data.delta.partial_json;
+              }
+              break;
+            }
+
+            case 'content_block_stop': {
+              if (currentBlockType === 'text' && currentTextContent) {
+                contentBlocks.push({ type: 'text', text: currentTextContent });
+                currentTextEl = null;
+                currentTextContent = '';
+              } else if (currentBlockType === 'tool_use') {
+                const toolBlock = contentBlocks[contentBlocks.length - 1];
+                try {
+                  toolBlock.input = currentToolInput ? JSON.parse(currentToolInput) : {};
+                } catch {
+                  toolBlock.input = {};
+                }
+                currentToolInput = '';
+              }
+              currentBlockType = null;
+              break;
+            }
+
+            case 'message_delta': {
+              if (data.delta?.stop_reason) stopReason = data.delta.stop_reason;
+              break;
+            }
+          }
+        }
+
+        // Add the full assistant message to conversation history
+        conversationMessages.push({ role: 'assistant', content: contentBlocks });
+
+        // Check for tool use
+        const toolUses = contentBlocks.filter(b => b.type === 'tool_use');
+        if (toolUses.length === 0) {
+          hideSpinner();
+          return;
+        }
+
+        // Execute tools and gather results
+        const toolResults = [];
+        for (const tu of toolUses) {
+          const def = TOOL_DEFS.find(t => t.name === tu.name);
+          let result;
+          if (def) {
+            result = await def.exec(tu.input);
+            appendToolMsg(tu.name, tu.input, result.summary);
+            scrollDisplayIntoView();
+          } else {
+            result = { error: `Unknown tool: ${tu.name}` };
+          }
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: tu.id,
+            content: JSON.stringify(result)
+          });
+        }
+
+        conversationMessages.push({ role: 'user', content: toolResults });
+        showSpinner();
+        // Loop to send tool results back
+      }
     }
 
     /* ── Init ── */
 
-    renderTable(HOSPITALS);
-    registerTools();
+    async function init() {
+      renderSkeleton();
+
+      try {
+        const res = await fetch('hospitals.json');
+        HOSPITALS = await res.json();
+      } catch (err) {
+        display.innerHTML = `<p class="msg-error">Failed to load hospital data: ${err.message}</p>`;
+        return;
+      }
+
+      renderTable(HOSPITALS);
+      registerTools();
+    }
+
+    init();
   </script>
 </body>
 </html>
