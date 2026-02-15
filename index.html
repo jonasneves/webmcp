@@ -726,6 +726,27 @@
       border-bottom-left-radius: 4px;
     }
 
+    .msg-assistant p { margin: 0; }
+    .msg-assistant p + p { margin-top: 8px; }
+    .msg-assistant ul, .msg-assistant ol { margin: 4px 0; padding-left: 20px; }
+    .msg-assistant li + li { margin-top: 2px; }
+    .msg-assistant strong { color: var(--text); }
+    .msg-assistant code {
+      font-family: var(--mono);
+      font-size: 0.9em;
+      padding: 1px 5px;
+      background: var(--bg);
+      border-radius: 4px;
+    }
+    .msg-assistant pre {
+      margin: 6px 0;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      overflow-x: auto;
+    }
+    .msg-assistant pre code { padding: 0; background: none; }
+
     .msg-tool-name { color: var(--accent); font-weight: 600; }
 
     /* Exchange grouping */
@@ -734,6 +755,37 @@
       flex-direction: column;
       gap: 6px;
     }
+
+    .exchange-history-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 0 16px;
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: none;
+      border: 1px dashed var(--surface-alt);
+      border-radius: 100px;
+      cursor: pointer;
+      width: 100%;
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .exchange-history-toggle:hover { color: var(--text); border-color: var(--border); }
+    .exchange-history-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .exchange-history-toggle .chevron {
+      font-size: 10px;
+      transition: transform var(--transition);
+    }
+
+    .exchange-history.expanded .exchange-history-toggle .chevron { transform: rotate(180deg); }
+
+    .exchange-history-list { display: none; }
+    .exchange-history.expanded .exchange-history-list { display: flex; flex-direction: column; gap: 8px; }
 
     .exchange-summary {
       display: flex;
@@ -779,6 +831,22 @@
       font-size: 10px;
       transition: transform var(--transition);
     }
+
+    .exchange-summary-restore {
+      font-size: 11px;
+      font-family: var(--font);
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius);
+      white-space: nowrap;
+      transition: background var(--transition);
+    }
+
+    .exchange-summary-restore:hover { background: var(--accent-dim); }
+    .exchange-summary-restore:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .exchange.collapsed .exchange-summary-chevron { transform: rotate(-90deg); }
     .exchange.collapsed .exchange-body { display: none; }
@@ -1157,6 +1225,10 @@
       border-color: transparent;
     }
   </style>
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
   <header>
@@ -1235,6 +1307,8 @@
   </div>
 
   <script>
+    marked.use({ gfm: true, breaks: true });
+
     /* ── Dataset ── */
 
     let HOSPITALS = [];
@@ -2553,6 +2627,10 @@ Rules:
       sendMessage();
     });
 
+    function renderMarkdown(text) {
+      return DOMPurify.sanitize(marked.parse(text));
+    }
+
     function appendMessage(type, content) {
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
@@ -2560,7 +2638,11 @@ Rules:
       const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = `msg msg-${type}`;
-      el.textContent = content;
+      if (type === 'assistant') {
+        el.innerHTML = renderMarkdown(content);
+      } else {
+        el.textContent = content;
+      }
       target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return el;
@@ -2636,6 +2718,40 @@ Rules:
       if (s) s.remove();
     }
 
+    function getOrCreateHistory() {
+      let wrapper = chatMessages.querySelector('.exchange-history');
+      if (wrapper) return wrapper;
+
+      wrapper = document.createElement('div');
+      wrapper.className = 'exchange-history';
+
+      const toggle = document.createElement('button');
+      toggle.className = 'exchange-history-toggle';
+      const chevron = document.createElement('span');
+      chevron.className = 'chevron';
+      chevron.textContent = '\u25BE';
+      const countSpan = document.createElement('span');
+      countSpan.className = 'exchange-history-count';
+      toggle.append(chevron, ' ', countSpan);
+      toggle.addEventListener('click', () => {
+        wrapper.classList.toggle('expanded');
+      });
+
+      const list = document.createElement('div');
+      list.className = 'exchange-history-list';
+
+      wrapper.append(toggle, list);
+      chatMessages.prepend(wrapper);
+      return wrapper;
+    }
+
+    function updateHistoryCount() {
+      const wrapper = chatMessages.querySelector('.exchange-history');
+      if (!wrapper) return;
+      const count = wrapper.querySelector('.exchange-history-list').children.length;
+      wrapper.querySelector('.exchange-history-count').textContent = count + ' previous';
+    }
+
     function collapseCurrentExchange() {
       if (!currentExchangeEl) return;
 
@@ -2667,6 +2783,19 @@ Rules:
         summary.appendChild(badge);
       }
 
+      if (currentExchangeEl._restoreTool) {
+        const restore = document.createElement('button');
+        restore.className = 'exchange-summary-restore';
+        restore.textContent = 'Restore view';
+        const { name: rName, input: rInput } = currentExchangeEl._restoreTool;
+        restore.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const def = getActiveTools().find(t => t.name === rName);
+          if (def) def.exec(rInput, { requestUserInteraction: (cb) => cb() });
+        });
+        summary.appendChild(restore);
+      }
+
       const chevron = document.createElement('span');
       chevron.className = 'exchange-summary-chevron';
       chevron.textContent = '\u25BE';
@@ -2682,6 +2811,10 @@ Rules:
         exchange.classList.toggle('collapsed');
         summary.setAttribute('aria-expanded', !exchange.classList.contains('collapsed'));
       });
+
+      const history = getOrCreateHistory();
+      history.querySelector('.exchange-history-list').appendChild(currentExchangeEl);
+      updateHistoryCount();
 
       currentExchangeEl = null;
     }
@@ -2817,6 +2950,7 @@ Rules:
         let currentTextContent = '';
         let currentToolInput = '';
         let currentBlockType = null;
+        let mdRenderPending = 0;
 
         try {
           for await (const { event, data } of parseSSEStream(body)) {
@@ -2838,8 +2972,17 @@ Rules:
               case 'content_block_delta': {
                 if (data.delta.type === 'text_delta') {
                   currentTextContent += data.delta.text;
-                  if (currentTextEl) currentTextEl.textContent = currentTextContent;
-                  chatMessages.scrollTop = chatMessages.scrollHeight;
+                  if (currentTextEl) {
+                    if (!mdRenderPending) {
+                      mdRenderPending = requestAnimationFrame(() => {
+                        mdRenderPending = 0;
+                        if (currentTextEl) {
+                          currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                          chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                      });
+                    }
+                  }
                 } else if (data.delta.type === 'input_json_delta') {
                   currentToolInput += data.delta.partial_json;
                 }
@@ -2848,6 +2991,8 @@ Rules:
 
               case 'content_block_stop': {
                 if (currentBlockType === 'text' && currentTextContent) {
+                  if (mdRenderPending) { cancelAnimationFrame(mdRenderPending); mdRenderPending = 0; }
+                  if (currentTextEl) currentTextEl.innerHTML = renderMarkdown(currentTextContent);
                   contentBlocks.push({ type: 'text', text: currentTextContent });
                   currentTextEl = null;
                   currentTextContent = '';
@@ -2906,7 +3051,12 @@ Rules:
             }
             result = await def.exec(tu.input, client);
             appendToolMsg(tu.name, tu.input, result.summary);
-            if (result.displayed) scrollDisplayIntoView();
+            if (result.displayed) {
+              scrollDisplayIntoView();
+              if (def.readOnlyHint && currentExchangeEl) {
+                currentExchangeEl._restoreTool = { name: tu.name, input: tu.input };
+              }
+            }
           } else {
             result = { error: `Unknown tool: ${tu.name}` };
             appendToolMsg(tu.name, tu.input, result.error, true);
