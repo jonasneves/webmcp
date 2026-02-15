@@ -20,7 +20,7 @@ Extract from `index.html`:
 
 **Validation:** Refactor the existing hospital PoC to consume the extracted runtime. Same behavior, runtime imported instead of inline.
 
-**Ship as:** ES modules on npm. Peer dependency on `@mcp-b/global`.
+**Ship as:** ES modules on npm. Zero dependencies. Ships a minimal WebMCP spec polyfill that drops away when browsers implement `navigator.modelContext` natively.
 
 **Provider support:** Anthropic first (already working). Abstract the SSE parsing so OpenAI and other providers slot in without changing the tool loop.
 

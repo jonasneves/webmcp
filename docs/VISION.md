@@ -4,7 +4,7 @@
 
 A browser-side AI agent runtime. Web apps declare tools with typed schemas and annotations. The runtime handles the agentic loop — streaming model responses, detecting tool calls, executing them against the live UI, injecting results back, and continuing the conversation. No backend required.
 
-The WebMCP polyfill (`@mcp-b/global`) provides one primitive: `navigator.modelContext.provideContext({ tools })`. Everything else — the execution loop, reactive tool surface, trust policy, bidirectional context — is this runtime.
+The [WebMCP spec](https://webmachinelearning.github.io/webmcp/) defines `navigator.modelContext` — a browser API for registering tools. It provides registration primitives (`provideContext`, `registerTool`, `unregisterTool`, `clearContext`). Everything else — the execution loop, reactive tool surface, trust policy, bidirectional context — is this runtime. A minimal polyfill (~10 lines) fills in `navigator.modelContext` until browsers implement the spec natively.
 
 ## Core components
 
@@ -27,7 +27,7 @@ The available tool set is a function of app state, not a static declaration. Too
 - Not a chatbot widget or AI assistant UI
 - Not a vertical product (the hospital dashboard is sample data)
 - Not a backend framework — runs entirely client-side
-- Not a replacement for MCP/mcp-b — builds on top of it
+- Not a replacement for the WebMCP spec — implements the runtime layer the spec doesn't cover
 
 ## Competitive position
 
@@ -63,4 +63,4 @@ runtime.send('Show me all active items');
 
 ## Open-source strategy
 
-MIT license. The runtime is the open-source core — small, auditable, zero dependencies beyond the mcp-b polyfill. Monetization comes from infrastructure that production deployments need but the runtime intentionally doesn't include (see ROADMAP.md).
+MIT license. The runtime is the open-source core — small, auditable, zero dependencies. Conforms to the [WebMCP spec](https://webmachinelearning.github.io/webmcp/) and ships a minimal polyfill that drops away when browsers implement the spec natively. Monetization comes from infrastructure that production deployments need but the runtime intentionally doesn't include (see ROADMAP.md).

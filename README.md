@@ -24,11 +24,11 @@ Proof-of-concept demonstrating [WebMCP](https://anthropic.com/research/model-con
 npx serve .
 ```
 
-Enter an Anthropic API key in the chat panel. The [WebMCP polyfill](https://www.npmjs.com/package/@mcp-b/global) loads automatically.
+Enter an Anthropic API key in the chat panel. A minimal [WebMCP spec](https://webmachinelearning.github.io/webmcp/) polyfill is inlined — no external dependencies.
 
 ## Architecture
 
-Single-page apps with inline JS — no build step, no dependencies beyond the polyfill.
+Single-page apps with inline JS — no build step, no external dependencies.
 
 | File | Purpose |
 |------|---------|

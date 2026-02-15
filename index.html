@@ -6,21 +6,18 @@
   <meta name="theme-color" content="#0f172a">
   <title>WebMCP PoC — Hospital Explorer</title>
   <script>
-    // Remove native navigator.modelContext so @mcp-b/global polyfill
-    // can install its own version with MCP bridge support
-    if ('modelContext' in navigator) {
-      delete navigator.modelContext;
-      // If non-configurable, override via defineProperty
-      if ('modelContext' in navigator) {
-        Object.defineProperty(navigator, 'modelContext', {
-          value: undefined,
-          writable: true,
-          configurable: true
-        });
-      }
+    // WebMCP polyfill — conforms to https://webmachinelearning.github.io/webmcp/
+    // Drop when browsers implement the spec natively
+    if (!navigator.modelContext) {
+      navigator.modelContext = {
+        _tools: [],
+        provideContext({ tools }) { this._tools = tools; },
+        registerTool(tool) { this._tools.push(tool); },
+        unregisterTool(name) { this._tools = this._tools.filter(t => t.name !== name); },
+        clearContext() { this._tools = []; },
+      };
     }
   </script>
-  <script src="https://unpkg.com/@mcp-b/global@latest/dist/index.iife.js"></script>
   <style>
     :root {
       --bg: #0f172a;
