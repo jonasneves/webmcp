@@ -834,13 +834,94 @@
       }
       .toast { width: 100%; }
     }
+
+    /* Confirmation dialog */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .confirm-overlay.active {
+      display: flex;
+    }
+
+    .confirm-dialog {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    .confirm-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .confirm-tool {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .confirm-args {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .confirm-cancel, .confirm-ok {
+      min-height: 44px;
+      padding: 0 20px;
+      font-size: 14px;
+      font-family: var(--font);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .confirm-cancel {
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+    }
+
+    .confirm-cancel:hover { color: var(--text); border-color: var(--text-muted); }
+
+    .confirm-ok {
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+    }
+
+    .confirm-ok:hover { opacity: 0.85; }
+    .confirm-cancel:focus-visible, .confirm-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
   <header>
     <div class="header-left">
       <h1>WebMCP PoC</h1>
-      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 6 tools</button>
+      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 7 tools</button>
     </div>
     <div class="status-badge">
       <span class="status-dot" id="status-dot"></span>
@@ -878,7 +959,7 @@
         <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
         <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
       </div>
-      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
       <div class="chat-input-area">
         <textarea id="chat-input" placeholder="Ask about hospitals..." rows="1" aria-label="Chat message"></textarea>
         <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
@@ -887,6 +968,18 @@
   </div>
 
   <div class="toast-container" id="toast-container"></div>
+
+  <div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-dialog">
+      <p class="confirm-title">Confirm action</p>
+      <p class="confirm-tool" id="confirm-tool"></p>
+      <p class="confirm-args" id="confirm-args"></p>
+      <div class="confirm-actions">
+        <button class="confirm-cancel" id="confirm-cancel">Cancel</button>
+        <button class="confirm-ok" id="confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     /* ── Dataset ── */
@@ -1295,6 +1388,63 @@
       document.getElementById('toast-container').innerHTML = '';
     }
 
+    /* ── Persistence ── */
+
+    function persistFlags() {
+      const data = [...flaggedHospitals.entries()].map(([name, flag]) => ({ name, ...flag }));
+      localStorage.setItem('webmcp-flags', JSON.stringify(data));
+    }
+
+    function loadFlags() {
+      try {
+        const data = JSON.parse(localStorage.getItem('webmcp-flags') || '[]');
+        data.forEach(({ name, ...flag }) => flaggedHospitals.set(name, flag));
+      } catch {}
+    }
+
+    /* ── Confirmation dialog ── */
+
+    function showConfirmDialog(toolName, args) {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('confirm-overlay');
+        document.getElementById('confirm-tool').textContent = toolName;
+        document.getElementById('confirm-args').textContent = JSON.stringify(args, null, 2);
+        overlay.classList.add('active');
+
+        const ok = document.getElementById('confirm-ok');
+        const cancel = document.getElementById('confirm-cancel');
+
+        function cleanup() {
+          overlay.classList.remove('active');
+          ok.removeEventListener('click', onOk);
+          cancel.removeEventListener('click', onCancel);
+        }
+
+        function onOk() { cleanup(); resolve(true); }
+        function onCancel() { cleanup(); resolve(false); }
+
+        ok.addEventListener('click', onOk);
+        cancel.addEventListener('click', onCancel);
+        ok.focus();
+      });
+    }
+
+    /* ── Keyboard shortcuts ── */
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !e.target.matches('input, textarea')) {
+        e.preventDefault();
+        chatInput.focus();
+      }
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('confirm-overlay');
+        if (overlay && overlay.classList.contains('active')) return; // let dialog handle its own Esc
+        const panel = document.getElementById('tools-panel');
+        if (panel.dataset.collapsed === 'false') { toggleToolsPanel(); return; }
+        dismissToast();
+      }
+    });
+
     /* ── Quick actions ── */
 
     function renderQuickActions() {
@@ -1523,9 +1673,11 @@
           if (input.unflag) {
             const previousFlag = flaggedHospitals.get(hospital.name);
             flaggedHospitals.delete(hospital.name);
+            persistFlags();
             refreshCurrentView();
             showToast('Flag removed', () => {
               flaggedHospitals.set(hospital.name, previousFlag || { note: 'Flagged for review', timestamp: Date.now() });
+              persistFlags();
               refreshCurrentView();
             });
             return { summary: `Removed flag from ${hospital.name}.` };
@@ -1533,9 +1685,11 @@
 
           const flagData = { note: input.note || 'Flagged for review', timestamp: Date.now() };
           flaggedHospitals.set(hospital.name, flagData);
+          persistFlags();
           refreshCurrentView();
           showToast('Hospital flagged', () => {
             flaggedHospitals.delete(hospital.name);
+            persistFlags();
             refreshCurrentView();
           });
           return { summary: `Flagged ${hospital.name}: "${input.note || 'Flagged for review'}".` };
@@ -1611,6 +1765,39 @@
             lowestRisk: { name: lowestRisk.name, risk: lowestRisk.riskProbability },
             summary: `${data.length} hospitals (${scope}): avg risk ${(avgRisk * 100).toFixed(0)}%, avg margin ${avgMargin.toFixed(1)}%, ${riskDistribution.high} high-risk. Highest: ${highestRisk.name} (${(highestRisk.riskProbability * 100).toFixed(0)}%), lowest: ${lowestRisk.name} (${(lowestRisk.riskProbability * 100).toFixed(0)}%).`
           };
+        }
+      },
+      {
+        name: 'export_flagged',
+        title: 'Export Flagged',
+        description: 'Download a CSV file of all currently flagged hospitals with their flag notes and key metrics. Produces a file download, does not render a visualization.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {}
+        },
+        exec: async () => {
+          if (flaggedHospitals.size === 0) return { summary: 'No hospitals are currently flagged.' };
+
+          const headers = ['Name', 'County', 'Risk Tier', 'Risk Probability', 'Operating Margin', 'Equity Burden', 'Flag Note', 'Flagged At'];
+          const rows = [...flaggedHospitals.entries()].map(([name, flag]) => {
+            const h = HOSPITALS.find(h => h.name === name);
+            return [name, h.county, riskTier(h.riskProbability), h.riskProbability, h.operatingMargin, h.equityBurdenScore, flag.note, new Date(flag.timestamp).toISOString()];
+          });
+
+          const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'flagged-hospitals.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+
+          return { summary: `Exported ${flaggedHospitals.size} flagged hospital(s) as CSV.` };
         }
       }
     ];
@@ -1691,15 +1878,16 @@ Rules:
 - No greetings, filler, or preamble.
 - You can flag hospitals to mark them for attention. Use flag_hospital when the user wants to mark, note, or bookmark a hospital.
 - You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.
-- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.`;
+- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
+- Use export_flagged to download a CSV of all flagged hospitals when the user wants to export or save their flags.`;
     const CLAUDE_TOOLS = TOOL_DEFS.map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
 
     let conversationMessages = [];
     let chatBusy = false;
 
-    // Restore API key from sessionStorage
-    apiKeyInput.value = sessionStorage.getItem('webmcp-api-key') || '';
-    apiKeyInput.addEventListener('input', () => sessionStorage.setItem('webmcp-api-key', apiKeyInput.value));
+    // Restore API key from localStorage
+    apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
+    apiKeyInput.addEventListener('input', () => localStorage.setItem('webmcp-api-key', apiKeyInput.value));
 
     keyToggle.addEventListener('click', () => {
       const hidden = apiKeyInput.type === 'password';
@@ -1947,6 +2135,15 @@ Rules:
           const def = TOOL_DEFS.find(t => t.name === tu.name);
           let result;
           if (def) {
+            if (!def.readOnlyHint) {
+              const confirmed = await showConfirmDialog(def.title, tu.input);
+              if (!confirmed) {
+                result = { summary: `User declined: ${def.title}` };
+                appendToolMsg(tu.name, tu.input, result.summary);
+                toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
+                continue;
+              }
+            }
             result = await def.exec(tu.input);
             appendToolMsg(tu.name, tu.input, result.summary);
             if (result.displayed) scrollDisplayIntoView();
@@ -1978,6 +2175,8 @@ Rules:
         display.innerHTML = `<p class="msg-error">Failed to load hospital data: ${err.message}</p>`;
         return;
       }
+
+      loadFlags();
 
       if (!decodeHashToView()) {
         renderTable(HOSPITALS);
