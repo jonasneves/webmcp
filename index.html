@@ -5,19 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#0f172a">
   <title>WebMCP PoC — Hospital Explorer</title>
-  <script>
-    // WebMCP polyfill — conforms to https://webmachinelearning.github.io/webmcp/
-    // Drop when browsers implement the spec natively
-    if (!navigator.modelContext) {
-      navigator.modelContext = {
-        _tools: [],
-        provideContext({ tools }) { this._tools = tools; },
-        registerTool(tool) { this._tools.push(tool); },
-        unregisterTool(name) { this._tools = this._tools.filter(t => t.name !== name); },
-        clearContext() { this._tools = []; },
-      };
-    }
-  </script>
   <style>
     :root {
       --bg: #0f172a;
@@ -74,26 +61,6 @@
       font-size: 18px;
       font-weight: 600;
     }
-
-    .status-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-muted);
-      padding: 6px 12px;
-      background: var(--surface);
-      border-radius: 100px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-muted);
-    }
-
-    .status-dot.active { background: var(--risk-low); }
 
     /* Tools panel */
     .tools-panel {
@@ -759,21 +726,105 @@
       border-bottom-left-radius: 4px;
     }
 
-    .msg-tool {
-      align-self: flex-start;
-      max-width: 95%;
-      padding: 8px 12px;
+    .msg-tool-name { color: var(--accent); font-weight: 600; }
+
+    /* Exchange grouping */
+    .exchange {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .exchange-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 6px 12px;
+      font-family: var(--font);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--surface-alt);
+      border-radius: var(--radius);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: background var(--transition);
+    }
+
+    .exchange-summary:hover { background: var(--surface-alt); }
+    .exchange-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .exchange-summary-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .exchange-summary-tools {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .exchange-summary-chevron {
+      font-size: 10px;
+      transition: transform var(--transition);
+    }
+
+    .exchange.collapsed .exchange-summary-chevron { transform: rotate(-90deg); }
+    .exchange.collapsed .exchange-body { display: none; }
+
+    /* Compact tool messages */
+    .msg-tool-compact {
+      padding: 2px 12px;
       font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .msg-tool-compact-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .msg-tool-compact-summary {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .msg-tool-detail {
+      display: none;
+      margin-top: 4px;
+      padding: 8px 12px;
       font-size: 11px;
       line-height: 1.6;
       color: var(--text-muted);
       background: var(--bg);
       border: 1px solid var(--surface-alt);
       border-radius: var(--radius);
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
-    .msg-tool-name { color: var(--accent); font-weight: 600; }
-    .msg-tool-result { color: var(--risk-low); }
+    .exchange:not(.collapsed):not(.current) .msg-tool-detail { display: block; }
+    .msg-tool-detail-result { color: var(--risk-low); }
+
+    .msg-tool-check { color: var(--risk-low); }
+    .msg-tool-fail { color: var(--risk-high); }
 
     .msg-context {
       align-self: center;
@@ -1059,6 +1110,24 @@
 
     .confirm-ok:hover { opacity: 0.85; }
     .confirm-cancel:focus-visible, .confirm-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .prompt-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+
+    .prompt-input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+      border-color: transparent;
+    }
   </style>
 </head>
 <body>
@@ -1066,10 +1135,6 @@
     <div class="header-left">
       <h1>WebMCP PoC</h1>
       <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 9 tools</button>
-    </div>
-    <div class="status-badge">
-      <span class="status-dot" id="status-dot"></span>
-      <span id="status-text">Checking...</span>
     </div>
   </header>
 
@@ -1130,6 +1195,17 @@
     </div>
   </div>
 
+  <div class="confirm-overlay" id="prompt-overlay" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
+    <div class="confirm-dialog">
+      <p class="confirm-title" id="prompt-title"></p>
+      <input type="text" class="prompt-input" id="prompt-input" autocomplete="off">
+      <div class="confirm-actions">
+        <button class="confirm-cancel" id="prompt-cancel">Skip</button>
+        <button class="confirm-ok" id="prompt-ok">Add</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     /* ── Dataset ── */
 
@@ -1142,6 +1218,7 @@
     let currentToastTimeout = null;
     let previousToolNames = new Set();
     let toolsInitialized = false;
+    let currentExchangeEl = null;
 
     /* ── Constants ── */
 
@@ -1580,10 +1657,11 @@
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
+      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = 'msg msg-context';
       el.textContent = `Viewing ${name}`;
-      chatMessages.appendChild(el);
+      target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
 
       conversationMessages.push({
@@ -1681,6 +1759,48 @@
       });
     }
 
+    function showPromptDialog(message) {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('prompt-overlay');
+        const input = document.getElementById('prompt-input');
+        document.getElementById('prompt-title').textContent = message;
+        input.value = '';
+        overlay.classList.add('active');
+
+        const ok = document.getElementById('prompt-ok');
+        const cancel = document.getElementById('prompt-cancel');
+        const focusable = [input, cancel, ok];
+
+        function onTrap(e) {
+          if (e.key !== 'Tab') return;
+          const idx = focusable.indexOf(document.activeElement);
+          if (e.shiftKey) {
+            if (idx <= 0) { e.preventDefault(); focusable[focusable.length - 1].focus(); }
+          } else {
+            if (idx >= focusable.length - 1) { e.preventDefault(); focusable[0].focus(); }
+          }
+        }
+
+        function cleanup() {
+          overlay.classList.remove('active');
+          ok.removeEventListener('click', onOk);
+          cancel.removeEventListener('click', onCancel);
+          input.removeEventListener('keydown', onEnter);
+          overlay.removeEventListener('keydown', onTrap);
+        }
+
+        function onOk() { cleanup(); resolve(input.value || null); }
+        function onCancel() { cleanup(); resolve(null); }
+        function onEnter(e) { if (e.key === 'Enter') onOk(); }
+
+        ok.addEventListener('click', onOk);
+        cancel.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onEnter);
+        overlay.addEventListener('keydown', onTrap);
+        input.focus();
+      });
+    }
+
     /* ── Keyboard shortcuts ── */
 
     document.addEventListener('keydown', (e) => {
@@ -1688,6 +1808,11 @@
         chatInput.focus();
       }
       if (e.key === 'Escape') {
+        const promptOverlay = document.getElementById('prompt-overlay');
+        if (promptOverlay && promptOverlay.classList.contains('active')) {
+          document.getElementById('prompt-cancel').click();
+          return;
+        }
         const overlay = document.getElementById('confirm-overlay');
         if (overlay && overlay.classList.contains('active')) {
           document.getElementById('confirm-cancel').click();
@@ -1794,7 +1919,8 @@
         container.appendChild(btn);
       });
 
-      chatMessages.appendChild(container);
+      const target = currentExchangeEl || chatMessages;
+      target.appendChild(container);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
@@ -1838,13 +1964,17 @@
           name: 'clear_all_flags',
           title: 'Clear All Flags',
           description: `Remove all ${flaggedHospitals.size} hospital flags. This action cannot be undone.`,
-          readOnlyHint: false,
+          readOnlyHint: true,
           idempotentHint: true,
           destructiveHint: true,
           openWorldHint: false,
           schema: { type: 'object', properties: {} },
-          exec: async () => {
+          exec: async (input, client) => {
             const count = flaggedHospitals.size;
+            const confirmed = await client.requestUserInteraction(() =>
+              showConfirmDialog(`Clear all ${count} flags`, { flags: [...flaggedHospitals.keys()] })
+            );
+            if (!confirmed) return { summary: 'User cancelled.' };
             flaggedHospitals.clear();
             persistFlags();
             refreshCurrentView();
@@ -1915,7 +2045,6 @@
 
       previousToolNames = currentNames;
       renderToolsPanel(tools, newNames);
-      registerTools(tools);
       updateContextBar();
 
       if (toolsInitialized && (newNames.size > 0 || removedCount > 0)) {
@@ -2058,7 +2187,7 @@
         name: 'flag_hospital',
         title: 'Flag Hospital',
         description: 'Flag or unflag a hospital with a note. Flagged hospitals display an amber indicator dot in tables and detail views. Use this to mark hospitals that warrant attention or follow-up.',
-        readOnlyHint: false,
+        readOnlyHint: true,
         idempotentHint: false,
         destructiveHint: false,
         openWorldHint: false,
@@ -2071,7 +2200,7 @@
           },
           required: ['name']
         },
-        exec: async (input) => {
+        exec: async (input, client) => {
           const hospital = HOSPITALS.find(h => matchName(h, input.name));
           if (!hospital) return { summary: `No hospital found matching "${input.name}".` };
 
@@ -2088,7 +2217,14 @@
             return { summary: `Removed flag from ${hospital.name}.` };
           }
 
-          const flagData = { note: input.note || 'Flagged for review', timestamp: Date.now() };
+          let note = input.note;
+          if (!note) {
+            note = await client.requestUserInteraction(() =>
+              showPromptDialog(`Add a note for flagging ${hospital.name} (optional)`)
+            );
+          }
+
+          const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
           flaggedHospitals.set(hospital.name, flagData);
           persistFlags();
           refreshCurrentView();
@@ -2097,7 +2233,7 @@
             persistFlags();
             refreshCurrentView();
           });
-          return { summary: `Flagged ${hospital.name}: "${input.note || 'Flagged for review'}".` };
+          return { summary: `Flagged ${hospital.name}: "${flagData.note}".` };
         }
       },
       {
@@ -2299,37 +2435,6 @@
       });
     });
 
-    /* ── WebMCP registration ── */
-
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-
-    function registerTools(tools) {
-      if (!navigator.modelContext) {
-        statusText.textContent = 'WebMCP not detected';
-        return;
-      }
-
-      statusDot.classList.add('active');
-      statusText.textContent = 'WebMCP active';
-
-      navigator.modelContext.provideContext({
-        tools: tools.map(t => ({
-          name: t.name,
-          description: t.description,
-          inputSchema: t.schema,
-          annotations: {
-            title: t.title,
-            readOnlyHint: t.readOnlyHint,
-            destructiveHint: t.destructiveHint,
-            idempotentHint: t.idempotentHint,
-            openWorldHint: t.openWorldHint
-          },
-          execute: t.exec
-        }))
-      });
-    }
-
     /* ── Chat panel ── */
 
     const chatMessages = document.getElementById('chat-messages');
@@ -2393,6 +2498,7 @@ Rules:
 
     // Chat reset
     chatReset.addEventListener('click', () => {
+      currentExchangeEl = null;
       conversationMessages = [];
       chatMessages.innerHTML = '';
       renderQuickActions();
@@ -2423,42 +2529,123 @@ Rules:
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
+      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = `msg msg-${type}`;
       el.textContent = content;
-      chatMessages.appendChild(el);
+      target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return el;
     }
 
-    function appendToolMsg(toolName, args, result) {
+    function appendToolMsg(toolName, args, result, isError) {
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
+      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
-      el.className = 'msg msg-tool';
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'msg-tool-name';
-      nameSpan.textContent = toolName;
-      const resultSpan = document.createElement('span');
-      resultSpan.className = 'msg-tool-result';
-      resultSpan.textContent = '\u2192 ' + result;
-      el.append(nameSpan, '(' + JSON.stringify(args) + ')\n', resultSpan);
-      chatMessages.appendChild(el);
+      el.className = 'msg-tool-compact';
+
+      const line = document.createElement('div');
+      line.className = 'msg-tool-compact-line';
+
+      const indicator = document.createElement('span');
+      indicator.className = isError ? 'msg-tool-fail' : 'msg-tool-check';
+      indicator.textContent = isError ? '\u2717' : '\u2713';
+
+      const name = document.createElement('span');
+      name.className = 'msg-tool-name';
+      name.textContent = toolName;
+
+      line.append(indicator, name);
+
+      const resultStr = typeof result === 'string' ? result : '';
+      if (resultStr) {
+        const summarySpan = document.createElement('span');
+        summarySpan.className = 'msg-tool-compact-summary';
+        summarySpan.textContent = '\u2014 ' + (resultStr.length > 60 ? resultStr.slice(0, 60) + '...' : resultStr);
+        line.appendChild(summarySpan);
+      }
+
+      el.appendChild(line);
+
+      const detail = document.createElement('div');
+      detail.className = 'msg-tool-detail';
+      detail.textContent = toolName + '(' + JSON.stringify(args) + ')';
+      if (resultStr) {
+        const resultLine = document.createElement('div');
+        resultLine.className = 'msg-tool-detail-result';
+        resultLine.textContent = '\u2192 ' + resultStr;
+        detail.appendChild(resultLine);
+      }
+      el.appendChild(detail);
+
+      target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function showSpinner() {
+      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = 'chat-spinner';
       el.id = 'chat-spinner';
-      chatMessages.appendChild(el);
+      target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     function hideSpinner() {
       const s = document.getElementById('chat-spinner');
       if (s) s.remove();
+    }
+
+    function collapseCurrentExchange() {
+      if (!currentExchangeEl) return;
+
+      const userMsg = currentExchangeEl.querySelector('.msg-user');
+      const userText = userMsg ? userMsg.textContent.slice(0, 60) + (userMsg.textContent.length > 60 ? '...' : '') : 'Message';
+
+      const toolCount = currentExchangeEl.querySelectorAll('.msg-tool-compact').length;
+
+      const followups = currentExchangeEl.querySelector('.followup-suggestions');
+      if (followups) followups.remove();
+
+      const body = document.createElement('div');
+      body.className = 'exchange-body';
+      while (currentExchangeEl.firstChild) body.appendChild(currentExchangeEl.firstChild);
+
+      const summary = document.createElement('button');
+      summary.className = 'exchange-summary';
+      summary.setAttribute('aria-expanded', 'false');
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'exchange-summary-text';
+      textSpan.textContent = userText;
+      summary.appendChild(textSpan);
+
+      if (toolCount > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'exchange-summary-tools';
+        badge.textContent = toolCount === 1 ? '1 tool' : `${toolCount} tools`;
+        summary.appendChild(badge);
+      }
+
+      const chevron = document.createElement('span');
+      chevron.className = 'exchange-summary-chevron';
+      chevron.textContent = '\u25BE';
+      summary.appendChild(chevron);
+
+      currentExchangeEl.appendChild(summary);
+      currentExchangeEl.appendChild(body);
+      currentExchangeEl.classList.add('collapsed');
+      currentExchangeEl.classList.remove('current');
+
+      summary.addEventListener('click', () => {
+        const exchange = summary.closest('.exchange');
+        exchange.classList.toggle('collapsed');
+        summary.setAttribute('aria-expanded', !exchange.classList.contains('collapsed'));
+      });
+
+      currentExchangeEl = null;
     }
 
     function setInputEnabled(enabled) {
@@ -2491,6 +2678,12 @@ Rules:
       const quickActions = document.getElementById('quick-actions');
       if (quickActions) quickActions.remove();
       clearFollowupSuggestions();
+
+      collapseCurrentExchange();
+      const exchange = document.createElement('div');
+      exchange.className = 'exchange current';
+      chatMessages.appendChild(exchange);
+      currentExchangeEl = exchange;
 
       appendMessage('user', displayText);
       chatInput.value = '';
@@ -2655,6 +2848,9 @@ Rules:
         }
 
         // Execute tools and gather results
+        const client = {
+          requestUserInteraction: (callback) => callback()
+        };
         const toolResults = [];
         for (const tu of toolUses) {
           const def = getActiveTools().find(t => t.name === tu.name);
@@ -2664,16 +2860,17 @@ Rules:
               const confirmed = await showConfirmDialog(def.title, tu.input);
               if (!confirmed) {
                 result = { summary: `User declined: ${def.title}` };
-                appendToolMsg(tu.name, tu.input, result.summary);
+                appendToolMsg(tu.name, tu.input, result.summary, true);
                 toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
                 continue;
               }
             }
-            result = await def.exec(tu.input);
+            result = await def.exec(tu.input, client);
             appendToolMsg(tu.name, tu.input, result.summary);
             if (result.displayed) scrollDisplayIntoView();
           } else {
             result = { error: `Unknown tool: ${tu.name}` };
+            appendToolMsg(tu.name, tu.input, result.error, true);
           }
           toolResults.push({
             type: 'tool_result',
