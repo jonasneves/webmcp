@@ -14,7 +14,6 @@ Proof-of-concept demonstrating [WebMCP](https://anthropic.com/research/model-con
 - **Read & write tools** — Filter, chart, compare, summarize (read); flag hospitals with undo (write)
 - **Non-rendering tools** — `summarize_data` returns stats for model reasoning without visual output
 - **Multi-step orchestration** — "Run triage analysis" chains 4+ tool calls in a single turn
-- **Cross-tab discovery** — Tools from multiple open tabs appear in a unified tool list
 - **Bidirectional context** — UI interactions inject context into conversation; tool calls update the UI
 - **Streaming** — SSE for real-time response rendering
 - **Artifact generation** — `export_flagged` produces a CSV download
@@ -33,6 +32,5 @@ Single-page apps with inline JS — no build step, no dependencies beyond the po
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Hospital explorer — 7-9 dynamic tools, chat panel, all views |
-| `trends.html` | Statewide trends — 2 tools, cross-tab context demo |
+| `index.html` | Hospital explorer — 9-11 dynamic tools, chat panel, all views |
 | `hospitals.json` | 15 California hospitals with financial/risk metrics |

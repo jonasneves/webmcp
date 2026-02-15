@@ -599,6 +599,40 @@
     .back-btn:hover { background: var(--accent-dim); }
     .back-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+    }
+
+    .summary-card-value {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+
+    .summary-card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .summary-card-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
     /* Chat panel */
     .chat-panel {
       border-left: 1px solid var(--border);
@@ -1034,7 +1068,7 @@
   <header>
     <div class="header-left">
       <h1>WebMCP PoC</h1>
-      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 7 tools</button>
+      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 9 tools</button>
     </div>
     <div class="status-badge">
       <span class="status-dot" id="status-dot"></span>
@@ -1057,7 +1091,8 @@
         <div class="chip-separator"></div>
         <button class="chip" data-view="chart">Risk Overview</button>
         <button class="chip" data-filter="high">High Risk Only</button>
-        <a href="trends.html" target="_blank" class="chip">Statewide Trends &#8594;</a>
+        <button class="chip" data-view="trends">County Trends</button>
+        <button class="chip" data-view="statewide">Statewide Summary</button>
       </nav>
 
       <div id="display"></div>
@@ -1450,6 +1485,71 @@
             }).join('')}
           </tbody>
         </table>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderCountyTrends(trends) {
+      currentView = { type: 'trends', data: trends, label: null, filters: null };
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">County comparison (${trends.length} counties)</p>
+        <div class="table-scroll">
+        <table class="hospital-table">
+          <thead>
+            <tr>
+              <th>County</th>
+              <th>Hospitals</th>
+              <th>Avg Risk</th>
+              <th>Avg Margin</th>
+              <th>Avg Equity Burden</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${trends.map(t => {
+              const tier = riskTier(t.avgRisk);
+              return `
+              <tr>
+                <td>${t.county}</td>
+                <td>${t.count}</td>
+                <td><span class="risk-badge ${tier}">${fmt(t.avgRisk * 100)}%</span></td>
+                <td class="${t.avgMargin < 0 ? 'color-risk-high' : 'color-risk-low'}">${fmt(t.avgMargin)}%</td>
+                <td>${fmt(t.avgEquityBurden, 0)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderStatewideCards(data) {
+      currentView = { type: 'statewide', data, label: null, filters: null };
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">Statewide overview</p>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-card-label">Total Hospitals</div>
+            <div class="summary-card-value">${data.totalHospitals}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Total Licensed Beds</div>
+            <div class="summary-card-value">${data.totalBeds.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Average Risk</div>
+            <div class="summary-card-value color-risk-${riskTier(data.avgRisk)}">${fmt(data.avgRisk * 100)}%</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Risk Distribution</div>
+            <div class="summary-card-value">${data.riskDistribution.high} <span class="detail-suffix">high-risk</span></div>
+            <div class="summary-card-meta">${data.riskDistribution.medium} medium, ${data.riskDistribution.low} low</div>
+          </div>
+        </div>
       `;
       encodeViewToHash();
       syncTools();
@@ -2107,6 +2207,60 @@
 
           return { summary: `Exported ${flaggedHospitals.size} flagged hospital(s) as CSV.` };
         }
+      },
+      {
+        name: 'show_county_trends',
+        title: 'County Trends',
+        description: 'Display a comparison table of aggregate metrics by county, including average risk, margin, and equity burden. Renders a table on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const counties = {};
+          HOSPITALS.forEach(h => {
+            if (!counties[h.county]) counties[h.county] = [];
+            counties[h.county].push(h);
+          });
+
+          const trends = Object.entries(counties).map(([county, hospitals]) => {
+            const avg = (fn) => hospitals.reduce((s, h) => s + fn(h), 0) / hospitals.length;
+            return {
+              county,
+              count: hospitals.length,
+              avgRisk: avg(h => h.riskProbability),
+              avgMargin: avg(h => h.operatingMargin),
+              avgEquityBurden: avg(h => h.equityBurdenScore)
+            };
+          });
+
+          renderCountyTrends(trends);
+          return { displayed: true, summary: `Showing county trends for ${trends.length} counties.` };
+        }
+      },
+      {
+        name: 'show_statewide_summary',
+        title: 'Statewide Summary',
+        description: 'Display summary cards with statewide aggregate metrics including total hospitals, beds, average risk, and risk distribution. Renders cards on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const avg = (fn) => HOSPITALS.reduce((s, h) => s + fn(h), 0) / HOSPITALS.length;
+          const riskDist = { low: 0, medium: 0, high: 0 };
+          HOSPITALS.forEach(h => riskDist[riskTier(h.riskProbability)]++);
+
+          renderStatewideCards({
+            totalHospitals: HOSPITALS.length,
+            totalBeds: HOSPITALS.reduce((s, h) => s + h.licensedBeds, 0),
+            avgRisk: avg(h => h.riskProbability),
+            riskDistribution: riskDist
+          });
+          return { displayed: true, summary: `Showing statewide summary: ${HOSPITALS.length} hospitals, ${riskDist.high} high-risk.` };
+        }
       }
     ];
 
@@ -2130,10 +2284,22 @@
       });
     });
 
-    document.querySelector('.chip[data-view="chart"]').addEventListener('click', () => {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      document.querySelector('.chip[data-view="chart"]').classList.add('active');
-      renderChart(HOSPITALS);
+    document.querySelectorAll('.chip[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        const view = btn.dataset.view;
+        if (view === 'chart') {
+          renderChart(HOSPITALS);
+        } else if (view === 'trends') {
+          const tool = TOOL_DEFS.find(t => t.name === 'show_county_trends');
+          tool.exec();
+        } else if (view === 'statewide') {
+          const tool = TOOL_DEFS.find(t => t.name === 'show_statewide_summary');
+          tool.exec();
+        }
+      });
     });
 
     /* ── WebMCP registration ── */
@@ -2188,6 +2354,8 @@ Rules:
 - You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.
 - Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
 - Use export_flagged to download a CSV of all flagged hospitals when the user wants to export or save their flags.
+- Use show_county_trends to display a county-level comparison table with aggregate metrics.
+- Use show_statewide_summary to display statewide overview cards with totals and risk distribution.
 - Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_hospitals only lists currently visible hospitals.`;
 
     function getClaudeTools() {
