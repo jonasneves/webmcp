@@ -190,9 +190,22 @@
 
     .controls {
       display: flex;
-      flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 24px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      padding-right: 32px;
+    }
+
+    .controls::-webkit-scrollbar { display: none; }
+
+    .controls.at-end {
+      mask-image: none;
+      -webkit-mask-image: none;
+      padding-right: 0;
     }
 
     .chip {
@@ -208,6 +221,8 @@
       border-radius: 100px;
       cursor: pointer;
       text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
       transition: background var(--transition), color var(--transition), border-color var(--transition);
     }
 
@@ -220,9 +235,17 @@
       height: 28px;
       background: var(--border);
       align-self: center;
+      flex-shrink: 0;
     }
 
     #display { min-height: 200px; }
+
+    .empty-state {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
 
     /* Loading skeleton */
     @keyframes shimmer {
@@ -342,6 +365,14 @@
       transition: width 400ms ease;
     }
 
+    .chart-bar-fill.low { background: var(--risk-low); }
+    .chart-bar-fill.medium { background: var(--risk-med); }
+    .chart-bar-fill.high { background: var(--risk-high); }
+
+    .chart-label.low { color: var(--risk-low); }
+    .chart-label.medium { color: var(--risk-med); }
+    .chart-label.high { color: var(--risk-high); }
+
     .chart-value {
       font-size: 14px;
       font-weight: 600;
@@ -455,6 +486,14 @@
     .payer-segment-commercial { background: var(--risk-low); }
     .payer-segment-other { background: #8b5cf6; }
 
+    .payer-bar-wrapper {
+      padding: 16px 24px;
+    }
+
+    .payer-bar-label {
+      margin-bottom: 8px;
+    }
+
     .payer-legend {
       display: flex;
       flex-wrap: wrap;
@@ -475,6 +514,16 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
+    }
+
+    .payer-legend-dot.medicaid { background: var(--risk-high); }
+    .payer-legend-dot.medicare { background: var(--risk-med); }
+    .payer-legend-dot.commercial { background: var(--risk-low); }
+    .payer-legend-dot.other { background: #8b5cf6; }
+
+    .detail-suffix {
+      font-size: 14px;
+      color: var(--text-muted);
     }
 
     .view-label {
@@ -968,11 +1017,11 @@
     </aside>
   </div>
 
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
-  <div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-overlay" id="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
     <div class="confirm-dialog">
-      <p class="confirm-title">Confirm action</p>
+      <p class="confirm-title" id="confirm-title">Confirm action</p>
       <p class="confirm-tool" id="confirm-tool"></p>
       <p class="confirm-args" id="confirm-args"></p>
       <div class="confirm-actions">
@@ -1151,6 +1200,13 @@
     function renderTable(hospitals, label, filters) {
       currentView = { type: 'table', data: hospitals, label, filters };
       const summary = label || `${hospitals.length} hospitals`;
+
+      if (hospitals.length === 0) {
+        display.innerHTML = `<p class="empty-state">No hospitals match the current filters.</p>`;
+        encodeViewToHash();
+        return;
+      }
+
       display.innerHTML = `
         <div class="summary-row">
           <p class="view-label">Showing ${summary}</p>
@@ -1195,25 +1251,25 @@
 
       display.innerHTML = `
         <p class="view-label">Risk distribution across ${title} (${hospitals.length} total)</p>
-        <div class="chart-container">
+        <div class="chart-container" role="img" aria-label="Bar chart: ${tiers.low} low risk, ${tiers.medium} medium risk, ${tiers.high} high risk hospitals across ${title}">
           <div class="chart-row">
-            <span class="chart-label" style="color: var(--risk-low)">Low</span>
+            <span class="chart-label low">Low</span>
             <div class="chart-bar-track">
-              <div class="chart-bar-fill" style="width: ${(tiers.low / max) * 100}%; background: var(--risk-low);"></div>
+              <div class="chart-bar-fill low" style="width: ${(tiers.low / max) * 100}%"></div>
             </div>
             <span class="chart-value">${tiers.low}</span>
           </div>
           <div class="chart-row">
-            <span class="chart-label" style="color: var(--risk-med)">Medium</span>
+            <span class="chart-label medium">Medium</span>
             <div class="chart-bar-track">
-              <div class="chart-bar-fill" style="width: ${(tiers.medium / max) * 100}%; background: var(--risk-med);"></div>
+              <div class="chart-bar-fill medium" style="width: ${(tiers.medium / max) * 100}%"></div>
             </div>
             <span class="chart-value">${tiers.medium}</span>
           </div>
           <div class="chart-row">
-            <span class="chart-label" style="color: var(--risk-high)">High</span>
+            <span class="chart-label high">High</span>
             <div class="chart-bar-track">
-              <div class="chart-bar-fill" style="width: ${(tiers.high / max) * 100}%; background: var(--risk-high);"></div>
+              <div class="chart-bar-fill high" style="width: ${(tiers.high / max) * 100}%"></div>
             </div>
             <span class="chart-value">${tiers.high}</span>
           </div>
@@ -1243,7 +1299,7 @@
             </div>
             <div class="detail-cell">
               <div class="detail-cell-label">Equity Burden</div>
-              <div class="detail-cell-value">${h.equityBurdenScore}<span style="font-size:14px;color:var(--text-muted)"> / 100</span></div>
+              <div class="detail-cell-value">${h.equityBurdenScore}<span class="detail-suffix"> / 100</span></div>
             </div>
             <div class="detail-cell">
               <div class="detail-cell-label">Operating Margin</div>
@@ -1262,8 +1318,8 @@
               <div class="detail-cell-value" style="color: ${h.mediCalPct > 40 ? 'var(--risk-high)' : 'var(--text)'}">${pct(h.mediCalPct)}</div>
             </div>
           </div>
-          <div style="padding: 16px 24px;">
-            <div class="detail-cell-label" style="margin-bottom: 8px;">Payer Mix</div>
+          <div class="payer-bar-wrapper">
+            <div class="detail-cell-label payer-bar-label">Payer Mix</div>
             <div class="payer-bar">
               <div class="payer-segment-medicaid" style="width: ${h.mediCalPct}%"></div>
               <div class="payer-segment-medicare" style="width: ${h.medicarePct}%"></div>
@@ -1272,10 +1328,10 @@
             </div>
           </div>
           <div class="payer-legend">
-            <span class="payer-legend-item"><span class="payer-legend-dot" style="background:var(--risk-high)"></span> Medi-Cal ${pct(h.mediCalPct)}</span>
-            <span class="payer-legend-item"><span class="payer-legend-dot" style="background:var(--risk-med)"></span> Medicare ${pct(h.medicarePct)}</span>
-            <span class="payer-legend-item"><span class="payer-legend-dot" style="background:var(--risk-low)"></span> Commercial ${pct(h.commercialPct)}</span>
-            <span class="payer-legend-item"><span class="payer-legend-dot" style="background:#8b5cf6"></span> Other ${pct(h.otherPct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot medicaid"></span> Medi-Cal ${pct(h.mediCalPct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot medicare"></span> Medicare ${pct(h.medicarePct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot commercial"></span> Commercial ${pct(h.commercialPct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot other"></span> Other ${pct(h.otherPct)}</span>
           </div>
         </div>
       `;
@@ -1414,11 +1470,23 @@
 
         const ok = document.getElementById('confirm-ok');
         const cancel = document.getElementById('confirm-cancel');
+        const focusable = [cancel, ok];
+
+        function onTrap(e) {
+          if (e.key !== 'Tab') return;
+          const idx = focusable.indexOf(document.activeElement);
+          if (e.shiftKey) {
+            if (idx <= 0) { e.preventDefault(); focusable[focusable.length - 1].focus(); }
+          } else {
+            if (idx >= focusable.length - 1) { e.preventDefault(); focusable[0].focus(); }
+          }
+        }
 
         function cleanup() {
           overlay.classList.remove('active');
           ok.removeEventListener('click', onOk);
           cancel.removeEventListener('click', onCancel);
+          overlay.removeEventListener('keydown', onTrap);
         }
 
         function onOk() { cleanup(); resolve(true); }
@@ -1426,6 +1494,7 @@
 
         ok.addEventListener('click', onOk);
         cancel.addEventListener('click', onCancel);
+        overlay.addEventListener('keydown', onTrap);
         ok.focus();
       });
     }
@@ -1448,6 +1517,16 @@
         dismissToast();
       }
     });
+
+    /* ── Controls scroll fade ── */
+
+    const controlsNav = document.querySelector('.controls');
+    function updateScrollFade() {
+      const atEnd = controlsNav.scrollLeft + controlsNav.clientWidth >= controlsNav.scrollWidth - 4;
+      controlsNav.classList.toggle('at-end', atEnd);
+    }
+    controlsNav.addEventListener('scroll', updateScrollFade, { passive: true });
+    updateScrollFade();
 
     /* ── Quick actions ── */
 
@@ -1838,7 +1917,7 @@
     const statusText = document.getElementById('status-text');
 
     function registerTools() {
-      if (!('modelContext' in navigator)) {
+      if (!navigator.modelContext) {
         statusText.textContent = 'WebMCP not detected';
         return;
       }
@@ -2074,7 +2153,6 @@ Rules:
         let currentTextContent = '';
         let currentToolInput = '';
         let currentBlockType = null;
-
 
         for await (const { event, data } of parseSSEStream(body)) {
           switch (event) {

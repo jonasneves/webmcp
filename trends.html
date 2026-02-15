@@ -205,6 +205,11 @@
       color: var(--text-muted);
     }
 
+    .summary-card-suffix {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
     .risk-badge {
       display: inline-block;
       padding: 2px 10px;
@@ -323,7 +328,7 @@
           </div>
           <div class="summary-card">
             <div class="summary-card-label">Risk Distribution</div>
-            <div class="summary-card-value">${data.riskDistribution.high} <span style="font-size:14px;color:var(--text-muted)">high-risk</span></div>
+            <div class="summary-card-value">${data.riskDistribution.high} <span class="summary-card-suffix">high-risk</span></div>
             <div class="summary-card-meta">${data.riskDistribution.medium} medium, ${data.riskDistribution.low} low</div>
           </div>
         </div>
@@ -397,7 +402,7 @@
     const statusText = document.getElementById('status-text');
 
     function registerTools() {
-      if (!('modelContext' in navigator)) {
+      if (!navigator.modelContext) {
         statusText.textContent = 'WebMCP not detected';
         return;
       }
