@@ -915,74 +915,71 @@ const ICON = {
 
 /* ── Mini-App HTML ── */
 
-const APP_CONTRAST = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:16px;display:flex;gap:20px;height:100vh;overflow:hidden}.controls{display:flex;flex-direction:column;gap:14px;min-width:90px}.ci{display:flex;flex-direction:column;gap:4px}.ci label{font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}.ci input[type=color]{width:52px;height:36px;border:2px solid #3f3f46;border-radius:8px;cursor:pointer;background:none;padding:2px}.ci input[type=color]::-webkit-color-swatch-wrapper{padding:0}.ci input[type=color]::-webkit-color-swatch{border:none;border-radius:5px}.hex{font-family:ui-monospace,monospace;font-size:11px;color:#71717a}.preview{flex:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;transition:background .2s,color .2s}.ratio{font-size:36px;font-weight:800;letter-spacing:-0.02em}.ratio-label{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;opacity:0.6}.badges{display:flex;gap:6px}.badge{padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}.pass{background:rgba(34,197,94,0.15);color:#4ade80}.fail{background:rgba(239,68,68,0.15);color:#f87171}.sample{font-size:14px;font-weight:500;margin-top:4px}</style></head><body><div class="controls"><div class="ci"><label>Text</label><input type="color" id="fg" value="#fafafa"><span class="hex" id="fh">#fafafa</span></div><div class="ci"><label>Bg</label><input type="color" id="bg" value="#18181b"><span class="hex" id="bh">#18181b</span></div></div><div class="preview" id="pv"><span class="ratio" id="rt">15.4</span><span class="ratio-label">Contrast Ratio</span><div class="badges" id="bd"></div><span class="sample">Sample Text</span></div><script>function lum(h){var r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;var s=[r,g,b].map(function(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)});return 0.2126*s[0]+0.7152*s[1]+0.0722*s[2]}function cr(f,b){var l1=lum(f),l2=lum(b);return(Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05)}function up(){var f=document.getElementById("fg").value,b=document.getElementById("bg").value;var r=cr(f,b);document.getElementById("fh").textContent=f;document.getElementById("bh").textContent=b;document.getElementById("rt").textContent=r.toFixed(1);var p=document.getElementById("pv");p.style.background=b;p.style.color=f;var aa=r>=4.5,aaa=r>=7;document.getElementById("bd").innerHTML="<span class=\\"badge "+(aa?"pass":"fail")+"\\">AA "+(aa?"Pass":"Fail")+"</span><span class=\\"badge "+(aaa?"pass":"fail")+"\\">AAA "+(aaa?"Pass":"Fail")+"</span>"}document.getElementById("fg").addEventListener("input",up);document.getElementById("bg").addEventListener("input",up);up()<\/script></body></html>';
+const APP_MEETING_COST = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;gap:16px;padding:16px}.cost{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.03em;color:#ef4444;transition:color .3s}.cost.idle{color:#71717a}.rate{font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.08em;min-height:16px}.controls{display:flex;gap:12px;align-items:center}.field{display:flex;flex-direction:column;gap:4px;align-items:center}.field label{font-size:9px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}.field input{width:64px;height:32px;background:#27272a;border:1px solid #3f3f46;border-radius:6px;color:#e4e4e7;text-align:center;font-size:14px;font-weight:600;font-family:inherit;outline:none}.field input:focus{border-color:#8b5cf6}.go{width:72px;height:36px;border-radius:8px;border:none;font-weight:700;font-size:12px;cursor:pointer;transition:background .15s,transform .1s;font-family:inherit;text-transform:uppercase;letter-spacing:0.04em}.go:active{transform:scale(0.96)}.go.start{background:#22c55e;color:#052e16}.go.stop{background:#ef4444;color:#fff}.sub{font-size:10px;color:#52525b}</style></head><body><div class="cost idle" id="cost">$0.00</div><div class="rate" id="rate"></div><div class="controls"><div class="field"><label>People</label><input type="number" id="ppl" value="6" min="1" max="50"></div><div class="field"><label>$/hr avg</label><input type="number" id="hr" value="75" min="1" max="999"></div><button class="go start" id="go">Start</button></div><div class="sub">Click start to begin tracking cost</div><script>var running=false,total=0,iv,start;var el={cost:document.getElementById("cost"),rate:document.getElementById("rate"),go:document.getElementById("go"),ppl:document.getElementById("ppl"),hr:document.getElementById("hr")};function perSec(){return(parseInt(el.ppl.value)||1)*(parseInt(el.hr.value)||1)/3600}function fmt(v){return"$"+v.toFixed(2)}function tick(){var now=Date.now();total+=(now-start)/1000*perSec();start=now;el.cost.textContent=fmt(total);el.rate.textContent=fmt(perSec()*60)+"/min"}el.go.addEventListener("click",function(){if(!running){running=true;start=Date.now();el.go.textContent="Stop";el.go.className="go stop";el.cost.classList.remove("idle");iv=setInterval(tick,50)}else{running=false;clearInterval(iv);el.go.textContent="Start";el.go.className="go start"}})<\/script></body></html>';
 
-const APP_BREATHING = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;gap:24px}.ring{position:relative;width:110px;height:110px}.outer{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.25) 0%,rgba(139,92,246,0.03) 70%);border:2px solid rgba(139,92,246,0.35);animation:breathe 10s ease-in-out infinite}.inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:rgba(139,92,246,0.5);animation:breatheInner 10s ease-in-out infinite}.label{font-size:13px;font-weight:500;color:#a1a1aa;letter-spacing:0.12em;text-transform:uppercase;min-height:20px}@keyframes breathe{0%,100%{transform:scale(0.55);opacity:0.4}35%{transform:scale(1);opacity:1}50%{transform:scale(1);opacity:1}85%{transform:scale(0.55);opacity:0.4}}@keyframes breatheInner{0%,100%{transform:translate(-50%,-50%) scale(0.5)}35%{transform:translate(-50%,-50%) scale(1.3)}50%{transform:translate(-50%,-50%) scale(1.3)}85%{transform:translate(-50%,-50%) scale(0.5)}}</style></head><body><div class="ring"><div class="outer"></div><div class="inner"></div></div><div class="label" id="lb">Breathe in</div><script>var ph=[{t:"Breathe in",d:3500},{t:"Hold",d:1500},{t:"Breathe out",d:3500},{t:"Hold",d:1500}],i=0;function go(){document.getElementById("lb").textContent=ph[i].t;setTimeout(function(){i=(i+1)%ph.length;go()},ph[i].d)}go()<\/script></body></html>';
+const APP_JOURNAL = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:14px;display:flex;flex-direction:column;gap:10px;height:100vh;overflow:hidden}.top{display:flex;justify-content:space-between;align-items:center}.title{font-size:13px;font-weight:600}.streak{font-size:12px;color:#8b5cf6;font-weight:600}.moods{display:flex;gap:6px}.mood{width:36px;height:36px;border-radius:8px;border:2px solid #27272a;background:none;font-size:18px;cursor:pointer;transition:border-color .15s,transform .15s;display:flex;align-items:center;justify-content:center}.mood:hover{transform:scale(1.1)}.mood.on{border-color:#8b5cf6;background:#27272a}.inp{display:flex;gap:8px}.inp input{flex:1;height:36px;background:#27272a;border:1px solid #3f3f46;border-radius:8px;color:#e4e4e7;padding:0 10px;font-size:13px;font-family:inherit;outline:none}.inp input:focus{border-color:#8b5cf6}.inp button{height:36px;padding:0 14px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}.entries{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}.entry{padding:8px 10px;background:#27272a;border-radius:8px;display:flex;gap:8px;align-items:center;font-size:12px}.entry-mood{font-size:16px;flex-shrink:0}.entry-text{flex:1;color:#d4d4d8;line-height:1.4}.entry-day{font-size:10px;color:#71717a;flex-shrink:0}</style></head><body><div class="top"><span class="title">One Line a Day</span><span class="streak" id="sk">3 day streak</span></div><div class="moods" id="moods"></div><div class="inp"><input id="txt" placeholder="One sentence about today..." maxlength="120"><button id="add">Save</button></div><div class="entries" id="entries"></div><script>var moods=["\\ud83d\\ude0a","\\ud83d\\ude10","\\ud83d\\ude14","\\ud83d\\udd25","\\ud83d\\ude34"],sel=0,days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];var log=[{m:3,t:"Shipped the new landing page, felt unstoppable",d:2},{m:0,t:"Good coffee and a clean inbox kind of morning",d:1},{m:0,t:"Finally cracked that caching bug after lunch",d:0}];var md=document.getElementById("moods");moods.forEach(function(m,i){var b=document.createElement("button");b.className="mood"+(i===sel?" on":"");b.textContent=m;b.addEventListener("click",function(){sel=i;document.querySelectorAll(".mood").forEach(function(x,j){x.classList.toggle("on",j===i)})});md.appendChild(b)});function render(){var el=document.getElementById("entries");el.innerHTML="";log.forEach(function(e){var d=new Date();d.setDate(d.getDate()-e.d);el.innerHTML+="<div class=\\"entry\\"><span class=\\"entry-mood\\">"+moods[e.m]+"</span><span class=\\"entry-text\\">"+e.t+"</span><span class=\\"entry-day\\">"+days[d.getDay()]+"</span></div>"})}document.getElementById("add").addEventListener("click",function(){var t=document.getElementById("txt").value.trim();if(!t)return;log.unshift({m:sel,t:t,d:0});log.forEach(function(e,i){if(i>0)e.d++});document.getElementById("txt").value="";document.getElementById("sk").textContent=log.length+" day streak";render()});render()<\/script></body></html>';
 
-const APP_HABITS = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:14px;display:flex;flex-direction:column;gap:10px;height:100vh;overflow:hidden}.top{display:flex;justify-content:space-between;align-items:center}.title{font-size:13px;font-weight:600}.streak{font-size:12px;color:#22c55e;font-weight:600}.dh{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.dl{font-size:9px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;padding:2px 0}.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1}.day{aspect-ratio:1;border-radius:5px;background:#27272a;cursor:pointer;transition:background .15s,transform .15s;display:flex;align-items:center;justify-content:center;font-size:10px;color:#71717a}.day:hover{background:#3f3f46;transform:scale(1.08)}.day.on{background:#22c55e;color:#052e16;font-weight:700}.day.now{box-shadow:inset 0 0 0 2px #8b5cf6}</style></head><body><div class="top"><span class="title">Daily Meditation</span><span class="streak" id="sk"></span></div><div class="dh"><span class="dl">S</span><span class="dl">M</span><span class="dl">T</span><span class="dl">W</span><span class="dl">T</span><span class="dl">F</span><span class="dl">S</span></div><div class="grid" id="gr"></div><script>var on=new Set([1,2,3,4,5,8,9,10,11,12,13,15,16,17,18,19,20,22,23,24,25,26,27,28]),td=28,g=document.getElementById("gr");function cs(){var s=0;for(var d=td;d>=1;d--){if(on.has(d))s++;else break}document.getElementById("sk").textContent=s+" day streak"}for(var d=1;d<=35;d++){var el=document.createElement("div");el.className="day"+(on.has(d)?" on":"")+(d===td?" now":"");if(d<=31){el.textContent=d;(function(d,el){el.addEventListener("click",function(){if(on.has(d)){on.delete(d);el.classList.remove("on")}else{on.add(d);el.classList.add("on")}cs()})})(d,el)}else{el.style.visibility="hidden"}g.appendChild(el)}cs()<\/script></body></html>';
+const APP_RUNWAY = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:16px;display:flex;flex-direction:column;gap:14px;height:100vh;overflow:hidden}.months{text-align:center}.months-num{font-size:42px;font-weight:800;letter-spacing:-0.03em;font-variant-numeric:tabular-nums;transition:color .3s}.months-label{font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.1em}.bar-wrap{height:18px;background:#27272a;border-radius:9px;overflow:hidden;position:relative}.bar-fill{height:100%;border-radius:9px;transition:width .4s,background .4s}.bar-text{position:absolute;top:0;left:0;right:0;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;letter-spacing:0.04em;color:#fff}.fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.field{display:flex;flex-direction:column;gap:3px}.field label{font-size:9px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}.field input{height:34px;background:#27272a;border:1px solid #3f3f46;border-radius:6px;color:#e4e4e7;padding:0 8px;font-size:13px;font-weight:600;font-family:inherit;outline:none;width:100%}.field input:focus{border-color:#8b5cf6}.detail{display:flex;justify-content:space-between;font-size:10px;color:#71717a}</style></head><body><div class="months"><div class="months-num" id="mn">14.3</div><div class="months-label">months of runway</div></div><div class="bar-wrap"><div class="bar-fill" id="bf"></div><div class="bar-text" id="bt"></div></div><div class="fields"><div class="field"><label>Bank ($)</label><input type="number" id="bank" value="500000"></div><div class="field"><label>Burn/mo</label><input type="number" id="burn" value="45000"></div><div class="field"><label>Revenue/mo</label><input type="number" id="rev" value="10000"></div></div><div class="detail"><span id="net"></span><span id="zero" style="color:#ef4444"></span></div><script>function calc(){var bank=parseInt(document.getElementById("bank").value)||0;var burn=parseInt(document.getElementById("burn").value)||0;var rev=parseInt(document.getElementById("rev").value)||0;var net=burn-rev;var months=net>0?bank/net:999;var pct=Math.min(Math.max(months/24*100,0),100);var color=months>12?"#22c55e":months>6?"#f59e0b":"#ef4444";document.getElementById("mn").textContent=months>100?"\\u221e":months.toFixed(1);document.getElementById("mn").style.color=color;var bf=document.getElementById("bf");bf.style.width=pct+"%";bf.style.background=color;document.getElementById("bt").textContent=months>100?"Profitable":Math.round(pct)+"%";document.getElementById("net").textContent="Net burn: $"+(net>0?net.toLocaleString():0)+"/mo";if(months<=100&&net>0){var d=new Date();d.setMonth(d.getMonth()+Math.floor(months));document.getElementById("zero").textContent="Zero: "+d.toLocaleDateString("en-US",{month:"short",year:"numeric"})}else{document.getElementById("zero").textContent=""}}document.querySelectorAll("input").forEach(function(i){i.addEventListener("input",calc)});calc()<\/script></body></html>';
 
-const APP_MARKDOWN = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;display:flex;height:100vh;overflow:hidden}.pane{flex:1;padding:12px;overflow-y:auto;position:relative}.pane+.pane{border-left:1px solid #27272a}textarea{width:100%;height:100%;background:transparent;border:none;color:#d4d4d8;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;resize:none;outline:none;padding-top:18px}.out{font-size:13px;line-height:1.6;padding-top:18px}.out h1{font-size:17px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #27272a}.out h2{font-size:14px;font-weight:600;margin:10px 0 6px;color:#fafafa}.out p{margin-bottom:8px}.out strong{color:#fafafa}.out em{color:#a78bfa}.out code{background:#27272a;padding:1px 5px;border-radius:3px;font-family:ui-monospace,monospace;font-size:11px}.out ul,.out ol{padding-left:18px;margin-bottom:8px}.out li{margin-bottom:2px}.out blockquote{border-left:2px solid #3f3f46;padding-left:10px;color:#a1a1aa;margin-bottom:8px}.lbl{position:absolute;top:4px;font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;font-weight:600}.le{left:12px}.lr{left:12px}</style></head><body><div class="pane"><span class="lbl le">Markdown</span><textarea id="inp"># Hello World\n\nA **markdown** previewer with *live* updates.\n\n## Features\n\n- Real-time preview\n- Basic `code` support\n- Clean dark theme\n\n> Built for Foundry</textarea></div><div class="pane"><span class="lbl lr">Preview</span><div class="out" id="out"></div></div><script>function p(m){return m.replace(/^### (.+)$/gm,"<h3>$1</h3>").replace(/^## (.+)$/gm,"<h2>$1</h2>").replace(/^# (.+)$/gm,"<h1>$1</h1>").replace(/\\*\\*(.+?)\\*\\*/g,"<strong>$1</strong>").replace(/\\*(.+?)\\*/g,"<em>$1</em>").replace(/`(.+?)`/g,"<code>$1</code>").replace(/^> (.+)$/gm,"<blockquote>$1</blockquote>").replace(/^- (.+)$/gm,"<li>$1</li>").replace(/((?:<li>.*<\\/li>\\n?)+)/g,"<ul>$1</ul>").replace(/\\n\\n/g,"<br><br>")}function u(){document.getElementById("out").innerHTML=p(document.getElementById("inp").value)}document.getElementById("inp").addEventListener("input",u);u()<\/script></body></html>';
+const APP_SPLIT = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:12px;display:flex;flex-direction:column;gap:8px;height:100vh;overflow:hidden}.hd{font-size:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center}.add-row{display:flex;gap:6px}.add-row input{height:30px;background:#27272a;border:1px solid #3f3f46;border-radius:6px;color:#e4e4e7;padding:0 8px;font-size:12px;font-family:inherit;outline:none}.add-row input:focus{border-color:#8b5cf6}.add-row input:first-child{flex:1}.add-row input:nth-child(2){width:56px;text-align:center}.add-row button{height:30px;padding:0 10px;background:#8b5cf6;color:#fff;border:none;border-radius:6px;font-weight:600;font-size:11px;cursor:pointer;font-family:inherit}.items{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px}.item{padding:6px 8px;background:#27272a;border-radius:6px;display:flex;align-items:center;gap:6px;font-size:11px}.item-name{flex:1;font-weight:500}.item-price{font-variant-numeric:tabular-nums;color:#a1a1aa;width:48px;text-align:right}.item-ppl{display:flex;gap:3px}.pp{width:22px;height:22px;border-radius:5px;border:1.5px solid #3f3f46;background:none;color:#71717a;font-size:9px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;font-family:inherit}.pp.on{border-color:#8b5cf6;background:rgba(139,92,246,0.2);color:#c4b5fd}.totals{display:flex;gap:6px}.tot{flex:1;padding:6px 8px;background:#27272a;border-radius:6px;text-align:center}.tot-name{font-size:9px;color:#71717a;text-transform:uppercase;letter-spacing:0.04em;font-weight:600}.tot-amt{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}</style></head><body><div class="hd"><span>Split the Bill</span><span id="total" style="color:#71717a;font-size:11px">$0</span></div><div class="add-row"><input id="nm" placeholder="Item name"><input id="pr" type="number" placeholder="$"><button id="ab">Add</button></div><div class="items" id="items"></div><div class="totals" id="tots"></div><script>var people=["A","B","C"],items=[{n:"Margherita",p:18,w:[1,1,1]},{n:"Pasta",p:16,w:[1,0,0]},{n:"Wine",p:24,w:[0,1,1]}];function render(){var el=document.getElementById("items");el.innerHTML="";items.forEach(function(it,ii){var d=document.createElement("div");d.className="item";var btns=people.map(function(p,pi){return"<button class=\\"pp"+(it.w[pi]?" on":"")+ "\\" data-i=\\""+ii+"\\" data-p=\\""+pi+"\\">"+p+"</button>"}).join("");d.innerHTML="<span class=\\"item-name\\">"+it.n+"</span><span class=\\"item-price\\">$"+it.p.toFixed(0)+"</span><div class=\\"item-ppl\\">"+btns+"</div>";el.appendChild(d)});var tots=people.map(function(){return 0});items.forEach(function(it){var c=it.w.filter(function(x){return x}).length;if(c>0)it.w.forEach(function(w,i){if(w)tots[i]+=it.p/c})});document.getElementById("tots").innerHTML=people.map(function(p,i){return"<div class=\\"tot\\"><div class=\\"tot-name\\">"+p+"</div><div class=\\"tot-amt\\">$"+tots[i].toFixed(0)+"</div></div>"}).join("");document.getElementById("total").textContent="$"+items.reduce(function(s,it){return s+it.p},0).toFixed(0)+" total"}document.getElementById("items").addEventListener("click",function(e){var b=e.target.closest(".pp");if(!b)return;var i=+b.dataset.i,p=+b.dataset.p;items[i].w[p]=items[i].w[p]?0:1;render()});document.getElementById("ab").addEventListener("click",function(){var n=document.getElementById("nm").value.trim(),p=parseFloat(document.getElementById("pr").value);if(!n||!p)return;items.push({n:n,p:p,w:[1,1,1]});document.getElementById("nm").value="";document.getElementById("pr").value="";render()});render()<\/script></body></html>';
 
-const APP_GRADIENT = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:16px;display:flex;gap:16px;height:100vh;overflow:hidden}.pv{flex:1;border-radius:10px;transition:background .3s}.ctrls{display:flex;flex-direction:column;gap:12px;min-width:130px}.cg{display:flex;flex-direction:column;gap:4px}label{font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}input[type=color]{width:44px;height:30px;border:2px solid #3f3f46;border-radius:6px;cursor:pointer;background:none;padding:2px}input[type=color]::-webkit-color-swatch-wrapper{padding:0}input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}input[type=range]{width:100%;accent-color:#8b5cf6}.cc{display:flex;gap:8px}.css{font-family:ui-monospace,monospace;font-size:10px;color:#a1a1aa;background:#09090b;padding:8px;border-radius:6px;word-break:break-all;line-height:1.4;cursor:pointer;transition:color .15s}.css:hover{color:#e4e4e7}.av{font-family:ui-monospace,monospace;font-size:11px;color:#a1a1aa}</style></head><body><div class="pv" id="pv"></div><div class="ctrls"><div class="cg"><label>Colors</label><div class="cc"><input type="color" id="c1" value="#8b5cf6"><input type="color" id="c2" value="#ec4899"></div></div><div class="cg"><label>Angle <span class="av" id="av">135</span></label><input type="range" id="ag" min="0" max="360" value="135"></div><div class="css" id="cs" title="Click to copy"></div></div><script>function up(){var a=document.getElementById("c1").value,b=document.getElementById("c2").value,d=document.getElementById("ag").value;var css="linear-gradient("+d+"deg, "+a+", "+b+")";document.getElementById("pv").style.background=css;document.getElementById("cs").textContent="background: "+css+";";document.getElementById("av").textContent=d}document.getElementById("c1").addEventListener("input",up);document.getElementById("c2").addEventListener("input",up);document.getElementById("ag").addEventListener("input",up);document.getElementById("cs").addEventListener("click",function(){var t=this.textContent;var el=this;try{navigator.clipboard.writeText(t).then(function(){el.textContent="Copied!";el.style.color="#22c55e";setTimeout(function(){el.style.color="";up()},900)})}catch(e){var r=document.createRange();r.selectNodeContents(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r)}});up()<\/script></body></html>';
-
-const APP_CLOCK = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;gap:16px}.clocks{display:flex;gap:12px;width:100%;max-width:400px}.ck{flex:1;text-align:center;padding:14px 8px;background:#27272a;border-radius:10px;transition:background .2s}.ck:hover{background:#3f3f46}.tm{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;margin-bottom:4px}.zn{font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.08em}.dt{font-size:10px;color:#52525b;margin-top:4px}</style></head><body><div class="clocks"><div class="ck"><div class="tm" id="t1"></div><div class="zn">New York</div><div class="dt" id="d1"></div></div><div class="ck"><div class="tm" id="t2"></div><div class="zn">London</div><div class="dt" id="d2"></div></div><div class="ck"><div class="tm" id="t3"></div><div class="zn">Tokyo</div><div class="dt" id="d3"></div></div></div><script>function up(){var n=new Date();var f=function(tz){return n.toLocaleTimeString("en-US",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"})};var d=function(tz){return n.toLocaleDateString("en-US",{timeZone:tz,weekday:"short",month:"short",day:"numeric"})};document.getElementById("t1").textContent=f("America/New_York");document.getElementById("t2").textContent=f("Europe/London");document.getElementById("t3").textContent=f("Asia/Tokyo");document.getElementById("d1").textContent=d("America/New_York");document.getElementById("d2").textContent=d("Europe/London");document.getElementById("d3").textContent=d("Asia/Tokyo")}up();setInterval(up,1000)<\/script></body></html>';
+const APP_STANDUP = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:14px;display:flex;flex-direction:column;gap:10px;height:100vh;overflow:hidden}.top{display:flex;justify-content:space-between;align-items:center}.title{font-size:13px;font-weight:600}.total{font-size:12px;color:#a1a1aa;font-variant-numeric:tabular-nums}.team{display:flex;flex-direction:column;gap:6px;flex:1}.member{padding:8px 10px;background:#27272a;border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .15s;border:1px solid transparent}.member:hover{background:#3f3f46}.member.active{background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.3)}.member.done{opacity:0.5}.avatar{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff}.m-name{flex:1;font-size:12px;font-weight:500}.m-time{font-size:12px;font-variant-numeric:tabular-nums;font-weight:600;min-width:40px;text-align:right}.m-time.warn{color:#f59e0b}.m-time.over{color:#ef4444}.m-status{font-size:9px;text-transform:uppercase;letter-spacing:0.06em;color:#71717a}</style></head><body><div class="top"><span class="title">Daily Standup</span><span class="total" id="total">0:00</span></div><div class="team" id="team"></div><script>var team=[{n:"Alex",c:"#8b5cf6",i:"AT"},{n:"Sarah",c:"#22c55e",i:"SC"},{n:"Kai",c:"#f59e0b",i:"KN"},{n:"Mia",c:"#f43f5e",i:"MK"}];var active=-1,times=team.map(function(){return 0}),done=team.map(function(){return false}),iv,totalSec=0;function fmt(s){var m=Math.floor(s/60);var ss=s%60;return m+":"+(ss<10?"0":"")+ss}function render(){var el=document.getElementById("team");el.innerHTML="";team.forEach(function(m,idx){var cls="member"+(idx===active?" active":"")+(done[idx]?" done":"");var tc=times[idx]>=120?"over":times[idx]>=90?"warn":"";var status=idx===active?"Speaking":done[idx]?"Done":"Waiting";el.innerHTML+="<div class=\\""+cls+"\\" data-m=\\""+idx+"\\"><div class=\\"avatar\\" style=\\"background:"+m.c+"\\">"+m.i+"</div><span class=\\"m-name\\">"+m.n+"</span><span class=\\"m-status\\">"+status+"</span><span class=\\"m-time "+tc+"\\">"+fmt(times[idx])+"</span></div>"});document.getElementById("total").textContent="Total: "+fmt(totalSec)}function tick(){if(active>=0){times[active]++;totalSec++;render()}}document.getElementById("team").addEventListener("click",function(e){var el=e.target.closest("[data-m]");if(!el)return;var idx=+el.dataset.m;if(done[idx])return;if(active===idx){done[idx]=true;active=-1;clearInterval(iv)}else{if(active>=0)done[active]=true;active=idx;clearInterval(iv);iv=setInterval(tick,1000)}render()});render()<\/script></body></html>';
 
 /* ── Post Data ── */
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
-  { id: 'tools', label: 'Tools' },
-  { id: 'creative', label: 'Creative' },
-  { id: 'data', label: 'Data' },
+  { id: 'productivity', label: 'Productivity' },
+  { id: 'finance', label: 'Finance' },
+  { id: 'social', label: 'Social' },
   { id: 'wellness', label: 'Wellness' },
-  { id: 'games', label: 'Games' },
 ];
 
 const POSTS = [
   {
     id: 1,
-    author: 'Sarah Chen',
-    initials: 'SC',
-    color: '#8b5cf6',
+    author: 'Lena Morales',
+    initials: 'LM',
+    color: '#ef4444',
     timeAgo: '2h',
-    title: 'Color Contrast Checker',
-    desc: 'Check WCAG contrast ratios between any two colors in real-time',
-    category: 'tools',
-    tags: ['accessibility', 'design'],
-    forks: 42,
-    reactions: 128,
-    comments: 18,
-    appHtml: APP_CONTRAST,
+    title: 'Meeting Cost Calculator',
+    desc: 'Real-time dollar counter that ticks up while your meeting runs \u2014 attendees \u00d7 hourly rate, every second',
+    category: 'productivity',
+    tags: ['meetings', 'productivity'],
+    forks: 84,
+    reactions: 312,
+    comments: 47,
+    appHtml: APP_MEETING_COST,
     aiThread: [
-      { text: 'Strong accessibility concept. The WCAG calculation correctly implements the relative luminance formula per WCAG 2.1. Consider adding large text thresholds (3:1 ratio for 18pt+ or 14pt bold) \u2014 most contrast checkers miss this distinction.', time: '1h ago' },
-      { text: 'Suggestion: a color blindness simulation toggle would elevate this significantly. Approximately 8% of males have some form of color vision deficiency \u2014 showing how chosen palettes appear under protanopia/deuteranopia would make this far more useful for design teams.', time: '1h ago' },
+      { text: 'The visceral ticking dollar amount is the core insight here \u2014 it reframes meeting culture as a spending decision. Consider adding a "cost per decision" metric: divide final cost by number of agenda items resolved. That ratio is what makes meetings indefensible.', time: '1h ago' },
+      { text: 'The per-minute rate display is smart \u2014 most people can\'t intuit $/hr \u00d7 headcount. Adding role-based rates (engineer vs. manager vs. exec) would make this genuinely useful for budget-conscious teams, not just a guilt tool.', time: '1h ago' },
     ],
     communityThread: [
-      { author: 'Marcus Rivera', initials: 'MR', color: '#f97316', text: 'Forked and added APCA contrast support. The new perceptual algorithm gives much better results for dark mode interfaces.', time: '45m ago', isFork: true },
-      { author: 'Lisa Park', initials: 'LP', color: '#14b8a6', text: 'Would love preset palettes for common design systems. Great starting point for my accessibility audit workflow.', time: '30m ago', isFork: false },
+      { author: 'Dev Patel', initials: 'DP', color: '#f59e0b', text: 'Forked with a Slack integration that posts the final cost to a channel when the meeting ends. Our standup went from 20min to 8min.', time: '45m ago', isFork: true },
+      { author: 'Rina Tanaka', initials: 'RT', color: '#14b8a6', text: 'We projected this on the conference room screen during all-hands. The silence when it hit $2,000 was memorable.', time: '30m ago', isFork: false },
     ],
   },
   {
     id: 2,
-    author: 'Kai Nakamura',
-    initials: 'KN',
-    color: '#f59e0b',
+    author: 'James Okafor',
+    initials: 'JO',
+    color: '#8b5cf6',
     timeAgo: '5h',
-    title: 'Breathing Pacer',
-    desc: 'Guided breathing exercise with 4-7-8 rhythm visualization',
+    title: 'One-Line Journal',
+    desc: 'What if journaling was just one sentence? Pick a mood, write one line, keep the streak',
     category: 'wellness',
-    tags: ['wellness', 'animation'],
+    tags: ['journaling', 'wellness'],
     forks: 67,
     reactions: 234,
     comments: 31,
-    appHtml: APP_BREATHING,
+    appHtml: APP_JOURNAL,
     aiThread: [
-      { text: 'The 4-7-8 breathing technique is clinically validated for anxiety reduction. The animation timing is well-calibrated. Consider adding haptic feedback via the Vibration API for mobile users \u2014 tactile pacing significantly improves adherence.', time: '4h ago' },
-      { text: 'Accessibility note: users with vestibular disorders may find the scaling animation disorienting. Adding a prefers-reduced-motion alternative (perhaps a simple progress bar) would make this inclusive without losing the core value.', time: '4h ago' },
+      { text: 'The constraint is the product. Forcing one sentence eliminates the blank-page anxiety that kills journaling habits. The mood picker adds structure without friction. Consider a weekly "mood arc" visualization \u2014 people want to see patterns in their emotional data.', time: '4h ago' },
+      { text: 'Streak mechanics work here because the commitment is genuinely tiny. Adding a "longest streak" record and a gentle notification ("Your 14-day streak is waiting") would drive retention without feeling manipulative.', time: '4h ago' },
     ],
     communityThread: [
-      { author: 'Priya Sharma', initials: 'PS', color: '#22c55e', text: 'Forked with box breathing (4-4-4-4) and Wim Hof patterns as switchable modes. The base animation framework made it trivial to add.', time: '3h ago', isFork: true },
-      { author: 'Alex Torres', initials: 'AT', color: '#38bdf8', text: 'Been using this between meetings. Simple idea, surprisingly effective. The ambient color shifts are a nice touch.', time: '2h ago', isFork: false },
+      { author: 'Sofia Reyes', initials: 'SR', color: '#22c55e', text: 'Forked with end-of-week AI summaries that spot patterns. "You wrote about energy 4/7 days \u2014 mostly on days you marked \ud83d\udd25." Surprisingly insightful.', time: '3h ago', isFork: true },
+      { author: 'Marcus Webb', initials: 'MW', color: '#38bdf8', text: 'This is the first journaling app I\'ve used for more than a week. The one-sentence limit is the feature, not a limitation.', time: '2h ago', isFork: false },
     ],
   },
   {
@@ -991,20 +988,20 @@ const POSTS = [
     initials: 'PS',
     color: '#22c55e',
     timeAgo: '8h',
-    title: 'Habit Streak Calendar',
-    desc: 'Visual streak tracker with clickable day grid and streak counter',
-    category: 'tools',
-    tags: ['productivity', 'tracking'],
-    forks: 29,
-    reactions: 96,
-    comments: 12,
-    appHtml: APP_HABITS,
+    title: 'Startup Runway',
+    desc: 'Bank balance, monthly burn, revenue \u2192 months until zero, with a depleting bar that makes it real',
+    category: 'finance',
+    tags: ['startups', 'finance'],
+    forks: 53,
+    reactions: 189,
+    comments: 28,
+    appHtml: APP_RUNWAY,
     aiThread: [
-      { text: 'Clean implementation of the "don\'t break the chain" pattern. The visual density of the grid communicates progress at a glance. Consider persisting state to localStorage so streaks survive page reloads \u2014 this is critical for a habit tracker.', time: '7h ago' },
-      { text: 'The click-to-toggle interaction is intuitive. For a production version, adding multiple habit tracks (each with its own color) and a weekly/monthly summary view would make this a genuine replacement for dedicated habit apps.', time: '7h ago' },
+      { text: 'The depleting bar is the killer feature \u2014 it turns an abstract spreadsheet number into a visceral countdown. The color shift from green to amber to red maps directly to fundraising urgency stages. Consider adding scenario toggles: "what if we cut 20% burn" or "what if revenue grows 10%/mo."', time: '7h ago' },
+      { text: 'The "zero date" display is critical for board conversations. Adding a historical trend line (plotting runway over past months) would show whether decisions are extending or shortening the clock. That trajectory matters more than the snapshot.', time: '7h ago' },
     ],
     communityThread: [
-      { author: 'Sarah Chen', initials: 'SC', color: '#8b5cf6', text: 'The grid layout is perfect for this. I\'d love to see a GitHub-style contribution heatmap variant with intensity levels.', time: '6h ago', isFork: false },
+      { author: 'Lena Morales', initials: 'LM', color: '#ef4444', text: 'Every first-time founder needs this on their dashboard. The bar visualization communicates urgency better than any spreadsheet.', time: '6h ago', isFork: false },
     ],
   },
   {
@@ -1013,21 +1010,21 @@ const POSTS = [
     initials: 'AT',
     color: '#38bdf8',
     timeAgo: '12h',
-    title: 'Live Markdown Preview',
-    desc: 'Split-pane markdown editor with instant rendered preview',
-    category: 'creative',
-    tags: ['writing', 'developer-tools'],
-    forks: 53,
-    reactions: 187,
-    comments: 24,
-    appHtml: APP_MARKDOWN,
+    title: 'Split the Bill',
+    desc: 'Add dishes, assign to people, shared items split evenly \u2014 per-person totals without the awkward math',
+    category: 'social',
+    tags: ['dining', 'social'],
+    forks: 41,
+    reactions: 156,
+    comments: 19,
+    appHtml: APP_SPLIT,
     aiThread: [
-      { text: 'Solid baseline parser. The split-pane layout is the correct UX choice for markdown editing. Consider adding syntax highlighting in the editor pane (even just coloring headings and bold markers) \u2014 it dramatically improves the writing experience.', time: '11h ago' },
-      { text: 'Edge case: nested lists and code blocks aren\'t handled by the current regex-based parser. For a robust version, a proper state-machine parser would handle these. But for a quick tool, this covers 90% of real usage.', time: '11h ago' },
+      { text: 'The toggle-per-person mechanic is the right UX for this \u2014 it mirrors how people actually think about shared meals ("I had some of the appetizer but not the wine"). Consider adding tax and tip as a global multiplier that propagates to individual totals. That\'s where most bill-splitting apps get awkward.', time: '11h ago' },
+      { text: 'The visual per-person totals updating in real-time as you toggle items removes the spreadsheet friction. Adding Venmo/PayPal deep links for each person\'s total would close the loop from "who owes what" to "paid."', time: '11h ago' },
     ],
     communityThread: [
-      { author: 'Mia Kowalski', initials: 'MK', color: '#f43f5e', text: 'Forked with table support and export-to-HTML button. Regex-based markdown is surprisingly capable for everyday use.', time: '9h ago', isFork: true },
-      { author: 'Kai Nakamura', initials: 'KN', color: '#f59e0b', text: 'This is my go-to for quick READMEs now. Would be perfect with a word count in the corner.', time: '7h ago', isFork: false },
+      { author: 'Rina Tanaka', initials: 'RT', color: '#14b8a6', text: 'Forked with receipt photo OCR \u2014 snap a photo of the bill, items auto-populate. The manual entry was the only friction.', time: '9h ago', isFork: true },
+      { author: 'James Okafor', initials: 'JO', color: '#8b5cf6', text: 'Used this at dinner last night. The person-assignment buttons are so much faster than passing a calculator around the table.', time: '7h ago', isFork: false },
     ],
   },
   {
@@ -1036,20 +1033,20 @@ const POSTS = [
     initials: 'MK',
     color: '#f43f5e',
     timeAgo: '1d',
-    title: 'CSS Gradient Maker',
-    desc: 'Create linear gradients with live preview and one-click CSS copy',
-    category: 'creative',
-    tags: ['css', 'design'],
+    title: 'Standup Timer',
+    desc: 'Click team members to start their turn, warns at 2 min, tracks total meeting time',
+    category: 'productivity',
+    tags: ['standups', 'teams'],
     forks: 38,
     reactions: 142,
     comments: 15,
-    appHtml: APP_GRADIENT,
+    appHtml: APP_STANDUP,
     aiThread: [
-      { text: 'Clean utility. The live preview makes iteration instant. Consider adding radial/conic gradient modes and multi-stop support \u2014 two-stop linear is the most common case but power users want more control.', time: '22h ago' },
-      { text: 'The copy-to-clipboard interaction is well-handled. Adding a "gallery" of curated gradient presets (mesh gradients, aurora effects, brand palettes) would make this a discovery tool, not just a builder.', time: '22h ago' },
+      { text: 'Simple and effective \u2014 the 2-minute warning creates natural social pressure without a facilitator having to interrupt. The per-person time tracking reveals patterns over multiple standups: if someone consistently goes 3x longer, that\'s a conversation worth having.', time: '22h ago' },
+      { text: 'Consider randomizing speaker order each day to prevent the "last person rushes" pattern. Adding a historical average ("Sarah: 1:42 avg this week") would let the team self-correct without manager intervention.', time: '22h ago' },
     ],
     communityThread: [
-      { author: 'Alex Torres', initials: 'AT', color: '#38bdf8', text: 'Forked and added a 3-color stop version with draggable stop positions. CSS gradients are underrated for backgrounds.', time: '18h ago', isFork: true },
+      { author: 'Dev Patel', initials: 'DP', color: '#f59e0b', text: 'Forked with a "parking lot" button \u2014 when someone goes off-topic, park it and move on. Shows parked items at the end. Our standups are 40% shorter.', time: '18h ago', isFork: true },
     ],
   },
 ];
@@ -1236,7 +1233,7 @@ function handleGenerate() {
       '<button class="post-btn" id="post-btn">Post to Foundry</button>';
 
     var iframe = result.querySelector('iframe');
-    iframe.srcdoc = APP_CLOCK;
+    iframe.srcdoc = APP_MEETING_COST;
 
     document.getElementById('post-btn').addEventListener('click', function() {
       closeModal();
