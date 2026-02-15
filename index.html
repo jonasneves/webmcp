@@ -102,12 +102,13 @@
     .tools-panel {
       max-height: 0;
       overflow: hidden;
-      transition: max-height 300ms ease;
-      border-bottom: 1px solid var(--border);
+      transition: max-height 300ms ease, border-color 300ms ease;
+      border-bottom: 1px solid transparent;
     }
 
     .tools-panel[data-collapsed="false"] {
       max-height: 600px;
+      border-bottom-color: var(--border);
     }
 
     .tools-panel-inner {
@@ -181,7 +182,7 @@
     }
 
     @media (max-width: 900px) {
-      .layout { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
       .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; }
     }
 
@@ -1234,7 +1235,7 @@
             <h2>${flag ? '<span class="flag-dot"></span>' : ''}${h.name}</h2>
             <p class="detail-meta">${h.county} &middot; ${h.type} &middot; ${h.ownership} &middot; <span class="risk-badge ${tier}">${tier} risk</span></p>
           </div>
-          ${flag ? `<p class="flag-note">${flag.note}</p>` : ''}
+          ${flag ? `<p class="flag-note">${flag.note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
           <div class="detail-grid">
             <div class="detail-cell">
               <div class="detail-cell-label">Risk Probability</div>
@@ -1438,7 +1439,10 @@
       }
       if (e.key === 'Escape') {
         const overlay = document.getElementById('confirm-overlay');
-        if (overlay && overlay.classList.contains('active')) return; // let dialog handle its own Esc
+        if (overlay && overlay.classList.contains('active')) {
+          document.getElementById('confirm-cancel').click();
+          return;
+        }
         const panel = document.getElementById('tools-panel');
         if (panel.dataset.collapsed === 'false') { toggleToolsPanel(); return; }
         dismissToast();
@@ -1935,7 +1939,13 @@ Rules:
 
       const el = document.createElement('div');
       el.className = 'msg msg-tool';
-      el.innerHTML = `<span class="msg-tool-name">${toolName}</span>(${JSON.stringify(args)})\n<span class="msg-tool-result">&rarr; ${result}</span>`;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'msg-tool-name';
+      nameSpan.textContent = toolName;
+      const resultSpan = document.createElement('span');
+      resultSpan.className = 'msg-tool-result';
+      resultSpan.textContent = '\u2192 ' + result;
+      el.append(nameSpan, '(' + JSON.stringify(args) + ')\n', resultSpan);
       chatMessages.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
@@ -2064,7 +2074,7 @@ Rules:
         let currentTextContent = '';
         let currentToolInput = '';
         let currentBlockType = null;
-        let stopReason = null;
+
 
         for await (const { event, data } of parseSSEStream(body)) {
           switch (event) {
@@ -2111,10 +2121,8 @@ Rules:
               break;
             }
 
-            case 'message_delta': {
-              if (data.delta?.stop_reason) stopReason = data.delta.stop_reason;
+            case 'message_delta':
               break;
-            }
           }
         }
 
