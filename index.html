@@ -268,10 +268,16 @@
     }
 
     /* Table view */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
     .hospital-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
+      min-width: 640px;
     }
 
     .hospital-table th {
@@ -1212,6 +1218,7 @@
           <p class="view-label">Showing ${summary}</p>
           <span class="summary-count">${hospitals.length} result${hospitals.length !== 1 ? 's' : ''}</span>
         </div>
+        <div class="table-scroll">
         <table class="hospital-table">
           <thead>
             <tr>
@@ -1227,7 +1234,7 @@
             ${hospitals.map(h => {
               const isFlagged = flaggedHospitals.has(h.name);
               return `
-              <tr tabindex="0" data-name="${h.name}" onclick="showDetail('${h.name.replace(/'/g, "\\'")}')" onkeydown="if(event.key==='Enter')showDetail('${h.name.replace(/'/g, "\\'")}')">
+              <tr tabindex="0" data-name="${h.name}">
                 <td><span class="hospital-name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${h.name}</span></td>
                 <td>${h.county}</td>
                 <td><span class="risk-badge ${riskTier(h.riskProbability)}">${riskTier(h.riskProbability)}</span></td>
@@ -1238,6 +1245,7 @@
             }).join('')}
           </tbody>
         </table>
+        </div>
       `;
       encodeViewToHash();
     }
@@ -1285,7 +1293,7 @@
       currentView = { type: 'detail', data: h, label: null, filters: null };
 
       display.innerHTML = `
-        <button class="back-btn" onclick="renderTable(HOSPITALS)">&#8592; Back to list</button>
+        <button class="back-btn">&#8592; Back to list</button>
         <div class="detail-card">
           <div class="detail-header">
             <h2>${flag ? '<span class="flag-dot"></span>' : ''}${h.name}</h2>
@@ -1357,7 +1365,7 @@
       }
 
       display.innerHTML = `
-        <button class="back-btn" onclick="renderTable(HOSPITALS)">&#8592; Back to list</button>
+        <button class="back-btn">&#8592; Back to list</button>
         <p class="view-label">Comparing two hospitals</p>
         <table class="compare-table">
           <thead>
@@ -1383,7 +1391,20 @@
       encodeViewToHash();
     }
 
-    /* ── Global detail handler (called from table rows) ── */
+    /* ── Display event delegation ── */
+
+    display.addEventListener('click', (e) => {
+      const row = e.target.closest('tr[data-name]');
+      if (row) { showDetail(row.dataset.name); return; }
+      const backBtn = e.target.closest('.back-btn');
+      if (backBtn) renderTable(HOSPITALS);
+    });
+
+    display.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const row = e.target.closest('tr[data-name]');
+      if (row) showDetail(row.dataset.name);
+    });
 
     function showDetail(name) {
       const h = HOSPITALS.find(h => h.name === name);
@@ -2147,61 +2168,66 @@ Rules:
           return;
         }
 
-        // Parse the stream
         const contentBlocks = [];
         let currentTextEl = null;
         let currentTextContent = '';
         let currentToolInput = '';
         let currentBlockType = null;
 
-        for await (const { event, data } of parseSSEStream(body)) {
-          switch (event) {
-            case 'content_block_start': {
-              const block = data.content_block;
-              currentBlockType = block.type;
-              if (block.type === 'text') {
-                hideSpinner();
-                currentTextContent = block.text || '';
-                currentTextEl = appendMessage('assistant', currentTextContent);
-              } else if (block.type === 'tool_use') {
-                contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
-                currentToolInput = '';
-              }
-              break;
-            }
-
-            case 'content_block_delta': {
-              if (data.delta.type === 'text_delta') {
-                currentTextContent += data.delta.text;
-                if (currentTextEl) currentTextEl.textContent = currentTextContent;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-              } else if (data.delta.type === 'input_json_delta') {
-                currentToolInput += data.delta.partial_json;
-              }
-              break;
-            }
-
-            case 'content_block_stop': {
-              if (currentBlockType === 'text' && currentTextContent) {
-                contentBlocks.push({ type: 'text', text: currentTextContent });
-                currentTextEl = null;
-                currentTextContent = '';
-              } else if (currentBlockType === 'tool_use') {
-                const toolBlock = contentBlocks[contentBlocks.length - 1];
-                try {
-                  toolBlock.input = currentToolInput ? JSON.parse(currentToolInput) : {};
-                } catch {
-                  toolBlock.input = {};
+        try {
+          for await (const { event, data } of parseSSEStream(body)) {
+            switch (event) {
+              case 'content_block_start': {
+                const block = data.content_block;
+                currentBlockType = block.type;
+                if (block.type === 'text') {
+                  hideSpinner();
+                  currentTextContent = block.text || '';
+                  currentTextEl = appendMessage('assistant', currentTextContent);
+                } else if (block.type === 'tool_use') {
+                  contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
+                  currentToolInput = '';
                 }
-                currentToolInput = '';
+                break;
               }
-              currentBlockType = null;
-              break;
-            }
 
-            case 'message_delta':
-              break;
+              case 'content_block_delta': {
+                if (data.delta.type === 'text_delta') {
+                  currentTextContent += data.delta.text;
+                  if (currentTextEl) currentTextEl.textContent = currentTextContent;
+                  chatMessages.scrollTop = chatMessages.scrollHeight;
+                } else if (data.delta.type === 'input_json_delta') {
+                  currentToolInput += data.delta.partial_json;
+                }
+                break;
+              }
+
+              case 'content_block_stop': {
+                if (currentBlockType === 'text' && currentTextContent) {
+                  contentBlocks.push({ type: 'text', text: currentTextContent });
+                  currentTextEl = null;
+                  currentTextContent = '';
+                } else if (currentBlockType === 'tool_use') {
+                  const toolBlock = contentBlocks[contentBlocks.length - 1];
+                  try {
+                    toolBlock.input = currentToolInput ? JSON.parse(currentToolInput) : {};
+                  } catch {
+                    toolBlock.input = {};
+                  }
+                  currentToolInput = '';
+                }
+                currentBlockType = null;
+                break;
+              }
+
+              case 'message_delta':
+                break;
+            }
           }
+        } catch (err) {
+          hideSpinner();
+          appendMessage('error', 'Stream interrupted: ' + err.message);
+          return;
         }
 
         // Add the full assistant message to conversation history
@@ -2245,7 +2271,6 @@ Rules:
 
         conversationMessages.push({ role: 'user', content: toolResults });
         showSpinner();
-        // Loop to send tool results back
       }
     }
 
