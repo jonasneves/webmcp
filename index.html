@@ -32,6 +32,8 @@
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -39,8 +41,14 @@
       line-height: 1.5;
       height: 100dvh;
       display: flex;
-      flex-direction: column;
       overflow: hidden;
+    }
+
+    .main-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
     }
 
     header {
@@ -95,7 +103,6 @@
     }
 
     .tools-toggle:hover { color: var(--text); }
-    .tools-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .tool-item {
       background: var(--surface);
@@ -150,45 +157,12 @@
       font-family: var(--mono);
     }
 
-    /* Context bar */
-    .context-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 0;
-      padding: 8px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--surface-alt);
-      min-height: 32px;
-      align-items: center;
-    }
-
-    .context-bar:empty { display: none; }
-
-    .context-item::after {
-      content: '\00b7';
-      padding: 0 8px;
-      color: var(--border);
-    }
-
-    .context-item:last-child::after { display: none; }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 1fr 380px;
-      flex: 1;
-      min-height: 0;
-    }
-
     @media (max-width: 900px) {
-      .layout { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-      .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; }
+      body { flex-direction: column; }
+      .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; width: 100%; }
     }
 
-    main { padding: 24px; overflow-y: auto; min-height: 0; }
+    main { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; }
 
     .controls {
       display: flex;
@@ -229,7 +203,6 @@
     }
 
     .chip:hover { background: var(--surface-alt); color: var(--text); }
-    .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
     .chip-separator {
@@ -282,15 +255,19 @@
       min-width: 640px;
     }
 
-    .hospital-table th {
+    .hospital-table th,
+    .compare-table th {
       text-align: left;
-      padding: 10px 12px;
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-muted);
       border-bottom: 1px solid var(--border);
+    }
+
+    .hospital-table th {
+      padding: 10px 12px;
       white-space: nowrap;
     }
 
@@ -396,14 +373,7 @@
     }
 
     .compare-table th {
-      text-align: left;
       padding: 10px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border);
     }
 
     .compare-table td {
@@ -561,7 +531,6 @@
     }
 
     .back-btn:hover { background: var(--accent-dim); }
-    .back-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     /* Summary grid */
     .summary-grid {
@@ -599,6 +568,8 @@
 
     /* Chat panel */
     .chat-panel {
+      width: 380px;
+      flex-shrink: 0;
       border-left: 1px solid var(--border);
       background: var(--surface);
       display: flex;
@@ -606,44 +577,21 @@
       min-height: 0;
     }
 
-    .chat-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--surface-alt);
-    }
-
-    .chat-header-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .chat-reset {
-      min-width: 44px;
+    .chat-action-btn {
+      min-width: 32px;
       min-height: 32px;
-      padding: 0 12px;
-      font-size: 11px;
-      font-weight: 600;
+      padding: 0 8px;
+      font-size: 14px;
       font-family: var(--font);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
       color: var(--text-muted);
       background: none;
-      border: 1px solid var(--border);
+      border: none;
       border-radius: var(--radius);
       cursor: pointer;
-      transition: color var(--transition), border-color var(--transition);
+      transition: color var(--transition);
     }
 
-    .chat-reset:hover { color: var(--text); border-color: var(--text-muted); }
-    .chat-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .chat-action-btn:hover { color: var(--text); }
 
     .api-key-bar {
       display: none;
@@ -684,15 +632,14 @@
     }
 
     .api-key-toggle:hover { color: var(--text); }
-    .api-key-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .chat-empty {
@@ -704,7 +651,6 @@
     }
 
     .msg {
-      max-width: 90%;
       padding: 10px 14px;
       border-radius: var(--radius-lg);
       font-size: 13px;
@@ -714,13 +660,13 @@
 
     .msg-user {
       align-self: flex-end;
+      max-width: 85%;
       background: var(--accent-dim);
       color: var(--accent);
       border-bottom-right-radius: 4px;
     }
 
     .msg-assistant {
-      align-self: flex-start;
       background: var(--surface-alt);
       color: var(--text);
       border-bottom-left-radius: 4px;
@@ -749,112 +695,30 @@
 
     .msg-tool-name { color: var(--accent); font-weight: 600; }
 
-    /* Exchange grouping */
-    .exchange {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .exchange-history-toggle {
+    /* Chat divider */
+    .chat-divider {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-height: 44px;
-      padding: 0 16px;
-      font-family: var(--font);
-      font-size: 12px;
-      color: var(--text-muted);
-      background: none;
-      border: 1px dashed var(--surface-alt);
-      border-radius: 100px;
-      cursor: pointer;
-      width: 100%;
-      transition: color var(--transition), border-color var(--transition);
-    }
-
-    .exchange-history-toggle:hover { color: var(--text); border-color: var(--border); }
-    .exchange-history-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-    .exchange-history-toggle .chevron {
-      font-size: 10px;
-      transition: transform var(--transition);
-    }
-
-    .exchange-history.expanded .exchange-history-toggle .chevron { transform: rotate(180deg); }
-
-    .exchange-history-list { display: none; }
-    .exchange-history.expanded .exchange-history-list { display: flex; flex-direction: column; gap: 8px; }
-
-    .exchange-summary {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-height: 44px;
-      padding: 6px 12px;
-      font-family: var(--font);
-      font-size: 12px;
-      color: var(--text-muted);
-      background: var(--surface);
-      border: 1px solid var(--surface-alt);
-      border-radius: var(--radius);
-      cursor: pointer;
-      width: 100%;
-      text-align: left;
-      transition: background var(--transition);
-    }
-
-    .exchange-summary:hover { background: var(--surface-alt); }
-    .exchange-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-    .exchange-summary-text {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .exchange-summary-tools {
-      font-size: 10px;
+      gap: 12px;
+      font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 100px;
-      background: var(--accent-dim);
-      color: var(--accent);
-      white-space: nowrap;
+      color: var(--text-muted);
+      padding: 4px 0;
     }
 
-    .exchange-summary-chevron {
-      font-size: 10px;
-      transition: transform var(--transition);
+    .chat-divider::before,
+    .chat-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--surface-alt);
     }
-
-    .exchange-summary-restore {
-      font-size: 11px;
-      font-family: var(--font);
-      color: var(--accent);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: var(--radius);
-      white-space: nowrap;
-      transition: background var(--transition);
-    }
-
-    .exchange-summary-restore:hover { background: var(--accent-dim); }
-    .exchange-summary-restore:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-    .exchange.collapsed .exchange-summary-chevron { transform: rotate(-90deg); }
-    .exchange.collapsed .exchange-body { display: none; }
 
     /* Tool call cards */
     .msg-tool-card {
-      align-self: flex-start;
-      max-width: 95%;
+      align-self: stretch;
       background: var(--surface);
       border: 1px solid var(--surface-alt);
       border-radius: var(--radius);
@@ -868,8 +732,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
-      min-height: 36px;
+      padding: 6px 12px;
       cursor: pointer;
       transition: background var(--transition);
     }
@@ -922,21 +785,7 @@
 
     .msg-tool-card.error .msg-tool-result { color: var(--risk-high); }
 
-    .msg-context {
-      align-self: center;
-      padding: 6px 16px;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      background: none;
-      border: 1px dashed var(--border);
-      border-radius: 100px;
-    }
-
     .msg-error {
-      align-self: center;
       padding: 8px 14px;
       font-size: 12px;
       color: var(--risk-high);
@@ -948,7 +797,7 @@
       display: flex;
       gap: 8px;
       padding: 12px 16px;
-      border-top: 1px solid var(--surface-alt);
+      border-bottom: 1px solid var(--surface-alt);
     }
 
     .chat-input-area textarea {
@@ -984,7 +833,6 @@
 
     .chat-send:disabled { opacity: 0.4; cursor: default; }
     .chat-send:not(:disabled):hover { opacity: 0.85; }
-    .chat-send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .chat-send.stop {
       background: var(--risk-high);
@@ -996,13 +844,12 @@
     }
 
     .chat-spinner {
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
       border: 2px solid var(--surface-alt);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: chat-spin 0.6s linear infinite;
-      align-self: flex-start;
     }
 
     .summary-row {
@@ -1017,55 +864,33 @@
       color: var(--text-muted);
     }
 
-    /* Quick action chips */
-    .chat-quick-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 8px 0;
-    }
-
-    .quick-action-chip {
-      min-height: 44px;
-      padding: 10px 16px;
-      font-size: 13px;
-      font-family: var(--font);
-      color: var(--accent);
-      background: var(--accent-dim);
-      border: 1px solid var(--accent);
-      border-radius: var(--radius);
-      cursor: pointer;
-      text-align: left;
-      transition: transform var(--transition), background var(--transition);
-    }
-
-    .quick-action-chip:hover { transform: translateX(2px); }
-    .quick-action-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-    /* Follow-up suggestions */
+    /* Suggestion chips (quick actions + follow-ups) */
+    .chat-quick-actions,
     .followup-suggestions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      align-self: flex-start;
-      padding: 4px 0;
+      gap: 6px;
     }
 
-    .followup-chip {
+    .chat-quick-actions { padding: 4px 0; }
+
+    .suggestion-chip {
       min-height: 36px;
       padding: 6px 14px;
       font-size: 12px;
       font-family: var(--font);
-      color: var(--text-muted);
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: none;
+      border: 1px solid var(--surface-alt);
       border-radius: 100px;
       cursor: pointer;
       transition: color var(--transition), border-color var(--transition);
     }
 
-    .followup-chip:hover { color: var(--text); border-color: var(--text-muted); }
-    .followup-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .quick-action-chip { color: var(--accent); text-align: left; }
+    .quick-action-chip:hover { color: var(--text); border-color: var(--accent); }
+
+    .followup-chip { color: var(--text-muted); }
+    .followup-chip:hover { color: var(--text); border-color: var(--border); }
 
     /* Toast */
     .toast-container {
@@ -1115,7 +940,6 @@
     }
 
     .toast-undo:hover { background: var(--accent-dim); }
-    .toast-undo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     @media (max-width: 600px) {
       .toast-container {
@@ -1126,22 +950,8 @@
       .toast { width: 100%; }
     }
 
-    /* Confirmation dialog */
-    .confirm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-    }
-
-    .confirm-overlay.active {
-      display: flex;
-    }
-
-    .confirm-dialog {
+    /* Dialogs */
+    dialog {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
@@ -1149,22 +959,25 @@
       max-width: 400px;
       width: 90%;
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      color: var(--text);
     }
 
-    .confirm-title {
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+    .dialog-title {
       font-size: 15px;
       font-weight: 600;
       margin-bottom: 12px;
     }
 
-    .confirm-tool {
+    .dialog-tool {
       font-family: var(--mono);
       font-size: 13px;
       color: var(--accent);
       margin-bottom: 4px;
     }
 
-    .confirm-args {
+    .dialog-args {
       font-family: var(--mono);
       font-size: 12px;
       color: var(--text-muted);
@@ -1175,13 +988,13 @@
       word-break: break-all;
     }
 
-    .confirm-actions {
+    .dialog-actions {
       display: flex;
       gap: 8px;
       justify-content: flex-end;
     }
 
-    .confirm-cancel, .confirm-ok {
+    .dialog-actions button {
       min-height: 44px;
       padding: 0 20px;
       font-size: 14px;
@@ -1190,24 +1003,23 @@
       cursor: pointer;
     }
 
-    .confirm-cancel {
+    .btn-cancel {
       color: var(--text-muted);
       background: none;
       border: 1px solid var(--border);
     }
 
-    .confirm-cancel:hover { color: var(--text); border-color: var(--text-muted); }
+    .btn-cancel:hover { color: var(--text); border-color: var(--text-muted); }
 
-    .confirm-ok {
+    .btn-confirm {
       color: var(--bg);
       background: var(--accent);
       border: none;
     }
 
-    .confirm-ok:hover { opacity: 0.85; }
-    .confirm-cancel:focus-visible, .confirm-ok:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn-confirm:hover { opacity: 0.85; }
 
-    .prompt-input {
+    .dialog-input {
       width: 100%;
       padding: 10px 12px;
       font-size: 14px;
@@ -1219,7 +1031,7 @@
       margin-bottom: 16px;
     }
 
-    .prompt-input:focus {
+    .dialog-input:focus {
       outline: 2px solid var(--accent);
       outline-offset: 0;
       border-color: transparent;
@@ -1231,18 +1043,18 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
-  <header>
-    <div class="header-left">
-      <h1>WebMCP PoC</h1>
-      <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 9 tools</button>
+  <div class="main-column">
+    <header>
+      <div class="header-left">
+        <h1>WebMCP PoC</h1>
+        <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 9 tools</button>
+      </div>
+    </header>
+
+    <div class="tools-panel" id="tools-panel" data-collapsed="true">
+      <div class="tools-panel-inner" id="tools-panel-inner"></div>
     </div>
-  </header>
 
-  <div class="tools-panel" id="tools-panel" data-collapsed="true">
-    <div class="tools-panel-inner" id="tools-panel-inner"></div>
-  </div>
-
-  <div class="layout">
     <main>
       <nav class="controls" aria-label="Filters">
         <button class="chip active" data-filter="all">All</button>
@@ -1259,52 +1071,46 @@
 
       <div id="display"></div>
     </main>
-
-    <aside class="chat-panel">
-      <div class="chat-header">
-        <span>Chat</span>
-        <div class="chat-header-actions">
-          <button class="chat-reset" id="key-edit" aria-label="Edit API key">Key</button>
-          <button class="chat-reset" id="chat-reset">Clear</button>
-        </div>
-      </div>
-      <div class="api-key-bar">
-        <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
-        <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
-      </div>
-      <div class="context-bar" id="context-bar"></div>
-      <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
-      <div class="chat-input-area">
-        <textarea id="chat-input" placeholder="Ask about hospitals..." rows="1" aria-label="Chat message"></textarea>
-        <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
-      </div>
-    </aside>
   </div>
+
+  <aside class="chat-panel">
+    <div class="api-key-bar">
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
+      <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
+    </div>
+    <div class="chat-input-area">
+      <button class="chat-action-btn" id="key-edit" aria-label="API key" title="API key">&#9919;</button>
+      <textarea id="chat-input" placeholder="Ask about hospitals..." rows="1" aria-label="Chat message"></textarea>
+      <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
+      <button class="chat-action-btn" id="chat-reset" aria-label="Clear chat" title="Clear chat">&times;</button>
+    </div>
+    <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
+  </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
-  <div class="confirm-overlay" id="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-    <div class="confirm-dialog">
-      <p class="confirm-title" id="confirm-title">Confirm action</p>
-      <p class="confirm-tool" id="confirm-tool"></p>
-      <p class="confirm-args" id="confirm-args"></p>
-      <div class="confirm-actions">
-        <button class="confirm-cancel" id="confirm-cancel">Cancel</button>
-        <button class="confirm-ok" id="confirm-ok">Confirm</button>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <p class="dialog-title" id="confirm-title">Confirm action</p>
+      <p class="dialog-tool" id="confirm-tool"></p>
+      <p class="dialog-args" id="confirm-args"></p>
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Cancel</button>
+        <button class="btn-confirm" value="confirm">Confirm</button>
       </div>
-    </div>
-  </div>
+    </form>
+  </dialog>
 
-  <div class="confirm-overlay" id="prompt-overlay" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
-    <div class="confirm-dialog">
-      <p class="confirm-title" id="prompt-title"></p>
-      <input type="text" class="prompt-input" id="prompt-input" autocomplete="off">
-      <div class="confirm-actions">
-        <button class="confirm-cancel" id="prompt-cancel">Skip</button>
-        <button class="confirm-ok" id="prompt-ok">Add</button>
+  <dialog id="prompt-dialog" aria-labelledby="prompt-title">
+    <form method="dialog">
+      <p class="dialog-title" id="prompt-title"></p>
+      <input type="text" class="dialog-input" id="prompt-input" autocomplete="off">
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Skip</button>
+        <button class="btn-confirm" value="confirm">Add</button>
       </div>
-    </div>
-  </div>
+    </form>
+  </dialog>
 
   <script>
     marked.use({ gfm: true, breaks: true });
@@ -1320,7 +1126,6 @@
     let currentToastTimeout = null;
     let previousToolNames = new Set();
     let toolsInitialized = false;
-    let currentExchangeEl = null;
 
     /* ── Constants ── */
 
@@ -1750,26 +1555,6 @@
       const h = HOSPITALS.find(h => h.name === name);
       if (!h) return;
       renderDetail(h);
-      injectViewingContext(name);
-    }
-
-    /* ── Bidirectional context ── */
-
-    function injectViewingContext(name) {
-      const empty = chatMessages.querySelector('.chat-empty');
-      if (empty) empty.remove();
-
-      const target = currentExchangeEl || chatMessages;
-      const el = document.createElement('div');
-      el.className = 'msg msg-context';
-      el.textContent = `Viewing ${name}`;
-      target.appendChild(el);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-
-      conversationMessages.push({
-        role: 'user',
-        content: `[User is now viewing the detail card for ${name}]`
-      });
     }
 
     /* ── Toast ── */
@@ -1824,82 +1609,35 @@
     /* ── Confirmation dialog ── */
 
     function showConfirmDialog(toolName, args) {
+      const dialog = document.getElementById('confirm-dialog');
+      document.getElementById('confirm-tool').textContent = toolName;
+      document.getElementById('confirm-args').textContent = JSON.stringify(args, null, 2);
+      dialog.returnValue = '';
+      dialog.showModal();
       return new Promise(resolve => {
-        const overlay = document.getElementById('confirm-overlay');
-        document.getElementById('confirm-tool').textContent = toolName;
-        document.getElementById('confirm-args').textContent = JSON.stringify(args, null, 2);
-        overlay.classList.add('active');
-
-        const ok = document.getElementById('confirm-ok');
-        const cancel = document.getElementById('confirm-cancel');
-        const focusable = [cancel, ok];
-
-        function onTrap(e) {
-          if (e.key !== 'Tab') return;
-          const idx = focusable.indexOf(document.activeElement);
-          if (e.shiftKey) {
-            if (idx <= 0) { e.preventDefault(); focusable[focusable.length - 1].focus(); }
-          } else {
-            if (idx >= focusable.length - 1) { e.preventDefault(); focusable[0].focus(); }
-          }
-        }
-
-        function cleanup() {
-          overlay.classList.remove('active');
-          ok.removeEventListener('click', onOk);
-          cancel.removeEventListener('click', onCancel);
-          overlay.removeEventListener('keydown', onTrap);
-        }
-
-        function onOk() { cleanup(); resolve(true); }
-        function onCancel() { cleanup(); resolve(false); }
-
-        ok.addEventListener('click', onOk);
-        cancel.addEventListener('click', onCancel);
-        overlay.addEventListener('keydown', onTrap);
-        ok.focus();
+        dialog.addEventListener('close', () => {
+          resolve(dialog.returnValue === 'confirm');
+        }, { once: true });
       });
     }
 
     function showPromptDialog(message) {
+      const dialog = document.getElementById('prompt-dialog');
+      const input = document.getElementById('prompt-input');
+      document.getElementById('prompt-title').textContent = message;
+      input.value = '';
+      dialog.returnValue = '';
+      dialog.showModal();
+      input.focus();
+      function onEnter(e) {
+        if (e.key === 'Enter') { e.preventDefault(); dialog.close('confirm'); }
+      }
+      input.addEventListener('keydown', onEnter);
       return new Promise(resolve => {
-        const overlay = document.getElementById('prompt-overlay');
-        const input = document.getElementById('prompt-input');
-        document.getElementById('prompt-title').textContent = message;
-        input.value = '';
-        overlay.classList.add('active');
-
-        const ok = document.getElementById('prompt-ok');
-        const cancel = document.getElementById('prompt-cancel');
-        const focusable = [input, cancel, ok];
-
-        function onTrap(e) {
-          if (e.key !== 'Tab') return;
-          const idx = focusable.indexOf(document.activeElement);
-          if (e.shiftKey) {
-            if (idx <= 0) { e.preventDefault(); focusable[focusable.length - 1].focus(); }
-          } else {
-            if (idx >= focusable.length - 1) { e.preventDefault(); focusable[0].focus(); }
-          }
-        }
-
-        function cleanup() {
-          overlay.classList.remove('active');
-          ok.removeEventListener('click', onOk);
-          cancel.removeEventListener('click', onCancel);
+        dialog.addEventListener('close', () => {
           input.removeEventListener('keydown', onEnter);
-          overlay.removeEventListener('keydown', onTrap);
-        }
-
-        function onOk() { cleanup(); resolve(input.value || null); }
-        function onCancel() { cleanup(); resolve(null); }
-        function onEnter(e) { if (e.key === 'Enter') onOk(); }
-
-        ok.addEventListener('click', onOk);
-        cancel.addEventListener('click', onCancel);
-        input.addEventListener('keydown', onEnter);
-        overlay.addEventListener('keydown', onTrap);
-        input.focus();
+          resolve(dialog.returnValue === 'confirm' ? (input.value || null) : null);
+        }, { once: true });
       });
     }
 
@@ -1910,16 +1648,6 @@
         chatInput.focus();
       }
       if (e.key === 'Escape') {
-        const promptOverlay = document.getElementById('prompt-overlay');
-        if (promptOverlay && promptOverlay.classList.contains('active')) {
-          document.getElementById('prompt-cancel').click();
-          return;
-        }
-        const overlay = document.getElementById('confirm-overlay');
-        if (overlay && overlay.classList.contains('active')) {
-          document.getElementById('confirm-cancel').click();
-          return;
-        }
         const panel = document.getElementById('tools-panel');
         if (panel.dataset.collapsed === 'false') { toggleToolsPanel(); return; }
         dismissToast();
@@ -1945,7 +1673,7 @@
 
       QUICK_ACTIONS.forEach(prompt => {
         const btn = document.createElement('button');
-        btn.className = 'quick-action-chip';
+        btn.className = 'suggestion-chip quick-action-chip';
         btn.textContent = prompt;
         btn.addEventListener('click', () => {
           const actual = prompt === 'Run triage analysis' ? TRIAGE_PROMPT : prompt;
@@ -2013,7 +1741,7 @@
 
       suggestions.forEach(text => {
         const btn = document.createElement('button');
-        btn.className = 'followup-chip';
+        btn.className = 'suggestion-chip followup-chip';
         btn.textContent = text;
         btn.addEventListener('click', () => {
           sendMessage({ prompt: text });
@@ -2021,9 +1749,7 @@
         container.appendChild(btn);
       });
 
-      const target = currentExchangeEl || chatMessages;
-      target.appendChild(container);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+      chatMessages.appendChild(container);
     }
 
     function clearFollowupSuggestions() {
@@ -2066,7 +1792,7 @@
           name: 'clear_all_flags',
           title: 'Clear All Flags',
           description: `Remove all ${flaggedHospitals.size} hospital flags. This action cannot be undone.`,
-          readOnlyHint: true,
+          readOnlyHint: false,
           idempotentHint: true,
           destructiveHint: true,
           openWorldHint: false,
@@ -2130,35 +1856,15 @@
       return parts;
     }
 
-    function updateContextBar() {
-      document.getElementById('context-bar').innerHTML =
-        getPageContext().map(p => `<span class="context-item">${p}</span>`).join('');
-    }
-
     function syncTools() {
       const tools = getActiveTools();
       const currentNames = new Set(tools.map(t => t.name));
       const newNames = toolsInitialized
         ? new Set([...currentNames].filter(n => !previousToolNames.has(n)))
         : new Set();
-      const removedCount = toolsInitialized
-        ? [...previousToolNames].filter(n => !currentNames.has(n)).length
-        : 0;
 
       previousToolNames = currentNames;
       renderToolsPanel(tools, newNames);
-      updateContextBar();
-
-      if (toolsInitialized && (newNames.size > 0 || removedCount > 0)) {
-        const parts = [];
-        if (newNames.size > 0) parts.push(`${newNames.size} added`);
-        if (removedCount > 0) parts.push(`${removedCount} removed`);
-        const el = document.createElement('div');
-        el.className = 'msg msg-context';
-        el.textContent = `${tools.length} tools — ${parts.join(', ')}`;
-        chatMessages.appendChild(el);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
       toolsInitialized = true;
     }
 
@@ -2546,7 +2252,7 @@
     const apiKeyInput = document.getElementById('api-key');
     const keyToggle = document.getElementById('key-toggle');
 
-    const SYSTEM_PROMPT = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
+    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
 
 Rules:
 - 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
@@ -2560,7 +2266,41 @@ Rules:
 - Use export_flagged to download a CSV of all flagged hospitals when the user wants to export or save their flags.
 - Use show_county_trends to display a county-level comparison table with aggregate metrics.
 - Use show_statewide_summary to display statewide overview cards with totals and risk distribution.
-- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_hospitals only lists currently visible hospitals.`;
+- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_hospitals only lists currently visible hospitals.
+- When the user gives a short or ambiguous input (like "flag" or "compare"), infer the target from the current view context below. If viewing a detail card, act on that hospital. If viewing a filtered table, act on visible hospitals.`;
+
+    function getSystemPrompt() {
+      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
+      switch (currentView.type) {
+        case 'table': {
+          const data = currentView.data || HOSPITALS;
+          lines.push(`- Viewing: table of ${data.length} hospitals`);
+          const names = data.slice(0, 8).map(h => h.name);
+          lines.push(`- Visible: ${names.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
+          break;
+        }
+        case 'detail':
+          if (currentView.data) {
+            const h = currentView.data;
+            lines.push(`- Viewing: detail card for ${h.name} (${h.county}, risk: ${h.riskProbability}%, margin: ${h.operatingMargin}%)`);
+          }
+          break;
+        case 'chart':
+          lines.push('- Viewing: risk distribution chart');
+          break;
+        case 'comparison':
+          if (currentView.data) {
+            lines.push(`- Viewing: comparison of ${currentView.data[0].name} vs ${currentView.data[1].name}`);
+          }
+          break;
+      }
+      if (currentView.filters?.county) lines.push(`- Filtered by county: ${currentView.filters.county}`);
+      if (currentView.filters?.risk) lines.push(`- Filtered by risk: ${currentView.filters.risk}`);
+      if (flaggedHospitals.size > 0) {
+        lines.push(`- Flagged hospitals (${flaggedHospitals.size}): ${[...flaggedHospitals.keys()].join(', ')}`);
+      }
+      return lines.join('\n');
+    }
 
     function getClaudeTools() {
       return getActiveTools().map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
@@ -2600,7 +2340,6 @@ Rules:
 
     // Chat reset
     chatReset.addEventListener('click', () => {
-      currentExchangeEl = null;
       conversationMessages = [];
       chatMessages.innerHTML = '';
       renderQuickActions();
@@ -2635,7 +2374,6 @@ Rules:
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
-      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = `msg msg-${type}`;
       if (type === 'assistant') {
@@ -2643,7 +2381,7 @@ Rules:
       } else {
         el.textContent = content;
       }
-      target.appendChild(el);
+      chatMessages.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
       return el;
     }
@@ -2652,7 +2390,6 @@ Rules:
       const empty = chatMessages.querySelector('.chat-empty');
       if (empty) empty.remove();
 
-      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = 'msg-tool-card' + (isError ? ' error' : '');
 
@@ -2700,16 +2437,22 @@ Rules:
         el.classList.toggle('expanded');
       });
 
-      target.appendChild(el);
+      chatMessages.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    function appendDivider(text) {
+      const el = document.createElement('div');
+      el.className = 'chat-divider';
+      el.textContent = text;
+      chatMessages.appendChild(el);
+    }
+
     function showSpinner() {
-      const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
       el.className = 'chat-spinner';
       el.id = 'chat-spinner';
-      target.appendChild(el);
+      chatMessages.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
@@ -2718,121 +2461,13 @@ Rules:
       if (s) s.remove();
     }
 
-    function getOrCreateHistory() {
-      let wrapper = chatMessages.querySelector('.exchange-history');
-      if (wrapper) return wrapper;
-
-      wrapper = document.createElement('div');
-      wrapper.className = 'exchange-history';
-
-      const toggle = document.createElement('button');
-      toggle.className = 'exchange-history-toggle';
-      const chevron = document.createElement('span');
-      chevron.className = 'chevron';
-      chevron.textContent = '\u25BE';
-      const countSpan = document.createElement('span');
-      countSpan.className = 'exchange-history-count';
-      toggle.append(chevron, ' ', countSpan);
-      toggle.addEventListener('click', () => {
-        wrapper.classList.toggle('expanded');
-      });
-
-      const list = document.createElement('div');
-      list.className = 'exchange-history-list';
-
-      wrapper.append(toggle, list);
-      chatMessages.prepend(wrapper);
-      return wrapper;
-    }
-
-    function updateHistoryCount() {
-      const wrapper = chatMessages.querySelector('.exchange-history');
-      if (!wrapper) return;
-      const count = wrapper.querySelector('.exchange-history-list').children.length;
-      wrapper.querySelector('.exchange-history-count').textContent = count + ' previous';
-    }
-
-    function collapseCurrentExchange() {
-      if (!currentExchangeEl) return;
-
-      const userMsg = currentExchangeEl.querySelector('.msg-user');
-      const userText = userMsg ? userMsg.textContent.slice(0, 60) + (userMsg.textContent.length > 60 ? '...' : '') : 'Message';
-
-      const toolCount = currentExchangeEl.querySelectorAll('.msg-tool-card').length;
-
-      const followups = currentExchangeEl.querySelector('.followup-suggestions');
-      if (followups) followups.remove();
-
-      const body = document.createElement('div');
-      body.className = 'exchange-body';
-      while (currentExchangeEl.firstChild) body.appendChild(currentExchangeEl.firstChild);
-
-      const summary = document.createElement('button');
-      summary.className = 'exchange-summary';
-      summary.setAttribute('aria-expanded', 'false');
-
-      const textSpan = document.createElement('span');
-      textSpan.className = 'exchange-summary-text';
-      textSpan.textContent = userText;
-      summary.appendChild(textSpan);
-
-      if (toolCount > 0) {
-        const badge = document.createElement('span');
-        badge.className = 'exchange-summary-tools';
-        badge.textContent = toolCount === 1 ? '1 tool' : `${toolCount} tools`;
-        summary.appendChild(badge);
-      }
-
-      if (currentExchangeEl._restoreTool) {
-        const restore = document.createElement('button');
-        restore.className = 'exchange-summary-restore';
-        restore.textContent = 'Restore view';
-        const { name: rName, input: rInput } = currentExchangeEl._restoreTool;
-        restore.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const def = getActiveTools().find(t => t.name === rName);
-          if (def) def.exec(rInput, { requestUserInteraction: (cb) => cb() });
-        });
-        summary.appendChild(restore);
-      }
-
-      const chevron = document.createElement('span');
-      chevron.className = 'exchange-summary-chevron';
-      chevron.textContent = '\u25BE';
-      summary.appendChild(chevron);
-
-      currentExchangeEl.appendChild(summary);
-      currentExchangeEl.appendChild(body);
-      currentExchangeEl.classList.add('collapsed');
-      currentExchangeEl.classList.remove('current');
-
-      summary.addEventListener('click', () => {
-        const exchange = summary.closest('.exchange');
-        exchange.classList.toggle('collapsed');
-        summary.setAttribute('aria-expanded', !exchange.classList.contains('collapsed'));
-      });
-
-      const history = getOrCreateHistory();
-      history.querySelector('.exchange-history-list').appendChild(currentExchangeEl);
-      updateHistoryCount();
-
-      currentExchangeEl = null;
-    }
-
     function setInputEnabled(enabled) {
       chatBusy = !enabled;
       chatInput.disabled = !enabled;
-      if (enabled) {
-        chatSend.disabled = false;
-        chatSend.classList.remove('stop');
-        chatSend.textContent = '\u2191';
-        chatSend.setAttribute('aria-label', 'Send message');
-      } else {
-        chatSend.disabled = false;
-        chatSend.classList.add('stop');
-        chatSend.textContent = '\u25A0';
-        chatSend.setAttribute('aria-label', 'Stop generation');
-      }
+      chatSend.disabled = false;
+      chatSend.classList.toggle('stop', !enabled);
+      chatSend.textContent = enabled ? '\u2191' : '\u25A0';
+      chatSend.setAttribute('aria-label', enabled ? 'Send message' : 'Stop generation');
     }
 
     async function sendMessage(opts = {}) {
@@ -2850,14 +2485,7 @@ Rules:
       if (quickActions) quickActions.remove();
       clearFollowupSuggestions();
 
-      collapseCurrentExchange();
-      const exchange = document.createElement('div');
-      exchange.className = 'exchange current';
-      chatMessages.appendChild(exchange);
-      currentExchangeEl = exchange;
-
       appendMessage('user', displayText);
-      exchange.scrollIntoView({ block: 'start' });
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
@@ -2888,7 +2516,7 @@ Rules:
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+          system: getSystemPrompt(),
           messages,
           tools: getClaudeTools(),
           stream: true
@@ -2978,8 +2606,7 @@ Rules:
                         mdRenderPending = 0;
                         if (currentTextEl) {
                           currentTextEl.innerHTML = renderMarkdown(currentTextContent);
-                          chatMessages.scrollTop = chatMessages.scrollHeight;
-                        }
+                                            }
                       });
                     }
                   }
@@ -3053,9 +2680,7 @@ Rules:
             appendToolMsg(tu.name, tu.input, result.summary);
             if (result.displayed) {
               scrollDisplayIntoView();
-              if (def.readOnlyHint && currentExchangeEl) {
-                currentExchangeEl._restoreTool = { name: tu.name, input: tu.input };
-              }
+              appendDivider(getPageContext().join(' \u00b7 '));
             }
           } else {
             result = { error: `Unknown tool: ${tu.name}` };
