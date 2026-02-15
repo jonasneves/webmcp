@@ -1,0 +1,2575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>WebMCP PoC — Earthquake Monitor</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-alt: #334155;
+      --border: #475569;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: #0c4a6e;
+      --risk-low: #22c55e;
+      --risk-med: #f59e0b;
+      --risk-high: #ef4444;
+      --flag: #f59e0b;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+      --transition: 150ms ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      height: 100dvh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .main-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    /* Tools panel */
+    .tools-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 300ms ease, border-color 300ms ease;
+      border-bottom: 1px solid transparent;
+    }
+
+    .tools-panel[data-collapsed="false"] {
+      max-height: 600px;
+      border-bottom-color: var(--border);
+    }
+
+    .tools-panel-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 16px 24px;
+    }
+
+    .tools-toggle {
+      min-height: 44px;
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color var(--transition);
+    }
+
+    .tools-toggle:hover { color: var(--text); }
+
+    .tool-item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      flex: 1 1 280px;
+      max-width: 400px;
+    }
+
+    .tool-item-name {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .tool-item-badges {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .annotation-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 100px;
+    }
+
+    .annotation-badge.read-only { background: #052e16; color: var(--risk-low); }
+    .annotation-badge.idempotent { background: #0c4a6e; color: var(--accent); }
+    .annotation-badge.destructive { background: #450a0a; color: var(--risk-high); }
+    .annotation-badge.closed-world { background: #451a03; color: var(--risk-med); }
+
+    .tool-item-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .tool-item.new {
+      border: 1px solid var(--accent);
+    }
+
+    .tool-item-params {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 4px;
+      font-family: var(--mono);
+    }
+
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; width: 100%; }
+    }
+
+    main { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      padding-right: 32px;
+    }
+
+    .controls::-webkit-scrollbar { display: none; }
+
+    .controls.at-end {
+      mask-image: none;
+      -webkit-mask-image: none;
+      padding-right: 0;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+    }
+
+    .chip:hover { background: var(--surface-alt); color: var(--text); }
+    .chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+    .chip-separator {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      align-self: center;
+      flex-shrink: 0;
+    }
+
+    #display { min-height: 200px; }
+
+    .empty-state {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Loading skeleton */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .skeleton-row {
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%);
+      background-size: 800px 44px;
+      animation: shimmer 1.5s infinite linear;
+    }
+
+    /* Table view */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .quake-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 640px;
+    }
+
+    .quake-table th,
+    .compare-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .quake-table th {
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    .quake-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--surface-alt);
+      white-space: nowrap;
+    }
+
+    .quake-table tbody tr {
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .quake-table tbody tr:hover { background: var(--surface); }
+    .quake-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+    .quake-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+    }
+
+    .risk-badge.low { background: #052e16; color: var(--risk-low); }
+    .risk-badge.medium { background: #451a03; color: var(--risk-med); }
+    .risk-badge.high { background: #450a0a; color: var(--risk-high); }
+
+    /* Flag dot */
+    .flag-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--flag);
+      flex-shrink: 0;
+    }
+
+    .flag-note {
+      padding: 8px 24px 0;
+      font-size: 13px;
+      color: var(--flag);
+      font-style: italic;
+    }
+
+    /* Chart view */
+    .chart-container { max-width: 600px; }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 50px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .chart-label {
+      font-size: 14px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .chart-bar-track {
+      height: 32px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .chart-bar-fill {
+      height: 100%;
+      border-radius: var(--radius);
+      transition: width 400ms ease;
+    }
+
+    .chart-bar-fill.low { background: var(--risk-low); }
+    .chart-bar-fill.medium { background: var(--risk-med); }
+    .chart-bar-fill.high { background: var(--risk-high); }
+
+    .chart-label.low { color: var(--risk-low); }
+    .chart-label.medium { color: var(--risk-med); }
+    .chart-label.high { color: var(--risk-high); }
+
+    .chart-value {
+      font-size: 14px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Comparison view */
+    .compare-table {
+      width: 100%;
+      max-width: 640px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      padding: 10px 16px;
+    }
+
+    .compare-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .compare-metric {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .compare-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    /* Detail view */
+    .detail-card {
+      max-width: 640px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .detail-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .detail-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .detail-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--surface-alt);
+    }
+
+    .detail-cell {
+      padding: 16px 24px;
+      background: var(--surface);
+    }
+
+    .detail-cell-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-cell-value {
+      font-size: 18px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .color-risk-low { color: var(--risk-low); }
+    .color-risk-medium { color: var(--risk-med); }
+    .color-risk-high { color: var(--risk-high); }
+
+    .detail-suffix {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .view-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .back-btn:hover { background: var(--accent-dim); }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+    }
+
+    .summary-card-value {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+
+    .summary-card-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .summary-card-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Chat panel */
+    .chat-panel {
+      width: 380px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .chat-action-btn {
+      min-width: 32px;
+      min-height: 32px;
+      padding: 0 8px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: color var(--transition);
+    }
+
+    .chat-action-btn:hover { color: var(--text); }
+
+    .api-key-bar {
+      display: none;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .api-key-bar.visible {
+      display: flex;
+    }
+
+    .api-key-bar input {
+      flex: 1;
+      min-height: 36px;
+      padding: 0 12px;
+      font-size: 13px;
+      font-family: var(--mono);
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .api-key-bar input::placeholder { color: var(--text-muted); }
+    .api-key-bar input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    .api-key-toggle {
+      min-width: 44px;
+      min-height: 36px;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .api-key-toggle:hover { color: var(--text); }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .chat-messages > :first-child { margin-top: auto; }
+
+    .chat-empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 24px 16px;
+      line-height: 1.6;
+    }
+
+    .msg {
+      padding: 10px 14px;
+      border-radius: var(--radius-lg);
+      font-size: 13px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .msg-user {
+      align-self: flex-end;
+      max-width: 85%;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-assistant {
+      background: var(--surface-alt);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-assistant p { margin: 0; }
+    .msg-assistant p + p { margin-top: 8px; }
+    .msg-assistant ul, .msg-assistant ol { margin: 4px 0; padding-left: 20px; }
+    .msg-assistant li + li { margin-top: 2px; }
+    .msg-assistant strong { color: var(--text); }
+    .msg-assistant code {
+      font-family: var(--mono);
+      font-size: 0.9em;
+      padding: 1px 5px;
+      background: var(--bg);
+      border-radius: 4px;
+    }
+    .msg-assistant pre {
+      margin: 6px 0;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: var(--radius);
+      overflow-x: auto;
+    }
+    .msg-assistant pre code { padding: 0; background: none; }
+
+    .msg-tool-name { color: var(--accent); font-weight: 600; }
+
+    /* Chat divider */
+    .chat-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 4px 0;
+    }
+
+    .chat-divider::before,
+    .chat-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--surface-alt);
+    }
+
+    /* Tool call cards */
+    .msg-tool-card {
+      align-self: stretch;
+      background: var(--surface);
+      border: 1px solid var(--surface-alt);
+      border-radius: var(--radius);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow: hidden;
+    }
+
+    .msg-tool-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .msg-tool-header:hover { background: var(--surface-alt); }
+
+    .msg-tool-status { flex-shrink: 0; }
+    .msg-tool-status.success { color: var(--risk-low); }
+    .msg-tool-status.error { color: var(--risk-high); }
+
+    .msg-tool-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .msg-tool-chevron {
+      flex-shrink: 0;
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform var(--transition);
+    }
+
+    .msg-tool-card.expanded .msg-tool-chevron { transform: rotate(180deg); }
+
+    .msg-tool-body {
+      display: none;
+      padding: 0 12px 8px;
+      font-size: 11px;
+      line-height: 1.6;
+      border-top: 1px solid var(--surface-alt);
+    }
+
+    .msg-tool-card.expanded .msg-tool-body { display: block; padding-top: 8px; }
+
+    .msg-tool-args {
+      color: var(--text-muted);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .msg-tool-result {
+      color: var(--risk-low);
+      margin-top: 4px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .msg-tool-card.error .msg-tool-result { color: var(--risk-high); }
+
+    .msg-error {
+      padding: 8px 14px;
+      font-size: 12px;
+      color: var(--risk-high);
+      background: #450a0a;
+      border-radius: var(--radius);
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--surface-alt);
+    }
+
+    .chat-input-area textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 120px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      resize: none;
+      line-height: 1.4;
+    }
+
+    .chat-input-area textarea::placeholder { color: var(--text-muted); }
+    .chat-input-area textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    .chat-send {
+      min-width: 44px;
+      min-height: 44px;
+      font-size: 18px;
+      font-family: var(--font);
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity var(--transition);
+    }
+
+    .chat-send:disabled { opacity: 0.4; cursor: default; }
+    .chat-send:not(:disabled):hover { opacity: 0.85; }
+
+    .chat-send.stop {
+      background: var(--risk-high);
+      font-size: 14px;
+    }
+
+    @keyframes chat-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .chat-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--surface-alt);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: chat-spin 0.6s linear infinite;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .summary-count {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Suggestion chips (quick actions + follow-ups) */
+    .chat-quick-actions,
+    .followup-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chat-quick-actions { padding: 4px 0; }
+
+    .suggestion-chip {
+      min-height: 36px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: var(--font);
+      background: none;
+      border: 1px solid var(--surface-alt);
+      border-radius: 100px;
+      cursor: pointer;
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .quick-action-chip { color: var(--accent); text-align: left; }
+    .quick-action-chip:hover { color: var(--text); border-color: var(--accent); }
+
+    .followup-chip { color: var(--text-muted); }
+    .followup-chip:hover { color: var(--text); border-color: var(--border); }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+    }
+
+    @keyframes toast-slide-up {
+      from { transform: translateY(16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 52px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: toast-slide-up 200ms ease;
+      white-space: nowrap;
+    }
+
+    .toast-message {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .toast-undo {
+      min-height: 44px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .toast-undo:hover { background: var(--accent-dim); }
+
+    @media (max-width: 600px) {
+      .toast-container {
+        left: 16px;
+        right: 16px;
+        transform: none;
+      }
+      .toast { width: 100%; }
+    }
+
+    /* Dialogs */
+    dialog {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+      color: var(--text);
+    }
+
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+    .dialog-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .dialog-tool {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .dialog-args {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--bg);
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      word-break: break-all;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .dialog-actions button {
+      min-height: 44px;
+      padding: 0 20px;
+      font-size: 14px;
+      font-family: var(--font);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+    }
+
+    .btn-cancel:hover { color: var(--text); border-color: var(--text-muted); }
+
+    .btn-confirm {
+      color: var(--bg);
+      background: var(--accent);
+      border: none;
+    }
+
+    .btn-confirm:hover { opacity: 0.85; }
+
+    .dialog-input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+    }
+
+    .dialog-input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+      border-color: transparent;
+    }
+  </style>
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+</head>
+<body>
+  <div class="main-column">
+    <header>
+      <div class="header-left">
+        <h1>WebMCP PoC</h1>
+        <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 9 tools</button>
+      </div>
+    </header>
+
+    <div class="tools-panel" id="tools-panel" data-collapsed="true">
+      <div class="tools-panel-inner" id="tools-panel-inner"></div>
+    </div>
+
+    <main>
+      <nav class="controls" aria-label="Filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="mag5">Magnitude 5+</button>
+        <button class="chip" data-filter="mag3">Magnitude 3+</button>
+        <div class="chip-separator"></div>
+        <button class="chip" data-view="chart">Magnitude Chart</button>
+        <button class="chip" data-filter="felt">Felt Earthquakes</button>
+        <button class="chip" data-filter="recent">Recent 24h</button>
+      </nav>
+
+      <div id="display"></div>
+    </main>
+  </div>
+
+  <aside class="chat-panel">
+    <div class="api-key-bar">
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
+      <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
+    </div>
+    <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
+    <div class="chat-input-area">
+      <button class="chat-action-btn" id="key-edit" aria-label="API key" title="API key">&#9919;</button>
+      <textarea id="chat-input" placeholder="Ask about earthquakes..." rows="1" aria-label="Chat message"></textarea>
+      <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
+      <button class="chat-action-btn" id="chat-reset" aria-label="Clear chat" title="Clear chat">&times;</button>
+    </div>
+  </aside>
+
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <p class="dialog-title" id="confirm-title">Confirm action</p>
+      <p class="dialog-tool" id="confirm-tool"></p>
+      <p class="dialog-args" id="confirm-args"></p>
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Cancel</button>
+        <button class="btn-confirm" value="confirm">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="prompt-dialog" aria-labelledby="prompt-title">
+    <form method="dialog">
+      <p class="dialog-title" id="prompt-title"></p>
+      <input type="text" class="dialog-input" id="prompt-input" autocomplete="off">
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Skip</button>
+        <button class="btn-confirm" value="confirm">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    marked.use({ gfm: true, breaks: true });
+
+    /* ── Dataset ── */
+
+    let EARTHQUAKES = [];
+
+    /* ── State ── */
+
+    const flaggedQuakes = new Map();
+    let currentView = { type: 'table', data: null, label: null, filters: null };
+    let currentToastTimeout = null;
+    let previousToolNames = new Set();
+    let toolsInitialized = false;
+
+    /* ── Constants ── */
+
+    const QUICK_ACTIONS = [
+      'Show strong earthquakes (5+)',
+      'Show magnitude distribution',
+      'What happened in the last 24 hours?',
+      'Summarize recent seismic activity',
+      'Show felt earthquakes'
+    ];
+
+    /* ── Utilities ── */
+
+    function extractRegion(place) {
+      if (!place || !place.includes(',')) return 'Other';
+      return place.split(',').pop().trim();
+    }
+
+    function severityTier(mag) {
+      if (mag >= 7) return 'major';
+      if (mag >= 5) return 'strong';
+      if (mag >= 3) return 'moderate';
+      return 'minor';
+    }
+
+    function severityBadgeClass(tier) {
+      if (tier === 'minor') return 'low';
+      if (tier === 'moderate') return 'medium';
+      return 'high';
+    }
+
+    function timeAgo(timestamp) {
+      const diff = Date.now() - timestamp;
+      const seconds = Math.floor(diff / 1000);
+      if (seconds < 60) return `${seconds}s ago`;
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    }
+
+    function fmt(n, decimals = 1) {
+      return n.toFixed(decimals);
+    }
+
+    function matchPlace(quake, query) {
+      return quake.place.toLowerCase().includes(query.toLowerCase());
+    }
+
+    function filterData({ min_magnitude, search, time_range, felt } = {}) {
+      const now = Date.now();
+      return EARTHQUAKES.filter(q => {
+        if (min_magnitude != null && q.magnitude < min_magnitude) return false;
+        if (search && !matchPlace(q, search)) return false;
+        if (time_range === '24h' && (now - q.time) > 86400000) return false;
+        if (time_range === '7d' && (now - q.time) > 604800000) return false;
+        if (time_range === '30d' && (now - q.time) > 2592000000) return false;
+        if (felt && q.felt <= 0) return false;
+        return true;
+      });
+    }
+
+    function scrollDisplayIntoView() {
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        display.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function refreshCurrentView() {
+      if (currentView.type === 'table') {
+        renderTable(currentView.data || EARTHQUAKES, currentView.label, currentView.filters);
+      } else if (currentView.type === 'chart') {
+        renderChart(currentView.data || EARTHQUAKES, currentView.label, currentView.filters);
+      } else if (currentView.type === 'detail' && currentView.data) {
+        renderDetail(currentView.data);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        renderComparison(currentView.data[0], currentView.data[1]);
+      }
+    }
+
+    /* ── URL State ── */
+
+    function encodeViewToHash() {
+      const params = new URLSearchParams();
+      params.set('view', currentView.type);
+      const f = currentView.filters || {};
+
+      if (currentView.type === 'table') {
+        if (f.min_magnitude) params.set('min_mag', f.min_magnitude);
+        if (f.time_range) params.set('time', f.time_range);
+        if (f.felt) params.set('felt', '1');
+      } else if (currentView.type === 'detail' && currentView.data) {
+        params.set('id', currentView.data.id);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        params.set('q1', currentView.data[0].id);
+        params.set('q2', currentView.data[1].id);
+      }
+
+      history.replaceState(null, '', '#' + params.toString());
+    }
+
+    function decodeHashToView() {
+      const hash = location.hash.slice(1);
+      if (!hash) return false;
+
+      const params = new URLSearchParams(hash);
+      const view = params.get('view');
+
+      if (view === 'table') {
+        const min_magnitude = params.get('min_mag') ? +params.get('min_mag') : null;
+        const time_range = params.get('time');
+        const felt = params.get('felt') === '1';
+        const filters = {};
+        if (min_magnitude) filters.min_magnitude = min_magnitude;
+        if (time_range) filters.time_range = time_range;
+        if (felt) filters.felt = true;
+        const filtered = filterData(filters);
+        const parts = [];
+        if (min_magnitude) parts.push(`magnitude ${min_magnitude}+`);
+        if (time_range) parts.push(`last ${time_range}`);
+        if (felt) parts.push('felt');
+        renderTable(filtered, parts.length ? parts.join(', ') : null, filters);
+        return true;
+      }
+
+      if (view === 'chart') {
+        renderChart(EARTHQUAKES);
+        return true;
+      }
+
+      if (view === 'detail') {
+        const id = params.get('id');
+        const q = EARTHQUAKES.find(q => q.id === id);
+        if (q) { renderDetail(q); return true; }
+      }
+
+      if (view === 'comparison') {
+        const q1 = EARTHQUAKES.find(q => q.id === params.get('q1'));
+        const q2 = EARTHQUAKES.find(q => q.id === params.get('q2'));
+        if (q1 && q2) { renderComparison(q1, q2); return true; }
+      }
+
+      return false;
+    }
+
+    window.addEventListener('hashchange', () => {
+      if (EARTHQUAKES.length) decodeHashToView();
+    });
+
+    /* ── Rendering ── */
+
+    const display = document.getElementById('display');
+
+    function renderSkeleton() {
+      display.innerHTML = `
+        <div class="loading-skeleton">
+          ${Array.from({ length: 8 }, (_, i) =>
+            `<div class="skeleton-row" style="animation-delay: ${i * 80}ms"></div>`
+          ).join('')}
+        </div>
+      `;
+    }
+
+    function renderTable(quakes, label, filters) {
+      currentView = { type: 'table', data: quakes, label, filters };
+      const summary = label || `${quakes.length} earthquakes`;
+
+      if (quakes.length === 0) {
+        display.innerHTML = `<p class="empty-state">No earthquakes match the current filters.</p>`;
+        encodeViewToHash();
+        syncTools();
+        return;
+      }
+
+      display.innerHTML = `
+        <div class="summary-row">
+          <p class="view-label">Showing ${summary}</p>
+          <span class="summary-count">${quakes.length} result${quakes.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="table-scroll">
+        <table class="quake-table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Magnitude</th>
+              <th>Depth (km)</th>
+              <th>Time</th>
+              <th>Felt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${quakes.map(q => {
+              const isFlagged = flaggedQuakes.has(q.id);
+              const tier = severityTier(q.magnitude);
+              const badgeCls = severityBadgeClass(tier);
+              return `
+              <tr tabindex="0" data-id="${q.id}">
+                <td><span class="quake-name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${q.place}</span></td>
+                <td><span class="risk-badge ${badgeCls}">${fmt(q.magnitude)}</span></td>
+                <td>${fmt(q.depth)}</td>
+                <td>${timeAgo(q.time)}</td>
+                <td>${q.felt || '\u2014'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderChart(quakes, label, filters) {
+      currentView = { type: 'chart', data: quakes, label, filters };
+      const tiers = { minor: 0, moderate: 0, strong: 0, major: 0 };
+      quakes.forEach(q => tiers[severityTier(q.magnitude)]++);
+      const max = Math.max(tiers.minor, tiers.moderate, tiers.strong, tiers.major, 1);
+      const title = label || 'all earthquakes';
+
+      display.innerHTML = `
+        <p class="view-label">Magnitude distribution across ${title} (${quakes.length} total)</p>
+        <div class="chart-container" role="img" aria-label="Bar chart: ${tiers.minor} minor, ${tiers.moderate} moderate, ${tiers.strong} strong, ${tiers.major} major earthquakes across ${title}">
+          <div class="chart-row">
+            <span class="chart-label low">Minor</span>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill low" style="width: ${(tiers.minor / max) * 100}%"></div>
+            </div>
+            <span class="chart-value">${tiers.minor}</span>
+          </div>
+          <div class="chart-row">
+            <span class="chart-label medium">Moderate</span>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill medium" style="width: ${(tiers.moderate / max) * 100}%"></div>
+            </div>
+            <span class="chart-value">${tiers.moderate}</span>
+          </div>
+          <div class="chart-row">
+            <span class="chart-label high">Strong</span>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill high" style="width: ${(tiers.strong / max) * 100}%"></div>
+            </div>
+            <span class="chart-value">${tiers.strong}</span>
+          </div>
+          <div class="chart-row">
+            <span class="chart-label high">Major</span>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill high" style="width: ${(tiers.major / max) * 100}%"></div>
+            </div>
+            <span class="chart-value">${tiers.major}</span>
+          </div>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderDetail(quake) {
+      const q = quake;
+      const tier = severityTier(q.magnitude);
+      const badgeCls = severityBadgeClass(tier);
+      const flag = flaggedQuakes.get(q.id);
+      currentView = { type: 'detail', data: q, label: null, filters: null };
+
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <div class="detail-card">
+          <div class="detail-header">
+            <h2>${flag ? '<span class="flag-dot"></span>' : ''}${q.place}</h2>
+            <p class="detail-meta">${q.type} &middot; ${q.status} &middot; ${new Date(q.time).toLocaleString()}</p>
+          </div>
+          ${flag ? `<p class="flag-note">${flag.note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+          <div class="detail-grid">
+            <div class="detail-cell">
+              <div class="detail-cell-label">Magnitude</div>
+              <div class="detail-cell-value color-risk-${badgeCls}">${fmt(q.magnitude)}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Depth</div>
+              <div class="detail-cell-value">${fmt(q.depth)}<span class="detail-suffix"> km</span></div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Significance</div>
+              <div class="detail-cell-value">${q.significance}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Felt Reports</div>
+              <div class="detail-cell-value">${q.felt || 0}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Tsunami Warning</div>
+              <div class="detail-cell-value ${q.tsunami ? 'color-risk-high' : 'color-risk-low'}">${q.tsunami ? 'Yes' : 'No'}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Coordinates</div>
+              <div class="detail-cell-value">${fmt(q.lat, 3)}, ${fmt(q.lon, 3)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderComparison(q1, q2) {
+      currentView = { type: 'comparison', data: [q1, q2], label: null, filters: null };
+
+      const metrics = [
+        { label: 'Magnitude', key: 'magnitude', format: v => fmt(v) },
+        { label: 'Depth (km)', key: 'depth', format: v => fmt(v) },
+        { label: 'Significance', key: 'significance', format: v => v },
+        { label: 'Felt Reports', key: 'felt', format: v => v || 0 },
+        { label: 'Tsunami Warning', key: 'tsunami', format: v => v ? 'Yes' : 'No' },
+      ];
+
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">Comparing two earthquakes</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>${q1.place}</th>
+              <th>${q2.place}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${metrics.map(m => `
+              <tr>
+                <td class="compare-metric">${m.label}</td>
+                <td class="compare-value">${m.format(q1[m.key])}</td>
+                <td class="compare-value">${m.format(q2[m.key])}</td>
+              </tr>`
+            ).join('')}
+          </tbody>
+        </table>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    /* ── Display event delegation ── */
+
+    display.addEventListener('click', (e) => {
+      const row = e.target.closest('tr[data-id]');
+      if (row) { showDetail(row.dataset.id); return; }
+      const backBtn = e.target.closest('.back-btn');
+      if (backBtn) renderTable(EARTHQUAKES);
+    });
+
+    display.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const row = e.target.closest('tr[data-id]');
+      if (row) showDetail(row.dataset.id);
+    });
+
+    function showDetail(id) {
+      const q = EARTHQUAKES.find(q => q.id === id);
+      if (!q) return;
+      renderDetail(q);
+    }
+
+    /* ── Toast ── */
+
+    function showToast(message, onUndo) {
+      dismissToast();
+
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+
+      const msgSpan = document.createElement('span');
+      msgSpan.className = 'toast-message';
+      msgSpan.textContent = message;
+      toast.appendChild(msgSpan);
+
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'toast-undo';
+      undoBtn.textContent = 'Undo';
+      undoBtn.addEventListener('click', () => {
+        dismissToast();
+        onUndo();
+      });
+      toast.appendChild(undoBtn);
+
+      container.appendChild(toast);
+      currentToastTimeout = setTimeout(dismissToast, 5000);
+    }
+
+    function dismissToast() {
+      if (currentToastTimeout) {
+        clearTimeout(currentToastTimeout);
+        currentToastTimeout = null;
+      }
+      document.getElementById('toast-container').innerHTML = '';
+    }
+
+    /* ── Persistence ── */
+
+    function persistFlags() {
+      const data = [...flaggedQuakes.entries()].map(([id, flag]) => ({ id, ...flag }));
+      localStorage.setItem('webmcp-eq-flags', JSON.stringify(data));
+    }
+
+    function loadFlags() {
+      try {
+        const data = JSON.parse(localStorage.getItem('webmcp-eq-flags') || '[]');
+        data.forEach(({ id, ...flag }) => flaggedQuakes.set(id, flag));
+      } catch {}
+    }
+
+    /* ── Confirmation dialog ── */
+
+    function showConfirmDialog(toolName, args) {
+      const dialog = document.getElementById('confirm-dialog');
+      document.getElementById('confirm-tool').textContent = toolName;
+      document.getElementById('confirm-args').textContent = JSON.stringify(args, null, 2);
+      dialog.returnValue = '';
+      dialog.showModal();
+      return new Promise(resolve => {
+        dialog.addEventListener('close', () => {
+          resolve(dialog.returnValue === 'confirm');
+        }, { once: true });
+      });
+    }
+
+    function showPromptDialog(message) {
+      const dialog = document.getElementById('prompt-dialog');
+      const input = document.getElementById('prompt-input');
+      document.getElementById('prompt-title').textContent = message;
+      input.value = '';
+      dialog.returnValue = '';
+      dialog.showModal();
+      input.focus();
+      function onEnter(e) {
+        if (e.key === 'Enter') { e.preventDefault(); dialog.close('confirm'); }
+      }
+      input.addEventListener('keydown', onEnter);
+      return new Promise(resolve => {
+        dialog.addEventListener('close', () => {
+          input.removeEventListener('keydown', onEnter);
+          resolve(dialog.returnValue === 'confirm' ? (input.value || null) : null);
+        }, { once: true });
+      });
+    }
+
+    /* ── Keyboard shortcuts ── */
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.matches('input, textarea')) {
+        chatInput.focus();
+      }
+      if (e.key === 'Escape') {
+        const panel = document.getElementById('tools-panel');
+        if (panel.dataset.collapsed === 'false') { toggleToolsPanel(); return; }
+        dismissToast();
+      }
+    });
+
+    /* ── Controls scroll fade ── */
+
+    const controlsNav = document.querySelector('.controls');
+    function updateScrollFade() {
+      const atEnd = controlsNav.scrollLeft + controlsNav.clientWidth >= controlsNav.scrollWidth - 4;
+      controlsNav.classList.toggle('at-end', atEnd);
+    }
+    controlsNav.addEventListener('scroll', updateScrollFade, { passive: true });
+    updateScrollFade();
+
+    /* ── Quick actions ── */
+
+    function renderQuickActions() {
+      const container = document.createElement('div');
+      container.className = 'chat-quick-actions';
+      container.id = 'quick-actions';
+
+      QUICK_ACTIONS.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-chip quick-action-chip';
+        btn.textContent = prompt;
+        btn.addEventListener('click', () => {
+          sendMessage({ prompt });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+    }
+
+    /* ── Follow-up suggestions ── */
+
+    function getFollowupSuggestions() {
+      const suggestions = [];
+
+      switch (currentView.type) {
+        case 'table': {
+          suggestions.push('Show magnitude chart');
+          const strong = (currentView.data || EARTHQUAKES)
+            .filter(q => q.magnitude >= 5)
+            .sort((a, b) => b.magnitude - a.magnitude);
+          if (strong.length >= 2) {
+            suggestions.push(`Compare ${strong[0].place} and ${strong[1].place}`);
+          }
+          break;
+        }
+        case 'chart':
+          suggestions.push('Show table view');
+          suggestions.push('Filter to magnitude 5+');
+          break;
+        case 'detail': {
+          const q = currentView.data;
+          suggestions.push(`Flag this earthquake`);
+          const similar = EARTHQUAKES
+            .filter(other => other.id !== q.id)
+            .sort((a, b) =>
+              Math.abs(a.magnitude - q.magnitude) - Math.abs(b.magnitude - q.magnitude)
+            );
+          if (similar.length) {
+            suggestions.push(`Compare with ${similar[0].place}`);
+          }
+          break;
+        }
+        case 'comparison': {
+          const [q1, q2] = currentView.data;
+          const stronger = q1.magnitude > q2.magnitude ? q1 : q2;
+          suggestions.push(`Show detail for ${stronger.place}`);
+          suggestions.push(`Flag ${stronger.place}`);
+          break;
+        }
+      }
+
+      return suggestions.slice(0, 2);
+    }
+
+    function renderFollowupSuggestions() {
+      clearFollowupSuggestions();
+      const suggestions = getFollowupSuggestions();
+      if (!suggestions.length) return;
+
+      const container = document.createElement('div');
+      container.className = 'followup-suggestions';
+      container.id = 'followup-suggestions';
+
+      suggestions.forEach(text => {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-chip followup-chip';
+        btn.textContent = text;
+        btn.addEventListener('click', () => {
+          sendMessage({ prompt: text });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+    }
+
+    function clearFollowupSuggestions() {
+      const existing = document.getElementById('followup-suggestions');
+      if (existing) existing.remove();
+    }
+
+    /* ── Dynamic tools ── */
+
+    function getContextualTools() {
+      const tools = [];
+      if (flaggedQuakes.size > 0) {
+        tools.push({
+          name: 'review_flags',
+          title: 'Review Flags',
+          description: `Show all ${flaggedQuakes.size} currently flagged earthquakes with their notes and magnitude.`,
+          readOnlyHint: true,
+          idempotentHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+          schema: { type: 'object', properties: {} },
+          exec: async () => {
+            const flagged = [...flaggedQuakes.keys()]
+              .map(id => EARTHQUAKES.find(q => q.id === id))
+              .filter(Boolean);
+            renderTable(flagged, 'flagged earthquakes');
+            return {
+              displayed: true,
+              count: flagged.length,
+              summary: `Showing ${flagged.length} flagged earthquake(s).`,
+              earthquakes: flagged.map(q => ({
+                place: q.place,
+                note: flaggedQuakes.get(q.id).note,
+                magnitude: q.magnitude
+              }))
+            };
+          }
+        });
+        tools.push({
+          name: 'clear_all_flags',
+          title: 'Clear All Flags',
+          description: `Remove all ${flaggedQuakes.size} earthquake flags. This action cannot be undone.`,
+          readOnlyHint: false,
+          idempotentHint: true,
+          destructiveHint: true,
+          openWorldHint: false,
+          schema: { type: 'object', properties: {} },
+          exec: async (input, client) => {
+            const count = flaggedQuakes.size;
+            const confirmed = await client.requestUserInteraction(() =>
+              showConfirmDialog(`Clear all ${count} flags`, { flags: [...flaggedQuakes.keys()] })
+            );
+            if (!confirmed) return { summary: 'User cancelled.' };
+            flaggedQuakes.clear();
+            persistFlags();
+            refreshCurrentView();
+            syncTools();
+            return { summary: `Cleared ${count} flag(s).` };
+          }
+        });
+      }
+      return tools;
+    }
+
+    function getActiveTools() {
+      const tools = TOOL_DEFS.map(t => {
+        if (t.name === 'compare_earthquakes') {
+          const visible = (currentView.type === 'table' && currentView.data) ? currentView.data : EARTHQUAKES;
+          const places = visible.slice(0, 50).map(q => q.place);
+          return {
+            ...t,
+            schema: {
+              ...t.schema,
+              properties: {
+                earthquake1: { ...t.schema.properties.earthquake1, enum: places },
+                earthquake2: { ...t.schema.properties.earthquake2, enum: places }
+              }
+            }
+          };
+        }
+        return t;
+      });
+      return [...tools, ...getContextualTools()];
+    }
+
+    function getPageContext() {
+      const parts = [];
+      switch (currentView.type) {
+        case 'table':
+          parts.push('Table');
+          if (currentView.data) parts.push(`${currentView.data.length} earthquakes`);
+          break;
+        case 'chart': parts.push('Chart'); break;
+        case 'detail':
+          if (currentView.data) parts.push(`Detail: ${currentView.data.place}`);
+          break;
+        case 'comparison':
+          if (currentView.data) parts.push(`${currentView.data[0].place} vs ${currentView.data[1].place}`);
+          break;
+      }
+      if (currentView.filters?.min_magnitude) parts.push(`mag ${currentView.filters.min_magnitude}+`);
+      if (currentView.filters?.time_range) parts.push(`last ${currentView.filters.time_range}`);
+      if (currentView.filters?.felt) parts.push('felt');
+      if (flaggedQuakes.size > 0) parts.push(`${flaggedQuakes.size} flagged`);
+      return parts;
+    }
+
+    function syncTools() {
+      const tools = getActiveTools();
+      const currentNames = new Set(tools.map(t => t.name));
+      const newNames = toolsInitialized
+        ? new Set([...currentNames].filter(n => !previousToolNames.has(n)))
+        : new Set();
+
+      previousToolNames = currentNames;
+      renderToolsPanel(tools, newNames);
+      toolsInitialized = true;
+    }
+
+    /* ── Tools panel ── */
+
+    function renderToolsPanel(tools, newNames = new Set()) {
+      const inner = document.getElementById('tools-panel-inner');
+      const toggle = document.getElementById('tools-toggle');
+      const panel = document.getElementById('tools-panel');
+      const collapsed = panel.dataset.collapsed === 'true';
+      toggle.innerHTML = `${collapsed ? '&#9660;' : '&#9650;'} ${tools.length} tools`;
+
+      inner.innerHTML = tools.map(t => {
+        const badges = [];
+        if (t.readOnlyHint) badges.push('<span class="annotation-badge read-only">read-only</span>');
+        if (t.idempotentHint) badges.push('<span class="annotation-badge idempotent">idempotent</span>');
+        if (t.destructiveHint) badges.push('<span class="annotation-badge destructive">destructive</span>');
+        if (!t.openWorldHint) badges.push('<span class="annotation-badge closed-world">closed-world</span>');
+
+        const isNew = newNames.has(t.name);
+        const quakeEnum = Object.entries(t.schema.properties || {})
+          .find(([k, v]) => v.enum && (k === 'earthquake1' || k === 'earthquake2'));
+        const paramsHtml = quakeEnum
+          ? `<div class="tool-item-params">${quakeEnum[1].enum.length} earthquakes available</div>`
+          : '';
+        const desc = t.description.split('.')[0] + '.';
+
+        return `
+          <div class="tool-item${isNew ? ' new' : ''}">
+            <div class="tool-item-name">${t.name}</div>
+            <div class="tool-item-badges">${badges.join('')}</div>
+            <div class="tool-item-desc">${desc}</div>
+            ${paramsHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleToolsPanel() {
+      const panel = document.getElementById('tools-panel');
+      const toggle = document.getElementById('tools-toggle');
+      const collapsed = panel.dataset.collapsed === 'true';
+      panel.dataset.collapsed = collapsed ? 'false' : 'true';
+      toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+      const tools = getActiveTools();
+      toggle.innerHTML = `${collapsed ? '&#9650;' : '&#9660;'} ${tools.length} tools`;
+    }
+
+    document.getElementById('tools-toggle').addEventListener('click', toggleToolsPanel);
+
+    /* ── Shared tool definitions ── */
+
+    const TOOL_DEFS = [
+      {
+        name: 'filter_earthquakes',
+        title: 'Filter Earthquakes',
+        description: 'Filter and display earthquakes on the page. Renders a table showing matching earthquakes with magnitude, depth, time, and felt reports. The user can then click any row to see full details.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            min_magnitude: { type: 'number', description: 'Minimum magnitude threshold' },
+            search: { type: 'string', description: 'Search by place name (partial match)' },
+            time_range: { type: 'string', enum: ['24h', '7d', '30d'], description: 'Filter by time range' }
+          }
+        },
+        exec: async (input) => {
+          const filtered = filterData(input);
+          const parts = [];
+          if (input.min_magnitude) parts.push(`magnitude ${input.min_magnitude}+`);
+          if (input.search) parts.push(`matching "${input.search}"`);
+          if (input.time_range) parts.push(`last ${input.time_range}`);
+          const label = parts.length ? parts.join(', ') : 'all earthquakes';
+          renderTable(filtered, label, { min_magnitude: input.min_magnitude, time_range: input.time_range });
+          return { displayed: true, count: filtered.length, summary: `Rendered ${filtered.length} earthquakes (${label}). User can now see the table and click any row for details.` };
+        }
+      },
+      {
+        name: 'show_earthquake_detail',
+        title: 'Earthquake Detail',
+        description: 'Display a detailed card for a specific earthquake, showing magnitude, depth, significance, felt reports, tsunami warning, and coordinates. Renders visually on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            place: { type: 'string', description: 'Earthquake place name (partial match supported). Picks the strongest match if ambiguous.' }
+          },
+          required: ['place']
+        },
+        exec: async (input) => {
+          const matches = EARTHQUAKES.filter(q => matchPlace(q, input.place));
+          if (matches.length === 0) return { displayed: false, summary: `No earthquake found matching "${input.place}".` };
+          const quake = matches.sort((a, b) => b.magnitude - a.magnitude)[0];
+          renderDetail(quake);
+          const tier = severityTier(quake.magnitude);
+          return { displayed: true, summary: `Showing ${quake.place} — ${tier} (M${fmt(quake.magnitude)}), depth ${fmt(quake.depth)}km, significance ${quake.significance}.` };
+        }
+      },
+      {
+        name: 'compare_earthquakes',
+        title: 'Compare Earthquakes',
+        description: 'Display a side-by-side comparison table of two earthquakes across key metrics: magnitude, depth, significance, felt reports, and tsunami warning.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            earthquake1: { type: 'string', description: 'First earthquake place name (partial match)' },
+            earthquake2: { type: 'string', description: 'Second earthquake place name (partial match)' }
+          },
+          required: ['earthquake1', 'earthquake2']
+        },
+        exec: async (input) => {
+          const matches1 = EARTHQUAKES.filter(q => matchPlace(q, input.earthquake1));
+          const matches2 = EARTHQUAKES.filter(q => matchPlace(q, input.earthquake2));
+          if (!matches1.length) return { displayed: false, summary: `No earthquake found matching "${input.earthquake1}".` };
+          if (!matches2.length) return { displayed: false, summary: `No earthquake found matching "${input.earthquake2}".` };
+          const q1 = matches1.sort((a, b) => b.magnitude - a.magnitude)[0];
+          const q2 = matches2.sort((a, b) => b.magnitude - a.magnitude)[0];
+          renderComparison(q1, q2);
+          return { displayed: true, summary: `Comparing ${q1.place} (M${fmt(q1.magnitude)}) vs ${q2.place} (M${fmt(q2.magnitude)}).` };
+        }
+      },
+      {
+        name: 'show_magnitude_chart',
+        title: 'Magnitude Chart',
+        description: 'Display a bar chart showing the distribution of earthquakes by severity tier (minor, moderate, strong, major). Renders directly on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            region: { type: 'string', description: 'Limit chart to a specific region (partial match on place name)' }
+          }
+        },
+        exec: async (input) => {
+          const quakes = input.region
+            ? EARTHQUAKES.filter(q => matchPlace(q, input.region))
+            : EARTHQUAKES;
+          const label = input.region || 'all earthquakes';
+          renderChart(quakes, label, {});
+          const tiers = { minor: 0, moderate: 0, strong: 0, major: 0 };
+          quakes.forEach(q => tiers[severityTier(q.magnitude)]++);
+          return { displayed: true, summary: `Chart displayed: ${tiers.minor} minor, ${tiers.moderate} moderate, ${tiers.strong} strong, ${tiers.major} major (${label}).`, distribution: tiers };
+        }
+      },
+      {
+        name: 'summarize_data',
+        title: 'Summarize Data',
+        description: 'Compute aggregate statistics for the earthquake dataset. Returns numerical summaries (count, max magnitude, average magnitude, average depth, most active region) without rendering any visualization.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            min_magnitude: { type: 'number', description: 'Only include earthquakes at or above this magnitude' }
+          }
+        },
+        exec: async (input) => {
+          const data = input.min_magnitude != null
+            ? EARTHQUAKES.filter(q => q.magnitude >= input.min_magnitude)
+            : EARTHQUAKES;
+          if (data.length === 0) return { summary: 'No earthquakes match the given criteria.' };
+
+          const avg = (fn) => data.reduce((s, q) => s + fn(q), 0) / data.length;
+          const avgMag = avg(q => q.magnitude);
+          const avgDepth = avg(q => q.depth);
+          const maxMag = Math.max(...data.map(q => q.magnitude));
+          const strongest = data.find(q => q.magnitude === maxMag);
+
+          const regionCounts = {};
+          data.forEach(q => {
+            regionCounts[q.region] = (regionCounts[q.region] || 0) + 1;
+          });
+          const mostActiveRegion = Object.entries(regionCounts).sort((a, b) => b[1] - a[1])[0];
+
+          const scope = input.min_magnitude != null ? `magnitude ${input.min_magnitude}+` : 'all earthquakes';
+          return {
+            scope,
+            count: data.length,
+            maxMagnitude: maxMag,
+            avgMagnitude: +avgMag.toFixed(2),
+            avgDepth: +avgDepth.toFixed(1),
+            strongestQuake: { place: strongest.place, magnitude: strongest.magnitude },
+            mostActiveRegion: mostActiveRegion ? { region: mostActiveRegion[0], count: mostActiveRegion[1] } : null,
+            summary: `${data.length} earthquakes (${scope}): max magnitude ${maxMag}, avg magnitude ${avgMag.toFixed(1)}, avg depth ${avgDepth.toFixed(0)}km. Strongest: ${strongest.place} (M${maxMag}). Most active region: ${mostActiveRegion ? mostActiveRegion[0] + ' (' + mostActiveRegion[1] + ')' : 'N/A'}.`
+          };
+        }
+      },
+      {
+        name: 'flag_earthquake',
+        title: 'Flag Earthquake',
+        description: 'Flag or unflag an earthquake with a note. Flagged earthquakes display an amber indicator dot in tables and detail views. Use this to mark earthquakes that warrant attention.',
+        readOnlyHint: true,
+        idempotentHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            place: { type: 'string', description: 'Earthquake place name (partial match supported)' },
+            note: { type: 'string', description: 'Reason for flagging (displayed on detail card)' },
+            unflag: { type: 'boolean', description: 'Set to true to remove the flag' }
+          },
+          required: ['place']
+        },
+        exec: async (input, client) => {
+          const matches = EARTHQUAKES.filter(q => matchPlace(q, input.place));
+          if (!matches.length) return { summary: `No earthquake found matching "${input.place}".` };
+          const quake = matches.sort((a, b) => b.magnitude - a.magnitude)[0];
+
+          if (input.unflag) {
+            const previousFlag = flaggedQuakes.get(quake.id);
+            flaggedQuakes.delete(quake.id);
+            persistFlags();
+            refreshCurrentView();
+            showToast('Flag removed', () => {
+              flaggedQuakes.set(quake.id, previousFlag || { note: 'Flagged for review', timestamp: Date.now() });
+              persistFlags();
+              refreshCurrentView();
+            });
+            return { summary: `Removed flag from ${quake.place}.` };
+          }
+
+          let note = input.note;
+          if (!note) {
+            note = await client.requestUserInteraction(() =>
+              showPromptDialog(`Add a note for flagging ${quake.place} (optional)`)
+            );
+          }
+
+          const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
+          flaggedQuakes.set(quake.id, flagData);
+          persistFlags();
+          refreshCurrentView();
+          showToast('Earthquake flagged', () => {
+            flaggedQuakes.delete(quake.id);
+            persistFlags();
+            refreshCurrentView();
+          });
+          return { summary: `Flagged ${quake.place}: "${flagData.note}".` };
+        }
+      },
+      {
+        name: 'export_flagged',
+        title: 'Export Flagged',
+        description: 'Download a CSV file of all currently flagged earthquakes with their flag notes and key metrics. Produces a file download.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {}
+        },
+        exec: async () => {
+          if (flaggedQuakes.size === 0) return { summary: 'No earthquakes are currently flagged.' };
+
+          const headers = ['Place', 'Magnitude', 'Depth', 'Significance', 'Felt', 'Tsunami', 'Time', 'Flag Note', 'Flagged At'];
+          const rows = [...flaggedQuakes.entries()].map(([id, flag]) => {
+            const q = EARTHQUAKES.find(q => q.id === id);
+            return [q.place, q.magnitude, q.depth, q.significance, q.felt, q.tsunami, new Date(q.time).toISOString(), flag.note, new Date(flag.timestamp).toISOString()];
+          });
+
+          const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'flagged-earthquakes.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+
+          return { summary: `Exported ${flaggedQuakes.size} flagged earthquake(s) as CSV.` };
+        }
+      }
+    ];
+
+    /* ── Button controls (mirror tool functionality) ── */
+
+    document.querySelectorAll('.chip[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+        if (filter === 'all') {
+          renderTable(EARTHQUAKES);
+        } else if (filter === 'mag5') {
+          const filtered = filterData({ min_magnitude: 5 });
+          renderTable(filtered, 'magnitude 5+', { min_magnitude: 5 });
+        } else if (filter === 'mag3') {
+          const filtered = filterData({ min_magnitude: 3 });
+          renderTable(filtered, 'magnitude 3+', { min_magnitude: 3 });
+        } else if (filter === 'felt') {
+          const filtered = filterData({ felt: true });
+          renderTable(filtered, 'felt earthquakes', { felt: true });
+        } else if (filter === 'recent') {
+          const filtered = filterData({ time_range: '24h' });
+          renderTable(filtered, 'last 24 hours', { time_range: '24h' });
+        }
+      });
+    });
+
+    document.querySelectorAll('.chip[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        const view = btn.dataset.view;
+        if (view === 'chart') {
+          renderChart(EARTHQUAKES);
+        }
+      });
+    });
+
+    /* ── Chat panel ── */
+
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const chatReset = document.getElementById('chat-reset');
+    const apiKeyInput = document.getElementById('api-key');
+    const keyToggle = document.getElementById('key-toggle');
+
+    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that monitors recent earthquake activity from USGS data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
+
+Rules:
+- 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
+- Call tools eagerly. If the user asks to see data, call the tool — don't narrate what you're about to do.
+- End with a short follow-up suggestion (one line) so the user knows what else they can explore.
+- No markdown formatting — this renders as plain text in a chat bubble.
+- No greetings, filler, or preamble.
+- You can flag earthquakes to mark them for attention. Use flag_earthquake when the user wants to mark, note, or bookmark an earthquake.
+- You can compare two earthquakes side-by-side. Use compare_earthquakes when the user wants to see differences.
+- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
+- Use export_flagged to download a CSV of all flagged earthquakes when the user wants to export or save their flags.
+- Your available tools change dynamically based on page state. When earthquakes are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_earthquakes only lists currently visible earthquakes.
+- When the user gives a short or ambiguous input (like "flag" or "compare"), infer the target from the current view context below. If viewing a detail card, act on that earthquake. If viewing a filtered table, act on visible earthquakes.`;
+
+    function getSystemPrompt() {
+      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
+      switch (currentView.type) {
+        case 'table': {
+          const data = currentView.data || EARTHQUAKES;
+          lines.push(`- Viewing: table of ${data.length} earthquakes`);
+          const places = data.slice(0, 8).map(q => `${q.place} (M${fmt(q.magnitude)})`);
+          lines.push(`- Visible: ${places.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
+          break;
+        }
+        case 'detail':
+          if (currentView.data) {
+            const q = currentView.data;
+            lines.push(`- Viewing: detail card for ${q.place} (M${fmt(q.magnitude)}, depth ${fmt(q.depth)}km)`);
+          }
+          break;
+        case 'chart':
+          lines.push('- Viewing: magnitude distribution chart');
+          break;
+        case 'comparison':
+          if (currentView.data) {
+            lines.push(`- Viewing: comparison of ${currentView.data[0].place} vs ${currentView.data[1].place}`);
+          }
+          break;
+      }
+      if (currentView.filters?.min_magnitude) lines.push(`- Filtered by: magnitude ${currentView.filters.min_magnitude}+`);
+      if (currentView.filters?.time_range) lines.push(`- Filtered by: last ${currentView.filters.time_range}`);
+      if (currentView.filters?.felt) lines.push(`- Filtered by: felt earthquakes only`);
+      if (flaggedQuakes.size > 0) {
+        const flaggedPlaces = [...flaggedQuakes.keys()].map(id => {
+          const q = EARTHQUAKES.find(q => q.id === id);
+          return q ? q.place : id;
+        });
+        lines.push(`- Flagged earthquakes (${flaggedQuakes.size}): ${flaggedPlaces.join(', ')}`);
+      }
+      return lines.join('\n');
+    }
+
+    function getClaudeTools() {
+      return getActiveTools().map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
+    }
+
+    let conversationMessages = [];
+    let chatBusy = false;
+    let abortController = null;
+
+    // Restore API key: config.json > localStorage
+    const apiKeyBar = document.querySelector('.api-key-bar');
+    const keyEditBtn = document.getElementById('key-edit');
+
+    apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
+
+    fetch('config.json').then(r => r.ok ? r.json() : null).then(cfg => {
+      if (cfg?.apiKey && !apiKeyInput.value) {
+        apiKeyInput.value = cfg.apiKey;
+        localStorage.setItem('webmcp-api-key', cfg.apiKey);
+      }
+    }).catch(() => {}).finally(() => {
+      if (!apiKeyInput.value) apiKeyBar.classList.add('visible');
+    });
+
+    apiKeyInput.addEventListener('input', () => localStorage.setItem('webmcp-api-key', apiKeyInput.value));
+
+    keyEditBtn.addEventListener('click', () => {
+      apiKeyBar.classList.toggle('visible');
+      if (apiKeyBar.classList.contains('visible')) apiKeyInput.focus();
+    });
+
+    keyToggle.addEventListener('click', () => {
+      const hidden = apiKeyInput.type === 'password';
+      apiKeyInput.type = hidden ? 'text' : 'password';
+      keyToggle.textContent = hidden ? 'Hide' : 'Show';
+    });
+
+    // Chat reset
+    chatReset.addEventListener('click', () => {
+      conversationMessages = [];
+      chatMessages.innerHTML = '';
+      renderQuickActions();
+    });
+
+    // Auto-resize textarea
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    chatSend.addEventListener('click', () => {
+      if (chatBusy && abortController) {
+        abortController.abort();
+        return;
+      }
+      sendMessage();
+    });
+
+    function renderMarkdown(text) {
+      return DOMPurify.sanitize(marked.parse(text));
+    }
+
+    function appendMessage(type, content) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const el = document.createElement('div');
+      el.className = `msg msg-${type}`;
+      if (type === 'assistant') {
+        el.innerHTML = renderMarkdown(content);
+      } else {
+        el.textContent = content;
+      }
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return el;
+    }
+
+    function appendToolMsg(toolName, args, result, isError) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const el = document.createElement('div');
+      el.className = 'msg-tool-card' + (isError ? ' error' : '');
+
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status ' + (isError ? 'error' : 'success');
+      status.textContent = isError ? '\u2717' : '\u2713';
+
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const resultStr = typeof result === 'string' ? result : '';
+      const summary = resultStr.length > 50 ? resultStr.slice(0, 50) + '...' : resultStr;
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.append(nameStrong, summary ? ' \u2014 ' + summary : '');
+
+      const chevron = document.createElement('span');
+      chevron.className = 'msg-tool-chevron';
+      chevron.textContent = '\u25BE';
+
+      header.append(status, label, chevron);
+      el.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'msg-tool-body';
+
+      const argsEl = document.createElement('div');
+      argsEl.className = 'msg-tool-args';
+      argsEl.textContent = JSON.stringify(args, null, 2);
+      body.appendChild(argsEl);
+
+      if (resultStr) {
+        const resultEl = document.createElement('div');
+        resultEl.className = 'msg-tool-result';
+        resultEl.textContent = '\u2192 ' + resultStr;
+        body.appendChild(resultEl);
+      }
+
+      el.appendChild(body);
+
+      header.addEventListener('click', () => {
+        el.classList.toggle('expanded');
+      });
+
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendDivider(text) {
+      const el = document.createElement('div');
+      el.className = 'chat-divider';
+      el.textContent = text;
+      chatMessages.appendChild(el);
+    }
+
+    function showSpinner() {
+      const el = document.createElement('div');
+      el.className = 'chat-spinner';
+      el.id = 'chat-spinner';
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideSpinner() {
+      const s = document.getElementById('chat-spinner');
+      if (s) s.remove();
+    }
+
+    function setInputEnabled(enabled) {
+      chatBusy = !enabled;
+      chatInput.disabled = !enabled;
+      chatSend.disabled = false;
+      chatSend.classList.toggle('stop', !enabled);
+      chatSend.textContent = enabled ? '\u2191' : '\u25A0';
+      chatSend.setAttribute('aria-label', enabled ? 'Send message' : 'Stop generation');
+    }
+
+    async function sendMessage(opts = {}) {
+      const text = opts.prompt || chatInput.value.trim();
+      const displayText = opts.display || text;
+      const apiKey = apiKeyInput.value.trim();
+      if (!text || chatBusy) return;
+
+      if (!apiKey) {
+        appendMessage('error', 'Enter your Anthropic API key above.');
+        return;
+      }
+
+      const quickActions = document.getElementById('quick-actions');
+      if (quickActions) quickActions.remove();
+      clearFollowupSuggestions();
+
+      appendMessage('user', displayText);
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      conversationMessages.push({ role: 'user', content: text });
+      abortController = new AbortController();
+      setInputEnabled(false);
+      showSpinner();
+
+      await runConversation(apiKey, abortController.signal);
+
+      abortController = null;
+      setInputEnabled(true);
+      chatInput.focus();
+    }
+
+    /* ── Streaming API ── */
+
+    async function streamClaudeAPI(apiKey, messages, signal) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1024,
+          system: getSystemPrompt(),
+          messages,
+          tools: getClaudeTools(),
+          stream: true
+        })
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`API ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      return res.body;
+    }
+
+    async function* parseSSEStream(body) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        let currentEvent = null;
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data && currentEvent) {
+              try {
+                yield { event: currentEvent, data: JSON.parse(data) };
+              } catch {}
+            }
+            currentEvent = null;
+          }
+        }
+      }
+    }
+
+    async function runConversation(apiKey, signal) {
+      while (true) {
+        let body;
+        try {
+          body = await streamClaudeAPI(apiKey, conversationMessages, signal);
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', err.message);
+          return;
+        }
+
+        const contentBlocks = [];
+        let currentTextEl = null;
+        let currentTextContent = '';
+        let currentToolInput = '';
+        let currentBlockType = null;
+        let mdRenderPending = 0;
+
+        try {
+          for await (const { event, data } of parseSSEStream(body)) {
+            switch (event) {
+              case 'content_block_start': {
+                const block = data.content_block;
+                currentBlockType = block.type;
+                if (block.type === 'text') {
+                  hideSpinner();
+                  currentTextContent = block.text || '';
+                  currentTextEl = appendMessage('assistant', currentTextContent);
+                } else if (block.type === 'tool_use') {
+                  contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
+                  currentToolInput = '';
+                }
+                break;
+              }
+
+              case 'content_block_delta': {
+                if (data.delta.type === 'text_delta') {
+                  currentTextContent += data.delta.text;
+                  if (currentTextEl) {
+                    if (!mdRenderPending) {
+                      mdRenderPending = requestAnimationFrame(() => {
+                        mdRenderPending = 0;
+                        if (currentTextEl) {
+                          currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                        }
+                      });
+                    }
+                  }
+                } else if (data.delta.type === 'input_json_delta') {
+                  currentToolInput += data.delta.partial_json;
+                }
+                break;
+              }
+
+              case 'content_block_stop': {
+                if (currentBlockType === 'text' && currentTextContent) {
+                  if (mdRenderPending) { cancelAnimationFrame(mdRenderPending); mdRenderPending = 0; }
+                  if (currentTextEl) currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                  contentBlocks.push({ type: 'text', text: currentTextContent });
+                  currentTextEl = null;
+                  currentTextContent = '';
+                } else if (currentBlockType === 'tool_use') {
+                  const toolBlock = contentBlocks[contentBlocks.length - 1];
+                  try {
+                    toolBlock.input = currentToolInput ? JSON.parse(currentToolInput) : {};
+                  } catch {
+                    toolBlock.input = {};
+                  }
+                  currentToolInput = '';
+                }
+                currentBlockType = null;
+                break;
+              }
+
+              case 'message_delta':
+                break;
+            }
+          }
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', 'Stream interrupted: ' + err.message);
+          return;
+        }
+
+        // Add the full assistant message to conversation history
+        conversationMessages.push({ role: 'assistant', content: contentBlocks });
+
+        // Check for tool use
+        const toolUses = contentBlocks.filter(b => b.type === 'tool_use');
+        if (toolUses.length === 0) {
+          hideSpinner();
+          renderFollowupSuggestions();
+          return;
+        }
+
+        // Execute tools and gather results
+        const client = {
+          requestUserInteraction: (callback) => callback()
+        };
+        const toolResults = [];
+        for (const tu of toolUses) {
+          const def = getActiveTools().find(t => t.name === tu.name);
+          let result;
+          if (def) {
+            if (!def.readOnlyHint) {
+              const confirmed = await showConfirmDialog(def.title, tu.input);
+              if (!confirmed) {
+                result = { summary: `User declined: ${def.title}` };
+                appendToolMsg(tu.name, tu.input, result.summary, true);
+                toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
+                continue;
+              }
+            }
+            result = await def.exec(tu.input, client);
+            appendToolMsg(tu.name, tu.input, result.summary);
+            if (result.displayed) {
+              scrollDisplayIntoView();
+              appendDivider(getPageContext().join(' \u00b7 '));
+            }
+          } else {
+            result = { error: `Unknown tool: ${tu.name}` };
+            appendToolMsg(tu.name, tu.input, result.error, true);
+          }
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: tu.id,
+            content: JSON.stringify(result)
+          });
+        }
+
+        conversationMessages.push({ role: 'user', content: toolResults });
+        showSpinner();
+      }
+    }
+
+    /* ── Init ── */
+
+    async function init() {
+      renderSkeleton();
+
+      try {
+        const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const geojson = await res.json();
+
+        EARTHQUAKES = geojson.features.map(feature => ({
+          id: feature.id,
+          place: feature.properties.place || 'Unknown',
+          magnitude: feature.properties.mag || 0,
+          depth: feature.geometry.coordinates[2] || 0,
+          time: feature.properties.time,
+          type: feature.properties.type || 'earthquake',
+          status: feature.properties.status || 'automatic',
+          tsunami: feature.properties.tsunami === 1,
+          felt: feature.properties.felt || 0,
+          significance: feature.properties.sig || 0,
+          lat: feature.geometry.coordinates[1],
+          lon: feature.geometry.coordinates[0],
+          region: extractRegion(feature.properties.place)
+        })).sort((a, b) => b.time - a.time);
+      } catch (err) {
+        display.innerHTML = `<p class="msg-error">Failed to load earthquake data: ${err.message}</p>`;
+        return;
+      }
+
+      loadFlags();
+
+      if (!decodeHashToView()) {
+        renderTable(EARTHQUAKES);
+      }
+
+      renderQuickActions();
+    }
+
+    init();
+  </script>
+</body>
+</html>
