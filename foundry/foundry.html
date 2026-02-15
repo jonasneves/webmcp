@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foundry — Ideas that run</title>
+<meta name="theme-color" content="#09090b">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-2: #27272a;
+  --surface-3: #3f3f46;
+  --border: #27272a;
+  --border-hover: #3f3f46;
+  --text: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --accent: #8b5cf6;
+  --accent-hover: #a78bfa;
+  --accent-dim: rgba(139, 92, 246, 0.12);
+  --fork-color: #38bdf8;
+  --fork-dim: rgba(56, 189, 248, 0.12);
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration: 150ms;
+  --duration-slow: 300ms;
+}
+
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Header ── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.logo-mark {
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  border-radius: 6px;
+  transform: rotate(12deg);
+}
+
+.search-bar {
+  flex: 1;
+  max-width: 400px;
+  position: relative;
+}
+
+.search-bar svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-bar input {
+  width: 100%;
+  height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 var(--space-md) 0 38px;
+  color: var(--text);
+  font-size: var(--text-sm);
+  transition: border-color var(--duration) var(--ease);
+}
+
+.search-bar input::placeholder { color: var(--text-tertiary); }
+.search-bar input:focus { border-color: var(--accent); outline: none; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.new-idea-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  min-height: 40px;
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.new-idea-btn:hover { background: var(--accent-hover); }
+.new-idea-btn:active { transform: scale(0.97); }
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ── Tabs ── */
+
+.tabs-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-lg) 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+}
+
+.tabs-container::-webkit-scrollbar { display: none; }
+
+.tabs {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.tab {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-height: 36px;
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+
+.tab:hover { color: var(--text); background: var(--surface); }
+
+.tab.active {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* ── Layout ── */
+
+.main { max-width: 1200px; margin: 0 auto; padding: var(--space-lg); }
+
+.feed-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+/* ── Feed ── */
+
+.feed { display: flex; flex-direction: column; gap: var(--space-lg); }
+
+.post-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration-slow) var(--ease);
+  animation: fadeInUp 0.4s var(--ease) both;
+}
+
+.post-card:nth-child(2) { animation-delay: 0.06s; }
+.post-card:nth-child(3) { animation-delay: 0.12s; }
+.post-card:nth-child(4) { animation-delay: 0.18s; }
+.post-card:nth-child(5) { animation-delay: 0.24s; }
+
+.post-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.post-header {
+  padding: var(--space-md) var(--space-md) var(--space-sm);
+  cursor: pointer;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.post-author-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.post-time {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.post-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-xs);
+}
+
+.post-desc {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.post-app {
+  margin: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.post-app iframe {
+  display: block;
+  width: 100%;
+  height: 230px;
+  border: none;
+  background: var(--surface);
+}
+
+.post-footer {
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+}
+
+.post-tags {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.tag {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  background: var(--surface-2);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.post-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  transition: color var(--duration) var(--ease);
+  min-height: 44px;
+  padding: 0 var(--space-xs);
+}
+
+.post-stat:hover { color: var(--text-secondary); }
+.post-stat svg { flex-shrink: 0; }
+
+.fork-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--fork-color);
+  background: var(--fork-dim);
+  min-height: 36px;
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.fork-btn:hover { background: rgba(56, 189, 248, 0.2); }
+.fork-btn:active { transform: scale(0.96); }
+
+.fork-btn.forked {
+  color: var(--success);
+  background: rgba(34, 197, 94, 0.12);
+  animation: forkPulse 0.35s var(--ease);
+}
+
+/* ── Sidebar ── */
+
+.sidebar {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.sidebar-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.sidebar-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.trending-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-sm) 0;
+  gap: var(--space-md);
+}
+
+.trending-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+
+.trending-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trending-count {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.sidebar-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Detail View ── */
+
+.detail-view { display: none; }
+.detail-view.active { display: block; animation: fadeIn 0.25s var(--ease); }
+.feed-view.hidden-view { display: none; }
+
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-sm) var(--space-sm) 0;
+  transition: color var(--duration) var(--ease);
+}
+
+.detail-back:hover { color: var(--text); }
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.detail-title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-xs);
+}
+
+.detail-desc {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.detail-app {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+  margin-bottom: var(--space-lg);
+}
+
+.detail-app iframe {
+  display: block;
+  width: 100%;
+  height: 400px;
+  border: none;
+  background: var(--surface);
+}
+
+.detail-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xl);
+}
+
+.detail-tags { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
+
+.detail-fork-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--fork-color);
+  background: var(--fork-dim);
+  min-height: 44px;
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.detail-fork-btn:hover { background: rgba(56, 189, 248, 0.2); }
+.detail-fork-btn:active { transform: scale(0.97); }
+
+/* ── Threads ── */
+
+.threads {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.thread-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.thread-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  min-height: 48px;
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+
+.thread-tab:hover { color: var(--text); }
+
+.thread-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.thread-panel { display: none; padding: var(--space-lg); }
+.thread-panel.active { display: block; }
+
+.thread-comment {
+  padding: var(--space-md) 0;
+}
+
+.thread-comment:not(:last-child) { border-bottom: 1px solid var(--border); }
+
+.ai-comment {
+  border-left: 2px solid var(--accent);
+  padding-left: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.ai-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-sm);
+}
+
+.comment-author {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.comment-name { font-size: var(--text-sm); font-weight: 600; }
+.comment-time { font-size: var(--text-xs); color: var(--text-tertiary); }
+.comment-text { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.5; }
+
+.fork-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--fork-color);
+  background: var(--fork-dim);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  margin-left: var(--space-sm);
+}
+
+/* ── Modal ── */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.modal-overlay.active { display: flex; animation: fadeIn 0.2s var(--ease); }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s var(--ease);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+
+.modal-close:hover { color: var(--text); background: var(--surface-2); }
+
+.modal-body { padding: var(--space-lg); }
+
+.modal-textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color var(--duration) var(--ease);
+}
+
+.modal-textarea::placeholder { color: var(--text-tertiary); }
+.modal-textarea:focus { border-color: var(--accent); outline: none; }
+
+.generate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+  background: var(--accent);
+  color: white;
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: 600;
+  min-height: 48px;
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.generate-btn:hover { background: var(--accent-hover); }
+.generate-btn:active { transform: scale(0.98); }
+.generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modal-preview {
+  margin-top: var(--space-lg);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.modal-preview iframe {
+  display: block;
+  width: 100%;
+  height: 250px;
+  border: none;
+}
+
+.modal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.loading-dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dotPulse 1.2s var(--ease) infinite;
+}
+
+.loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+.post-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-md);
+  margin-top: var(--space-md);
+  background: var(--success);
+  color: white;
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: 600;
+  min-height: 48px;
+  transition: background var(--duration) var(--ease), transform var(--duration) var(--ease);
+}
+
+.post-btn:hover { background: #16a34a; }
+.post-btn:active { transform: scale(0.98); }
+
+/* ── Toast ── */
+
+.toast-container {
+  position: fixed;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface-2);
+  border: 1px solid var(--border-hover);
+  color: var(--text);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  white-space: nowrap;
+  animation: slideUp 0.3s var(--ease), fadeOut 0.3s var(--ease) 2.2s forwards;
+}
+
+/* ── Animations ── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; }
+}
+
+@keyframes forkPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 900px) {
+  .feed-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar { display: none; }
+  .search-bar { display: none; }
+  .new-idea-btn span { display: none; }
+
+  .new-idea-btn {
+    padding: var(--space-sm);
+    min-width: 40px;
+    justify-content: center;
+  }
+
+  .detail-app iframe { height: 300px; }
+}
+
+@media (max-width: 500px) {
+  .header-inner { padding: 0 var(--space-md); }
+  .main { padding: var(--space-md); }
+  .post-actions { gap: var(--space-md); }
+  .detail-title { font-size: var(--text-xl); }
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <span>Foundry</span>
+    </div>
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+      <input type="text" placeholder="Search ideas...">
+    </div>
+    <div class="header-right">
+      <button class="new-idea-btn" id="new-idea-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+        <span>New Idea</span>
+      </button>
+      <div class="user-avatar" style="background-color: #8b5cf6; color: #fff;">JN</div>
+    </div>
+  </div>
+</header>
+
+<main class="main">
+  <div id="feed-view" class="feed-view">
+    <div class="tabs-container">
+      <div class="tabs" id="tabs"></div>
+    </div>
+    <div class="feed-layout">
+      <div class="feed" id="feed"></div>
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">Trending</h3>
+          <div id="trending"></div>
+        </div>
+        <div class="sidebar-section">
+          <h3 class="sidebar-title">What is Foundry?</h3>
+          <p class="sidebar-text">Ideas expressed as running software. Every post is a live, interactive demo you can try right here. Fork what inspires you, remix it, make it yours.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="detail-view" class="detail-view"></div>
+</main>
+
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New Idea</span>
+      <button class="modal-close" id="modal-close">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <textarea class="modal-textarea" id="idea-input" placeholder="Describe your idea... e.g. A tool that converts between time zones with a visual clock interface"></textarea>
+      <button class="generate-btn" id="generate-btn">Generate</button>
+      <div id="modal-result"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ── Icons ── */
+
+const ICON = {
+  fork: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5" cy="3" r="1.5" fill="none"/><circle cx="5" cy="13" r="1.5" fill="none"/><circle cx="12" cy="5" r="1.5" fill="none"/><path d="M5 4.5v7M12 6.5c0 2.5-2 3-4 3h-2"/></svg>',
+  heart: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13.7C6.3 12.1 2 8.7 2 5.8A3 3 0 018 4a3 3 0 016 1.8c0 2.9-4.3 6.3-6 7.9z"/></svg>',
+  comment: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 3h11a.5.5 0 01.5.5v7a.5.5 0 01-.5.5H6l-3.5 3V3.5A.5.5 0 012.5 3z"/></svg>',
+  sparkle: '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M7 0l1.2 4.8L13 7l-4.8 1.2L7 14l-1.2-4.8L1 7l4.8-1.2L7 0z"/></svg>',
+  users: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="5.5" cy="4.5" r="2"/><path d="M1 12.5c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5"/><circle cx="10" cy="4" r="1.5"/><path d="M11 8c1.5.3 2.5 1.5 2.5 3.5"/></svg>',
+  arrowLeft: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
+};
+
+/* ── Mini-App HTML ── */
+
+const APP_CONTRAST = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:16px;display:flex;gap:20px;height:100vh;overflow:hidden}.controls{display:flex;flex-direction:column;gap:14px;min-width:90px}.ci{display:flex;flex-direction:column;gap:4px}.ci label{font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}.ci input[type=color]{width:52px;height:36px;border:2px solid #3f3f46;border-radius:8px;cursor:pointer;background:none;padding:2px}.ci input[type=color]::-webkit-color-swatch-wrapper{padding:0}.ci input[type=color]::-webkit-color-swatch{border:none;border-radius:5px}.hex{font-family:ui-monospace,monospace;font-size:11px;color:#71717a}.preview{flex:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;transition:background .2s,color .2s}.ratio{font-size:36px;font-weight:800;letter-spacing:-0.02em}.ratio-label{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;opacity:0.6}.badges{display:flex;gap:6px}.badge{padding:3px 10px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}.pass{background:rgba(34,197,94,0.15);color:#4ade80}.fail{background:rgba(239,68,68,0.15);color:#f87171}.sample{font-size:14px;font-weight:500;margin-top:4px}</style></head><body><div class="controls"><div class="ci"><label>Text</label><input type="color" id="fg" value="#fafafa"><span class="hex" id="fh">#fafafa</span></div><div class="ci"><label>Bg</label><input type="color" id="bg" value="#18181b"><span class="hex" id="bh">#18181b</span></div></div><div class="preview" id="pv"><span class="ratio" id="rt">15.4</span><span class="ratio-label">Contrast Ratio</span><div class="badges" id="bd"></div><span class="sample">Sample Text</span></div><script>function lum(h){var r=parseInt(h.slice(1,3),16)/255,g=parseInt(h.slice(3,5),16)/255,b=parseInt(h.slice(5,7),16)/255;var s=[r,g,b].map(function(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)});return 0.2126*s[0]+0.7152*s[1]+0.0722*s[2]}function cr(f,b){var l1=lum(f),l2=lum(b);return(Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05)}function up(){var f=document.getElementById("fg").value,b=document.getElementById("bg").value;var r=cr(f,b);document.getElementById("fh").textContent=f;document.getElementById("bh").textContent=b;document.getElementById("rt").textContent=r.toFixed(1);var p=document.getElementById("pv");p.style.background=b;p.style.color=f;var aa=r>=4.5,aaa=r>=7;document.getElementById("bd").innerHTML="<span class=\\"badge "+(aa?"pass":"fail")+"\\">AA "+(aa?"Pass":"Fail")+"</span><span class=\\"badge "+(aaa?"pass":"fail")+"\\">AAA "+(aaa?"Pass":"Fail")+"</span>"}document.getElementById("fg").addEventListener("input",up);document.getElementById("bg").addEventListener("input",up);up()<\/script></body></html>';
+
+const APP_BREATHING = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;gap:24px}.ring{position:relative;width:110px;height:110px}.outer{width:100%;height:100%;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.25) 0%,rgba(139,92,246,0.03) 70%);border:2px solid rgba(139,92,246,0.35);animation:breathe 10s ease-in-out infinite}.inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:rgba(139,92,246,0.5);animation:breatheInner 10s ease-in-out infinite}.label{font-size:13px;font-weight:500;color:#a1a1aa;letter-spacing:0.12em;text-transform:uppercase;min-height:20px}@keyframes breathe{0%,100%{transform:scale(0.55);opacity:0.4}35%{transform:scale(1);opacity:1}50%{transform:scale(1);opacity:1}85%{transform:scale(0.55);opacity:0.4}}@keyframes breatheInner{0%,100%{transform:translate(-50%,-50%) scale(0.5)}35%{transform:translate(-50%,-50%) scale(1.3)}50%{transform:translate(-50%,-50%) scale(1.3)}85%{transform:translate(-50%,-50%) scale(0.5)}}</style></head><body><div class="ring"><div class="outer"></div><div class="inner"></div></div><div class="label" id="lb">Breathe in</div><script>var ph=[{t:"Breathe in",d:3500},{t:"Hold",d:1500},{t:"Breathe out",d:3500},{t:"Hold",d:1500}],i=0;function go(){document.getElementById("lb").textContent=ph[i].t;setTimeout(function(){i=(i+1)%ph.length;go()},ph[i].d)}go()<\/script></body></html>';
+
+const APP_HABITS = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:14px;display:flex;flex-direction:column;gap:10px;height:100vh;overflow:hidden}.top{display:flex;justify-content:space-between;align-items:center}.title{font-size:13px;font-weight:600}.streak{font-size:12px;color:#22c55e;font-weight:600}.dh{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.dl{font-size:9px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;padding:2px 0}.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1}.day{aspect-ratio:1;border-radius:5px;background:#27272a;cursor:pointer;transition:background .15s,transform .15s;display:flex;align-items:center;justify-content:center;font-size:10px;color:#71717a}.day:hover{background:#3f3f46;transform:scale(1.08)}.day.on{background:#22c55e;color:#052e16;font-weight:700}.day.now{box-shadow:inset 0 0 0 2px #8b5cf6}</style></head><body><div class="top"><span class="title">Daily Meditation</span><span class="streak" id="sk"></span></div><div class="dh"><span class="dl">S</span><span class="dl">M</span><span class="dl">T</span><span class="dl">W</span><span class="dl">T</span><span class="dl">F</span><span class="dl">S</span></div><div class="grid" id="gr"></div><script>var on=new Set([1,2,3,4,5,8,9,10,11,12,13,15,16,17,18,19,20,22,23,24,25,26,27,28]),td=28,g=document.getElementById("gr");function cs(){var s=0;for(var d=td;d>=1;d--){if(on.has(d))s++;else break}document.getElementById("sk").textContent=s+" day streak"}for(var d=1;d<=35;d++){var el=document.createElement("div");el.className="day"+(on.has(d)?" on":"")+(d===td?" now":"");if(d<=31){el.textContent=d;(function(d,el){el.addEventListener("click",function(){if(on.has(d)){on.delete(d);el.classList.remove("on")}else{on.add(d);el.classList.add("on")}cs()})})(d,el)}else{el.style.visibility="hidden"}g.appendChild(el)}cs()<\/script></body></html>';
+
+const APP_MARKDOWN = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;display:flex;height:100vh;overflow:hidden}.pane{flex:1;padding:12px;overflow-y:auto;position:relative}.pane+.pane{border-left:1px solid #27272a}textarea{width:100%;height:100%;background:transparent;border:none;color:#d4d4d8;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;resize:none;outline:none;padding-top:18px}.out{font-size:13px;line-height:1.6;padding-top:18px}.out h1{font-size:17px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #27272a}.out h2{font-size:14px;font-weight:600;margin:10px 0 6px;color:#fafafa}.out p{margin-bottom:8px}.out strong{color:#fafafa}.out em{color:#a78bfa}.out code{background:#27272a;padding:1px 5px;border-radius:3px;font-family:ui-monospace,monospace;font-size:11px}.out ul,.out ol{padding-left:18px;margin-bottom:8px}.out li{margin-bottom:2px}.out blockquote{border-left:2px solid #3f3f46;padding-left:10px;color:#a1a1aa;margin-bottom:8px}.lbl{position:absolute;top:4px;font-size:9px;color:#52525b;text-transform:uppercase;letter-spacing:0.1em;font-weight:600}.le{left:12px}.lr{left:12px}</style></head><body><div class="pane"><span class="lbl le">Markdown</span><textarea id="inp"># Hello World\n\nA **markdown** previewer with *live* updates.\n\n## Features\n\n- Real-time preview\n- Basic `code` support\n- Clean dark theme\n\n> Built for Foundry</textarea></div><div class="pane"><span class="lbl lr">Preview</span><div class="out" id="out"></div></div><script>function p(m){return m.replace(/^### (.+)$/gm,"<h3>$1</h3>").replace(/^## (.+)$/gm,"<h2>$1</h2>").replace(/^# (.+)$/gm,"<h1>$1</h1>").replace(/\\*\\*(.+?)\\*\\*/g,"<strong>$1</strong>").replace(/\\*(.+?)\\*/g,"<em>$1</em>").replace(/`(.+?)`/g,"<code>$1</code>").replace(/^> (.+)$/gm,"<blockquote>$1</blockquote>").replace(/^- (.+)$/gm,"<li>$1</li>").replace(/((?:<li>.*<\\/li>\\n?)+)/g,"<ul>$1</ul>").replace(/\\n\\n/g,"<br><br>")}function u(){document.getElementById("out").innerHTML=p(document.getElementById("inp").value)}document.getElementById("inp").addEventListener("input",u);u()<\/script></body></html>';
+
+const APP_GRADIENT = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:16px;display:flex;gap:16px;height:100vh;overflow:hidden}.pv{flex:1;border-radius:10px;transition:background .3s}.ctrls{display:flex;flex-direction:column;gap:12px;min-width:130px}.cg{display:flex;flex-direction:column;gap:4px}label{font-size:10px;color:#71717a;text-transform:uppercase;letter-spacing:0.06em;font-weight:600}input[type=color]{width:44px;height:30px;border:2px solid #3f3f46;border-radius:6px;cursor:pointer;background:none;padding:2px}input[type=color]::-webkit-color-swatch-wrapper{padding:0}input[type=color]::-webkit-color-swatch{border:none;border-radius:3px}input[type=range]{width:100%;accent-color:#8b5cf6}.cc{display:flex;gap:8px}.css{font-family:ui-monospace,monospace;font-size:10px;color:#a1a1aa;background:#09090b;padding:8px;border-radius:6px;word-break:break-all;line-height:1.4;cursor:pointer;transition:color .15s}.css:hover{color:#e4e4e7}.av{font-family:ui-monospace,monospace;font-size:11px;color:#a1a1aa}</style></head><body><div class="pv" id="pv"></div><div class="ctrls"><div class="cg"><label>Colors</label><div class="cc"><input type="color" id="c1" value="#8b5cf6"><input type="color" id="c2" value="#ec4899"></div></div><div class="cg"><label>Angle <span class="av" id="av">135</span></label><input type="range" id="ag" min="0" max="360" value="135"></div><div class="css" id="cs" title="Click to copy"></div></div><script>function up(){var a=document.getElementById("c1").value,b=document.getElementById("c2").value,d=document.getElementById("ag").value;var css="linear-gradient("+d+"deg, "+a+", "+b+")";document.getElementById("pv").style.background=css;document.getElementById("cs").textContent="background: "+css+";";document.getElementById("av").textContent=d}document.getElementById("c1").addEventListener("input",up);document.getElementById("c2").addEventListener("input",up);document.getElementById("ag").addEventListener("input",up);document.getElementById("cs").addEventListener("click",function(){var t=this.textContent;var el=this;try{navigator.clipboard.writeText(t).then(function(){el.textContent="Copied!";el.style.color="#22c55e";setTimeout(function(){el.style.color="";up()},900)})}catch(e){var r=document.createRange();r.selectNodeContents(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r)}});up()<\/script></body></html>';
+
+const APP_CLOCK = '<!DOCTYPE html><html><head><style>*{margin:0;box-sizing:border-box}body{font-family:system-ui,sans-serif;background:#18181b;color:#e4e4e7;padding:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;gap:16px}.clocks{display:flex;gap:12px;width:100%;max-width:400px}.ck{flex:1;text-align:center;padding:14px 8px;background:#27272a;border-radius:10px;transition:background .2s}.ck:hover{background:#3f3f46}.tm{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;margin-bottom:4px}.zn{font-size:10px;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.08em}.dt{font-size:10px;color:#52525b;margin-top:4px}</style></head><body><div class="clocks"><div class="ck"><div class="tm" id="t1"></div><div class="zn">New York</div><div class="dt" id="d1"></div></div><div class="ck"><div class="tm" id="t2"></div><div class="zn">London</div><div class="dt" id="d2"></div></div><div class="ck"><div class="tm" id="t3"></div><div class="zn">Tokyo</div><div class="dt" id="d3"></div></div></div><script>function up(){var n=new Date();var f=function(tz){return n.toLocaleTimeString("en-US",{timeZone:tz,hour:"2-digit",minute:"2-digit",second:"2-digit"})};var d=function(tz){return n.toLocaleDateString("en-US",{timeZone:tz,weekday:"short",month:"short",day:"numeric"})};document.getElementById("t1").textContent=f("America/New_York");document.getElementById("t2").textContent=f("Europe/London");document.getElementById("t3").textContent=f("Asia/Tokyo");document.getElementById("d1").textContent=d("America/New_York");document.getElementById("d2").textContent=d("Europe/London");document.getElementById("d3").textContent=d("Asia/Tokyo")}up();setInterval(up,1000)<\/script></body></html>';
+
+/* ── Post Data ── */
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'tools', label: 'Tools' },
+  { id: 'creative', label: 'Creative' },
+  { id: 'data', label: 'Data' },
+  { id: 'wellness', label: 'Wellness' },
+  { id: 'games', label: 'Games' },
+];
+
+const POSTS = [
+  {
+    id: 1,
+    author: 'Sarah Chen',
+    initials: 'SC',
+    color: '#8b5cf6',
+    timeAgo: '2h',
+    title: 'Color Contrast Checker',
+    desc: 'Check WCAG contrast ratios between any two colors in real-time',
+    category: 'tools',
+    tags: ['accessibility', 'design'],
+    forks: 42,
+    reactions: 128,
+    comments: 18,
+    appHtml: APP_CONTRAST,
+    aiThread: [
+      { text: 'Strong accessibility concept. The WCAG calculation correctly implements the relative luminance formula per WCAG 2.1. Consider adding large text thresholds (3:1 ratio for 18pt+ or 14pt bold) \u2014 most contrast checkers miss this distinction.', time: '1h ago' },
+      { text: 'Suggestion: a color blindness simulation toggle would elevate this significantly. Approximately 8% of males have some form of color vision deficiency \u2014 showing how chosen palettes appear under protanopia/deuteranopia would make this far more useful for design teams.', time: '1h ago' },
+    ],
+    communityThread: [
+      { author: 'Marcus Rivera', initials: 'MR', color: '#f97316', text: 'Forked and added APCA contrast support. The new perceptual algorithm gives much better results for dark mode interfaces.', time: '45m ago', isFork: true },
+      { author: 'Lisa Park', initials: 'LP', color: '#14b8a6', text: 'Would love preset palettes for common design systems. Great starting point for my accessibility audit workflow.', time: '30m ago', isFork: false },
+    ],
+  },
+  {
+    id: 2,
+    author: 'Kai Nakamura',
+    initials: 'KN',
+    color: '#f59e0b',
+    timeAgo: '5h',
+    title: 'Breathing Pacer',
+    desc: 'Guided breathing exercise with 4-7-8 rhythm visualization',
+    category: 'wellness',
+    tags: ['wellness', 'animation'],
+    forks: 67,
+    reactions: 234,
+    comments: 31,
+    appHtml: APP_BREATHING,
+    aiThread: [
+      { text: 'The 4-7-8 breathing technique is clinically validated for anxiety reduction. The animation timing is well-calibrated. Consider adding haptic feedback via the Vibration API for mobile users \u2014 tactile pacing significantly improves adherence.', time: '4h ago' },
+      { text: 'Accessibility note: users with vestibular disorders may find the scaling animation disorienting. Adding a prefers-reduced-motion alternative (perhaps a simple progress bar) would make this inclusive without losing the core value.', time: '4h ago' },
+    ],
+    communityThread: [
+      { author: 'Priya Sharma', initials: 'PS', color: '#22c55e', text: 'Forked with box breathing (4-4-4-4) and Wim Hof patterns as switchable modes. The base animation framework made it trivial to add.', time: '3h ago', isFork: true },
+      { author: 'Alex Torres', initials: 'AT', color: '#38bdf8', text: 'Been using this between meetings. Simple idea, surprisingly effective. The ambient color shifts are a nice touch.', time: '2h ago', isFork: false },
+    ],
+  },
+  {
+    id: 3,
+    author: 'Priya Sharma',
+    initials: 'PS',
+    color: '#22c55e',
+    timeAgo: '8h',
+    title: 'Habit Streak Calendar',
+    desc: 'Visual streak tracker with clickable day grid and streak counter',
+    category: 'tools',
+    tags: ['productivity', 'tracking'],
+    forks: 29,
+    reactions: 96,
+    comments: 12,
+    appHtml: APP_HABITS,
+    aiThread: [
+      { text: 'Clean implementation of the "don\'t break the chain" pattern. The visual density of the grid communicates progress at a glance. Consider persisting state to localStorage so streaks survive page reloads \u2014 this is critical for a habit tracker.', time: '7h ago' },
+      { text: 'The click-to-toggle interaction is intuitive. For a production version, adding multiple habit tracks (each with its own color) and a weekly/monthly summary view would make this a genuine replacement for dedicated habit apps.', time: '7h ago' },
+    ],
+    communityThread: [
+      { author: 'Sarah Chen', initials: 'SC', color: '#8b5cf6', text: 'The grid layout is perfect for this. I\'d love to see a GitHub-style contribution heatmap variant with intensity levels.', time: '6h ago', isFork: false },
+    ],
+  },
+  {
+    id: 4,
+    author: 'Alex Torres',
+    initials: 'AT',
+    color: '#38bdf8',
+    timeAgo: '12h',
+    title: 'Live Markdown Preview',
+    desc: 'Split-pane markdown editor with instant rendered preview',
+    category: 'creative',
+    tags: ['writing', 'developer-tools'],
+    forks: 53,
+    reactions: 187,
+    comments: 24,
+    appHtml: APP_MARKDOWN,
+    aiThread: [
+      { text: 'Solid baseline parser. The split-pane layout is the correct UX choice for markdown editing. Consider adding syntax highlighting in the editor pane (even just coloring headings and bold markers) \u2014 it dramatically improves the writing experience.', time: '11h ago' },
+      { text: 'Edge case: nested lists and code blocks aren\'t handled by the current regex-based parser. For a robust version, a proper state-machine parser would handle these. But for a quick tool, this covers 90% of real usage.', time: '11h ago' },
+    ],
+    communityThread: [
+      { author: 'Mia Kowalski', initials: 'MK', color: '#f43f5e', text: 'Forked with table support and export-to-HTML button. Regex-based markdown is surprisingly capable for everyday use.', time: '9h ago', isFork: true },
+      { author: 'Kai Nakamura', initials: 'KN', color: '#f59e0b', text: 'This is my go-to for quick READMEs now. Would be perfect with a word count in the corner.', time: '7h ago', isFork: false },
+    ],
+  },
+  {
+    id: 5,
+    author: 'Mia Kowalski',
+    initials: 'MK',
+    color: '#f43f5e',
+    timeAgo: '1d',
+    title: 'CSS Gradient Maker',
+    desc: 'Create linear gradients with live preview and one-click CSS copy',
+    category: 'creative',
+    tags: ['css', 'design'],
+    forks: 38,
+    reactions: 142,
+    comments: 15,
+    appHtml: APP_GRADIENT,
+    aiThread: [
+      { text: 'Clean utility. The live preview makes iteration instant. Consider adding radial/conic gradient modes and multi-stop support \u2014 two-stop linear is the most common case but power users want more control.', time: '22h ago' },
+      { text: 'The copy-to-clipboard interaction is well-handled. Adding a "gallery" of curated gradient presets (mesh gradients, aurora effects, brand palettes) would make this a discovery tool, not just a builder.', time: '22h ago' },
+    ],
+    communityThread: [
+      { author: 'Alex Torres', initials: 'AT', color: '#38bdf8', text: 'Forked and added a 3-color stop version with draggable stop positions. CSS gradients are underrated for backgrounds.', time: '18h ago', isFork: true },
+    ],
+  },
+];
+
+/* ── State ── */
+
+let activeCategory = 'all';
+let activeView = 'feed';
+let activePost = null;
+let activeTab = 'ai';
+let forkedPosts = new Set();
+
+/* ── Render ── */
+
+function renderTabs() {
+  var tabs = document.getElementById('tabs');
+  tabs.innerHTML = CATEGORIES.map(function(cat) {
+    return '<button class="tab' + (cat.id === activeCategory ? ' active' : '') + '" data-cat="' + cat.id + '">' + cat.label + '</button>';
+  }).join('');
+}
+
+function renderFeed() {
+  var feed = document.getElementById('feed');
+  var filtered = activeCategory === 'all' ? POSTS : POSTS.filter(function(p) { return p.category === activeCategory; });
+
+  feed.innerHTML = '';
+  filtered.forEach(function(post) {
+    var card = document.createElement('div');
+    card.className = 'post-card';
+    card.innerHTML =
+      '<div class="post-header" data-post="' + post.id + '">' +
+        '<div class="post-author">' +
+          '<div class="user-avatar" style="background-color:' + post.color + ';color:#fff;width:28px;height:28px;font-size:10px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;">' + post.initials + '</div>' +
+          '<span class="post-author-name">' + post.author + '</span>' +
+          '<span class="post-time">' + post.timeAgo + '</span>' +
+        '</div>' +
+        '<div class="post-title">' + post.title + '</div>' +
+        '<div class="post-desc">' + post.desc + '</div>' +
+      '</div>' +
+      '<div class="post-app"><iframe sandbox="allow-scripts" loading="lazy"></iframe></div>' +
+      '<div class="post-footer">' +
+        '<div class="post-tags">' + post.tags.map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>' +
+        '<div class="post-actions">' +
+          '<span class="post-stat">' + ICON.heart + ' ' + post.reactions + '</span>' +
+          '<span class="post-stat">' + ICON.fork + ' ' + post.forks + '</span>' +
+          '<span class="post-stat">' + ICON.comment + ' ' + post.comments + '</span>' +
+          '<button class="fork-btn' + (forkedPosts.has(post.id) ? ' forked' : '') + '" data-fork="' + post.id + '">' + ICON.fork + (forkedPosts.has(post.id) ? ' Forked' : ' Fork') + '</button>' +
+        '</div>' +
+      '</div>';
+
+    feed.appendChild(card);
+
+    var iframe = card.querySelector('iframe');
+    iframe.srcdoc = post.appHtml;
+  });
+}
+
+function renderTrending() {
+  var trending = document.getElementById('trending');
+  var sorted = POSTS.slice().sort(function(a, b) { return b.forks - a.forks; });
+  trending.innerHTML = sorted.slice(0, 4).map(function(p) {
+    return '<div class="trending-item"><span class="trending-name">' + p.title + '</span><span class="trending-count">' + p.forks + ' forks</span></div>';
+  }).join('');
+}
+
+function showDetail(postId) {
+  var post = POSTS.find(function(p) { return p.id === postId; });
+  if (!post) return;
+
+  activeView = 'detail';
+  activePost = post;
+  activeTab = 'ai';
+
+  document.getElementById('feed-view').classList.add('hidden-view');
+  var detail = document.getElementById('detail-view');
+  detail.classList.add('active');
+
+  detail.innerHTML =
+    '<button class="detail-back" id="detail-back">' + ICON.arrowLeft + ' Back to feed</button>' +
+    '<div class="detail-meta">' +
+      '<div class="user-avatar" style="background-color:' + post.color + ';color:#fff;width:32px;height:32px;font-size:11px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;">' + post.initials + '</div>' +
+      '<span class="post-author-name">' + post.author + '</span>' +
+      '<span class="post-time">' + post.timeAgo + '</span>' +
+    '</div>' +
+    '<h1 class="detail-title">' + post.title + '</h1>' +
+    '<p class="detail-desc">' + post.desc + '</p>' +
+    '<div class="detail-app"><iframe sandbox="allow-scripts"></iframe></div>' +
+    '<div class="detail-bar">' +
+      '<div class="detail-tags">' + post.tags.map(function(t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>' +
+      '<button class="detail-fork-btn" data-fork="' + post.id + '">' + ICON.fork + ' Fork This</button>' +
+    '</div>' +
+    '<div class="threads">' +
+      '<div class="thread-tabs">' +
+        '<button class="thread-tab active" data-thread="ai">' + ICON.sparkle + ' AI Feedback</button>' +
+        '<button class="thread-tab" data-thread="community">' + ICON.users + ' Community</button>' +
+      '</div>' +
+      '<div class="thread-panel active" id="thread-ai">' +
+        post.aiThread.map(function(c) {
+          return '<div class="ai-comment"><div class="ai-label">' + ICON.sparkle + ' Foundry AI</div><div class="comment-text">' + c.text + '</div></div>';
+        }).join('') +
+      '</div>' +
+      '<div class="thread-panel" id="thread-community">' +
+        post.communityThread.map(function(c) {
+          return '<div class="thread-comment">' +
+            '<div class="comment-author">' +
+              '<div class="user-avatar" style="background-color:' + c.color + ';color:#fff;width:24px;height:24px;font-size:9px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;">' + c.initials + '</div>' +
+              '<span class="comment-name">' + c.author + '</span>' +
+              (c.isFork ? '<span class="fork-badge">' + ICON.fork + ' forked</span>' : '') +
+              '<span class="comment-time">' + c.time + '</span>' +
+            '</div>' +
+            '<div class="comment-text">' + c.text + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+
+  var iframe = detail.querySelector('iframe');
+  iframe.srcdoc = post.appHtml;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showFeed() {
+  activeView = 'feed';
+  activePost = null;
+  document.getElementById('detail-view').classList.remove('active');
+  document.getElementById('feed-view').classList.remove('hidden-view');
+}
+
+function showToast(msg) {
+  var container = document.getElementById('toast-container');
+  var toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 2800);
+}
+
+function handleFork(postId) {
+  if (forkedPosts.has(postId)) return;
+  forkedPosts.add(postId);
+  var post = POSTS.find(function(p) { return p.id === postId; });
+  if (post) post.forks++;
+
+  document.querySelectorAll('[data-fork="' + postId + '"]').forEach(function(btn) {
+    btn.classList.add('forked');
+    if (btn.classList.contains('fork-btn')) {
+      btn.innerHTML = ICON.fork + ' Forked';
+    }
+  });
+
+  showToast('Forked "' + (post ? post.title : '') + '" to your workspace');
+  renderTrending();
+}
+
+/* ── Modal ── */
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('active');
+  document.getElementById('idea-input').value = '';
+  document.getElementById('modal-result').innerHTML = '';
+  document.getElementById('generate-btn').disabled = false;
+  document.getElementById('generate-btn').textContent = 'Generate';
+  document.getElementById('idea-input').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function handleGenerate() {
+  var input = document.getElementById('idea-input').value.trim();
+  if (!input) return;
+
+  var btn = document.getElementById('generate-btn');
+  var result = document.getElementById('modal-result');
+
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  result.innerHTML = '<div class="modal-loading"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+
+  setTimeout(function() {
+    result.innerHTML =
+      '<div class="modal-preview"><iframe sandbox="allow-scripts"></iframe></div>' +
+      '<button class="post-btn" id="post-btn">Post to Foundry</button>';
+
+    var iframe = result.querySelector('iframe');
+    iframe.srcdoc = APP_CLOCK;
+
+    document.getElementById('post-btn').addEventListener('click', function() {
+      closeModal();
+      showToast('Idea posted to Foundry');
+    });
+
+    btn.textContent = 'Regenerate';
+    btn.disabled = false;
+  }, 2200);
+}
+
+/* ── Events ── */
+
+document.addEventListener('click', function(e) {
+  var tab = e.target.closest('[data-cat]');
+  if (tab) {
+    activeCategory = tab.dataset.cat;
+    renderTabs();
+    renderFeed();
+    return;
+  }
+
+  var postHeader = e.target.closest('[data-post]');
+  if (postHeader) {
+    showDetail(parseInt(postHeader.dataset.post, 10));
+    return;
+  }
+
+  var forkBtn = e.target.closest('[data-fork]');
+  if (forkBtn) {
+    e.stopPropagation();
+    handleFork(parseInt(forkBtn.dataset.fork, 10));
+    return;
+  }
+
+  var threadTab = e.target.closest('[data-thread]');
+  if (threadTab) {
+    var tabName = threadTab.dataset.thread;
+    activeTab = tabName;
+    document.querySelectorAll('.thread-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.thread === tabName); });
+    document.getElementById('thread-ai').classList.toggle('active', tabName === 'ai');
+    document.getElementById('thread-community').classList.toggle('active', tabName === 'community');
+    return;
+  }
+
+  if (e.target.closest('#detail-back')) {
+    showFeed();
+    return;
+  }
+
+  if (e.target.closest('#new-idea-btn')) {
+    openModal();
+    return;
+  }
+
+  if (e.target.closest('#modal-close')) {
+    closeModal();
+    return;
+  }
+
+  if (e.target.closest('#generate-btn')) {
+    handleGenerate();
+    return;
+  }
+
+  if (e.target === document.getElementById('modal-overlay')) {
+    closeModal();
+    return;
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    if (document.getElementById('modal-overlay').classList.contains('active')) {
+      closeModal();
+    } else if (activeView === 'detail') {
+      showFeed();
+    }
+  }
+});
+
+/* ── Init ── */
+
+renderTabs();
+renderFeed();
+renderTrending();
+</script>
+</body>
+</html>
