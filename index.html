@@ -642,6 +642,8 @@
       gap: 8px;
     }
 
+    .chat-messages > :first-child { margin-top: auto; }
+
     .chat-empty {
       text-align: center;
       color: var(--text-muted);
@@ -797,7 +799,7 @@
       display: flex;
       gap: 8px;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--surface-alt);
+      border-top: 1px solid var(--surface-alt);
     }
 
     .chat-input-area textarea {
@@ -1078,13 +1080,13 @@
       <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
       <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
     </div>
+    <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
     <div class="chat-input-area">
       <button class="chat-action-btn" id="key-edit" aria-label="API key" title="API key">&#9919;</button>
       <textarea id="chat-input" placeholder="Ask about hospitals..." rows="1" aria-label="Chat message"></textarea>
       <button class="chat-send" id="chat-send" aria-label="Send message">&uarr;</button>
       <button class="chat-action-btn" id="chat-reset" aria-label="Clear chat" title="Clear chat">&times;</button>
     </div>
-    <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
   </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
