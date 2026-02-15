@@ -783,48 +783,76 @@
     .exchange.collapsed .exchange-summary-chevron { transform: rotate(-90deg); }
     .exchange.collapsed .exchange-body { display: none; }
 
-    /* Compact tool messages */
-    .msg-tool-compact {
-      padding: 2px 12px;
+    /* Tool call cards */
+    .msg-tool-card {
+      align-self: flex-start;
+      max-width: 95%;
+      background: var(--surface);
+      border: 1px solid var(--surface-alt);
+      border-radius: var(--radius);
       font-family: var(--mono);
       font-size: 11px;
       color: var(--text-muted);
-      line-height: 1.4;
+      overflow: hidden;
     }
 
-    .msg-tool-compact-line {
+    .msg-tool-header {
       display: flex;
-      align-items: baseline;
-      gap: 6px;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-
-    .msg-tool-compact-summary {
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .msg-tool-detail {
-      display: none;
-      margin-top: 4px;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
+      min-height: 36px;
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+
+    .msg-tool-header:hover { background: var(--surface-alt); }
+
+    .msg-tool-status { flex-shrink: 0; }
+    .msg-tool-status.success { color: var(--risk-low); }
+    .msg-tool-status.error { color: var(--risk-high); }
+
+    .msg-tool-label {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .msg-tool-chevron {
+      flex-shrink: 0;
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform var(--transition);
+    }
+
+    .msg-tool-card.expanded .msg-tool-chevron { transform: rotate(180deg); }
+
+    .msg-tool-body {
+      display: none;
+      padding: 0 12px 8px;
       font-size: 11px;
       line-height: 1.6;
-      color: var(--text-muted);
-      background: var(--bg);
-      border: 1px solid var(--surface-alt);
-      border-radius: var(--radius);
-      white-space: pre-wrap;
-      word-break: break-word;
+      border-top: 1px solid var(--surface-alt);
     }
 
-    .exchange:not(.collapsed):not(.current) .msg-tool-detail { display: block; }
-    .msg-tool-detail-result { color: var(--risk-low); }
+    .msg-tool-card.expanded .msg-tool-body { display: block; padding-top: 8px; }
 
-    .msg-tool-check { color: var(--risk-low); }
-    .msg-tool-fail { color: var(--risk-high); }
+    .msg-tool-args {
+      color: var(--text-muted);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .msg-tool-result {
+      color: var(--risk-low);
+      margin-top: 4px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .msg-tool-card.error .msg-tool-result { color: var(--risk-high); }
 
     .msg-context {
       align-self: center;
@@ -2544,41 +2572,51 @@ Rules:
 
       const target = currentExchangeEl || chatMessages;
       const el = document.createElement('div');
-      el.className = 'msg-tool-compact';
+      el.className = 'msg-tool-card' + (isError ? ' error' : '');
 
-      const line = document.createElement('div');
-      line.className = 'msg-tool-compact-line';
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
 
-      const indicator = document.createElement('span');
-      indicator.className = isError ? 'msg-tool-fail' : 'msg-tool-check';
-      indicator.textContent = isError ? '\u2717' : '\u2713';
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status ' + (isError ? 'error' : 'success');
+      status.textContent = isError ? '\u2717' : '\u2713';
 
-      const name = document.createElement('span');
-      name.className = 'msg-tool-name';
-      name.textContent = toolName;
-
-      line.append(indicator, name);
-
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
       const resultStr = typeof result === 'string' ? result : '';
+      const summary = resultStr.length > 50 ? resultStr.slice(0, 50) + '...' : resultStr;
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.append(nameStrong, summary ? ' \u2014 ' + summary : '');
+
+      const chevron = document.createElement('span');
+      chevron.className = 'msg-tool-chevron';
+      chevron.textContent = '\u25BE';
+
+      header.append(status, label, chevron);
+      el.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'msg-tool-body';
+
+      const argsEl = document.createElement('div');
+      argsEl.className = 'msg-tool-args';
+      argsEl.textContent = JSON.stringify(args, null, 2);
+      body.appendChild(argsEl);
+
       if (resultStr) {
-        const summarySpan = document.createElement('span');
-        summarySpan.className = 'msg-tool-compact-summary';
-        summarySpan.textContent = '\u2014 ' + (resultStr.length > 60 ? resultStr.slice(0, 60) + '...' : resultStr);
-        line.appendChild(summarySpan);
+        const resultEl = document.createElement('div');
+        resultEl.className = 'msg-tool-result';
+        resultEl.textContent = '\u2192 ' + resultStr;
+        body.appendChild(resultEl);
       }
 
-      el.appendChild(line);
+      el.appendChild(body);
 
-      const detail = document.createElement('div');
-      detail.className = 'msg-tool-detail';
-      detail.textContent = toolName + '(' + JSON.stringify(args) + ')';
-      if (resultStr) {
-        const resultLine = document.createElement('div');
-        resultLine.className = 'msg-tool-detail-result';
-        resultLine.textContent = '\u2192 ' + resultStr;
-        detail.appendChild(resultLine);
-      }
-      el.appendChild(detail);
+      header.addEventListener('click', () => {
+        el.classList.toggle('expanded');
+      });
 
       target.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -2604,7 +2642,7 @@ Rules:
       const userMsg = currentExchangeEl.querySelector('.msg-user');
       const userText = userMsg ? userMsg.textContent.slice(0, 60) + (userMsg.textContent.length > 60 ? '...' : '') : 'Message';
 
-      const toolCount = currentExchangeEl.querySelectorAll('.msg-tool-compact').length;
+      const toolCount = currentExchangeEl.querySelectorAll('.msg-tool-card').length;
 
       const followups = currentExchangeEl.querySelector('.followup-suggestions');
       if (followups) followups.remove();
@@ -2686,6 +2724,7 @@ Rules:
       currentExchangeEl = exchange;
 
       appendMessage('user', displayText);
+      exchange.scrollIntoView({ block: 'start' });
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
