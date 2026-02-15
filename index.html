@@ -756,6 +756,11 @@
     .chat-send:not(:disabled):hover { opacity: 0.85; }
     .chat-send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+    .chat-send.stop {
+      background: var(--risk-high);
+      font-size: 14px;
+    }
+
     @keyframes chat-spin {
       to { transform: rotate(360deg); }
     }
@@ -1988,6 +1993,7 @@ Rules:
 
     let conversationMessages = [];
     let chatBusy = false;
+    let abortController = null;
 
     // Restore API key from localStorage
     apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
@@ -2019,7 +2025,13 @@ Rules:
       }
     });
 
-    chatSend.addEventListener('click', () => sendMessage());
+    chatSend.addEventListener('click', () => {
+      if (chatBusy && abortController) {
+        abortController.abort();
+        return;
+      }
+      sendMessage();
+    });
 
     function appendMessage(type, content) {
       const empty = chatMessages.querySelector('.chat-empty');
@@ -2065,8 +2077,18 @@ Rules:
 
     function setInputEnabled(enabled) {
       chatBusy = !enabled;
-      chatSend.disabled = !enabled;
       chatInput.disabled = !enabled;
+      if (enabled) {
+        chatSend.disabled = false;
+        chatSend.classList.remove('stop');
+        chatSend.textContent = '\u2191';
+        chatSend.setAttribute('aria-label', 'Send message');
+      } else {
+        chatSend.disabled = false;
+        chatSend.classList.add('stop');
+        chatSend.textContent = '\u25A0';
+        chatSend.setAttribute('aria-label', 'Stop generation');
+      }
     }
 
     async function sendMessage(opts = {}) {
@@ -2089,20 +2111,23 @@ Rules:
       chatInput.style.height = 'auto';
 
       conversationMessages.push({ role: 'user', content: text });
+      abortController = new AbortController();
       setInputEnabled(false);
       showSpinner();
 
-      await runConversation(apiKey);
+      await runConversation(apiKey, abortController.signal);
 
+      abortController = null;
       setInputEnabled(true);
       chatInput.focus();
     }
 
     /* ── Streaming API ── */
 
-    async function streamClaudeAPI(apiKey, messages) {
+    async function streamClaudeAPI(apiKey, messages, signal) {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
+        signal,
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
@@ -2157,13 +2182,14 @@ Rules:
       }
     }
 
-    async function runConversation(apiKey) {
+    async function runConversation(apiKey, signal) {
       while (true) {
         let body;
         try {
-          body = await streamClaudeAPI(apiKey, conversationMessages);
+          body = await streamClaudeAPI(apiKey, conversationMessages, signal);
         } catch (err) {
           hideSpinner();
+          if (err.name === 'AbortError') return;
           appendMessage('error', err.message);
           return;
         }
@@ -2226,6 +2252,7 @@ Rules:
           }
         } catch (err) {
           hideSpinner();
+          if (err.name === 'AbortError') return;
           appendMessage('error', 'Stream interrupted: ' + err.message);
           return;
         }
