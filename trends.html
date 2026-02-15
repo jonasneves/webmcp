@@ -140,6 +140,10 @@
       animation: shimmer 1.5s infinite linear;
     }
 
+    .skeleton-row:nth-child(2) { animation-delay: 80ms; }
+    .skeleton-row:nth-child(3) { animation-delay: 160ms; }
+    .skeleton-row:nth-child(4) { animation-delay: 240ms; }
+
     /* County trends table */
     .county-trends-table {
       width: 100%;
@@ -223,10 +227,18 @@
     .risk-badge.medium { background: #451a03; color: var(--risk-med); }
     .risk-badge.high { background: #450a0a; color: var(--risk-high); }
 
+    .color-risk-low { color: var(--risk-low); }
+    .color-risk-medium { color: var(--risk-med); }
+    .color-risk-high { color: var(--risk-high); }
+
     .view-label {
       font-size: 13px;
       color: var(--text-muted);
       margin-bottom: 16px;
+    }
+
+    .load-error {
+      color: var(--risk-high);
     }
   </style>
 </head>
@@ -248,9 +260,9 @@
       <div id="county-trends-content">
         <div class="loading-skeleton">
           <div class="skeleton-row"></div>
-          <div class="skeleton-row" style="animation-delay: 80ms"></div>
-          <div class="skeleton-row" style="animation-delay: 160ms"></div>
-          <div class="skeleton-row" style="animation-delay: 240ms"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
         </div>
       </div>
     </section>
@@ -260,7 +272,7 @@
       <div id="statewide-content">
         <div class="loading-skeleton">
           <div class="skeleton-row"></div>
-          <div class="skeleton-row" style="animation-delay: 80ms"></div>
+          <div class="skeleton-row"></div>
         </div>
       </div>
     </section>
@@ -301,7 +313,7 @@
                 <td>${t.county}</td>
                 <td>${t.count}</td>
                 <td><span class="risk-badge ${tier}">${fmt(t.avgRisk * 100)}%</span></td>
-                <td style="color: ${t.avgMargin < 0 ? 'var(--risk-high)' : 'var(--risk-low)'}">${fmt(t.avgMargin)}%</td>
+                <td class="${t.avgMargin < 0 ? 'color-risk-high' : 'color-risk-low'}">${fmt(t.avgMargin)}%</td>
                 <td>${fmt(t.avgEquityBurden, 0)}</td>
               </tr>`;
             }).join('')}
@@ -324,7 +336,7 @@
           </div>
           <div class="summary-card">
             <div class="summary-card-label">Average Risk</div>
-            <div class="summary-card-value" style="color: ${data.avgRisk >= 0.65 ? 'var(--risk-high)' : data.avgRisk >= 0.35 ? 'var(--risk-med)' : 'var(--risk-low)'}">${fmt(data.avgRisk * 100)}%</div>
+            <div class="summary-card-value color-risk-${riskTier(data.avgRisk)}">${fmt(data.avgRisk * 100)}%</div>
           </div>
           <div class="summary-card">
             <div class="summary-card-label">Risk Distribution</div>
@@ -435,39 +447,11 @@
         HOSPITALS = await res.json();
       } catch (err) {
         document.getElementById('county-trends-content').innerHTML =
-          `<p style="color:var(--risk-high)">Failed to load data: ${err.message}</p>`;
+          `<p class="load-error">Failed to load data: ${err.message}</p>`;
         return;
       }
 
-      // Render both views immediately on load
-      const counties = {};
-      HOSPITALS.forEach(h => {
-        if (!counties[h.county]) counties[h.county] = [];
-        counties[h.county].push(h);
-      });
-
-      const trends = Object.entries(counties).map(([county, hospitals]) => {
-        const avg = (fn) => hospitals.reduce((s, h) => s + fn(h), 0) / hospitals.length;
-        return {
-          county,
-          count: hospitals.length,
-          avgRisk: avg(h => h.riskProbability),
-          avgMargin: avg(h => h.operatingMargin),
-          avgEquityBurden: avg(h => h.equityBurdenScore)
-        };
-      });
-      renderCountyTrendsTable(trends);
-
-      const avg = (fn) => HOSPITALS.reduce((s, h) => s + fn(h), 0) / HOSPITALS.length;
-      const riskDist = { low: 0, medium: 0, high: 0 };
-      HOSPITALS.forEach(h => riskDist[riskTier(h.riskProbability)]++);
-      renderStatewideCards({
-        totalHospitals: HOSPITALS.length,
-        totalBeds: HOSPITALS.reduce((s, h) => s + h.licensedBeds, 0),
-        avgRisk: avg(h => h.riskProbability),
-        riskDistribution: riskDist
-      });
-
+      for (const tool of TOOL_DEFS) await tool.exec();
       registerTools();
     }
 
