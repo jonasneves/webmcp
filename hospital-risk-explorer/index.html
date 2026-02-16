@@ -196,7 +196,7 @@
       scrollbar-width: none;
       mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
       -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
-      padding-right: 32px;
+      padding-right: var(--space-xl);
     }
 
     .controls::-webkit-scrollbar { display: none; }
@@ -343,50 +343,6 @@
       font-style: italic;
     }
 
-    /* Chart view */
-    .chart-container { max-width: 600px; }
-
-    .chart-row {
-      display: grid;
-      grid-template-columns: 80px 1fr 50px;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .chart-label {
-      font-size: var(--text-sm);
-      font-weight: 500;
-      text-align: right;
-    }
-
-    .chart-bar-track {
-      height: 32px;
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .chart-bar-fill {
-      height: 100%;
-      border-radius: var(--radius);
-      transition: width 400ms var(--ease);
-    }
-
-    .chart-bar-fill.low { background: var(--risk-low); }
-    .chart-bar-fill.medium { background: var(--risk-med); }
-    .chart-bar-fill.high { background: var(--risk-high); }
-
-    .chart-label.low { color: var(--risk-low); }
-    .chart-label.medium { color: var(--risk-med); }
-    .chart-label.high { color: var(--risk-high); }
-
-    .chart-value {
-      font-size: var(--text-sm);
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-
     /* Comparison view */
     .compare-table {
       width: 100%;
@@ -439,8 +395,8 @@
       gap: 10px;
       font-size: var(--text-xl);
       font-weight: 600;
-      margin-bottom: var(--space-xs);
       letter-spacing: -0.02em;
+      margin-bottom: var(--space-xs);
     }
 
     .detail-meta {
@@ -473,6 +429,7 @@
       font-size: var(--text-lg);
       font-weight: 600;
       font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
     }
 
     .payer-bar {
@@ -537,6 +494,11 @@
       font-size: var(--text-sm);
       color: var(--text-muted);
       margin-bottom: var(--space-md);
+    }
+
+    .chart-container {
+      width: 100%;
+      min-height: 400px;
     }
 
     .back-btn {
@@ -1089,8 +1051,10 @@
   </style>
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
   <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
   <div class="main-column">
@@ -1236,8 +1200,8 @@
     function refreshCurrentView() {
       if (currentView.type === 'table') {
         renderTable(currentView.data || HOSPITALS, currentView.label, currentView.filters);
-      } else if (currentView.type === 'chart') {
-        renderChart(currentView.data || HOSPITALS, currentView.label, currentView.filters);
+      } else if (currentView.type === 'chart' && currentView.data) {
+        renderEChart(currentView.data, currentView.label);
       } else if (currentView.type === 'detail' && currentView.data) {
         renderDetail(currentView.data);
       } else if (currentView.type === 'comparison' && currentView.data) {
@@ -1255,8 +1219,6 @@
       if (currentView.type === 'table') {
         if (f.county) params.set('county', f.county);
         if (f.risk) params.set('risk', f.risk);
-      } else if (currentView.type === 'chart') {
-        if (f.county) params.set('county', f.county);
       } else if (currentView.type === 'detail' && currentView.data) {
         params.set('name', currentView.data.name);
       } else if (currentView.type === 'comparison' && currentView.data) {
@@ -1288,12 +1250,7 @@
       }
 
       if (view === 'chart') {
-        const county = params.get('county');
-        if (county) {
-          renderChart(filterData({ county }), county, { county });
-        } else {
-          renderChart(HOSPITALS);
-        }
+        renderTable(HOSPITALS);
         return true;
       }
 
@@ -1303,7 +1260,7 @@
         if (h) { renderDetail(h); return true; }
       }
 
-      if (view === 'compare') {
+      if (view === 'comparison') {
         const h1 = HOSPITALS.find(h => h.name === params.get('h1'));
         const h2 = HOSPITALS.find(h => h.name === params.get('h2'));
         if (h1 && h2) { renderComparison(h1, h2); return true; }
@@ -1319,6 +1276,48 @@
     /* ── Rendering ── */
 
     const display = document.getElementById('display');
+
+    echarts.registerTheme('webmcp', {
+      backgroundColor: 'transparent',
+      textStyle: { fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+      title: { textStyle: { color: '#f1f5f9' } },
+      legend: { textStyle: { color: '#94a3b8' } },
+      categoryAxis: {
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#1e293b' } }
+      },
+      valueAxis: {
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#1e293b' } }
+      },
+      tooltip: {
+        backgroundColor: '#1e293b',
+        borderColor: '#475569',
+        textStyle: { color: '#f1f5f9' }
+      }
+    });
+
+    let chartInstance = null;
+
+    function renderEChart(option, label) {
+      currentView = { type: 'chart', data: option, label, filters: {} };
+      if (chartInstance) { chartInstance.dispose(); chartInstance = null; }
+      display.innerHTML = `
+        <p class="view-label">${label}</p>
+        <div id="chart-container" class="chart-container"></div>
+      `;
+      const container = document.getElementById('chart-container');
+      chartInstance = echarts.init(container, 'webmcp');
+      chartInstance.setOption(option);
+      encodeViewToHash();
+      syncTools();
+    }
+
+    window.addEventListener('resize', () => {
+      if (chartInstance) chartInstance.resize();
+    });
 
     function renderSkeleton() {
       display.innerHTML = `
@@ -1373,43 +1372,6 @@
             }).join('')}
           </tbody>
         </table>
-        </div>
-      `;
-      encodeViewToHash();
-      syncTools();
-    }
-
-    function renderChart(hospitals, label, filters) {
-      currentView = { type: 'chart', data: hospitals, label, filters };
-      const tiers = { low: 0, medium: 0, high: 0 };
-      hospitals.forEach(h => tiers[riskTier(h.riskProbability)]++);
-      const max = Math.max(tiers.low, tiers.medium, tiers.high, 1);
-      const title = label || 'all hospitals';
-
-      display.innerHTML = `
-        <p class="view-label">Risk distribution across ${title} (${hospitals.length} total)</p>
-        <div class="chart-container" role="img" aria-label="Bar chart: ${tiers.low} low risk, ${tiers.medium} medium risk, ${tiers.high} high risk hospitals across ${title}">
-          <div class="chart-row">
-            <span class="chart-label low">Low</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill low" style="width: ${(tiers.low / max) * 100}%"></div>
-            </div>
-            <span class="chart-value">${tiers.low}</span>
-          </div>
-          <div class="chart-row">
-            <span class="chart-label medium">Medium</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill medium" style="width: ${(tiers.medium / max) * 100}%"></div>
-            </div>
-            <span class="chart-value">${tiers.medium}</span>
-          </div>
-          <div class="chart-row">
-            <span class="chart-label high">High</span>
-            <div class="chart-bar-track">
-              <div class="chart-bar-fill high" style="width: ${(tiers.high / max) * 100}%"></div>
-            </div>
-            <span class="chart-value">${tiers.high}</span>
-          </div>
         </div>
       `;
       encodeViewToHash();
@@ -1998,9 +1960,9 @@
         }
       },
       {
-        name: 'show_risk_chart',
-        title: 'Risk Chart',
-        description: 'Display a visual bar chart showing the distribution of hospital financial risk tiers (low/medium/high). Renders directly on the page so the user can see the breakdown visually.',
+        name: 'render_chart',
+        title: 'Render Chart',
+        description: 'Render an Apache ECharts visualization. Generate a full ECharts option object with the appropriate chart type (bar, line, pie, scatter, radar, etc.) based on the data. Use the data available from previous tool calls. Colors should use the palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"].',
         readOnlyHint: true,
         idempotentHint: true,
         destructiveHint: false,
@@ -2008,16 +1970,20 @@
         schema: {
           type: 'object',
           properties: {
-            county: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Limit chart to a specific county' }
-          }
+            option: {
+              type: 'object',
+              description: 'Full ECharts option object (series, xAxis, yAxis, tooltip, legend, etc.)'
+            },
+            label: {
+              type: 'string',
+              description: 'Short description shown above the chart'
+            }
+          },
+          required: ['option', 'label']
         },
         exec: async (input) => {
-          const hospitals = input.county ? filterData({ county: input.county }) : HOSPITALS;
-          const label = input.county || 'all hospitals';
-          renderChart(hospitals, label, { county: input.county });
-          const tiers = { low: 0, medium: 0, high: 0 };
-          hospitals.forEach(h => tiers[riskTier(h.riskProbability)]++);
-          return { displayed: true, summary: `Chart displayed: ${tiers.low} low, ${tiers.medium} medium, ${tiers.high} high risk (${label}).`, distribution: tiers };
+          renderEChart(input.option, input.label);
+          return { displayed: true, summary: `Chart rendered: ${input.label}` };
         }
       },
       {
@@ -2284,7 +2250,18 @@
 
         const view = btn.dataset.view;
         if (view === 'chart') {
-          renderChart(HOSPITALS);
+          const tiers = { low: 0, medium: 0, high: 0 };
+          HOSPITALS.forEach(h => tiers[riskTier(h.riskProbability)]++);
+          renderEChart({
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'category', data: ['Low', 'Medium', 'High'] },
+            yAxis: { type: 'value' },
+            series: [{ type: 'bar', data: [
+              { value: tiers.low, itemStyle: { color: '#22c55e' } },
+              { value: tiers.medium, itemStyle: { color: '#f59e0b' } },
+              { value: tiers.high, itemStyle: { color: '#ef4444' } }
+            ] }]
+          }, 'Risk distribution across all hospitals');
         } else if (view === 'trends') {
           const tool = TOOL_DEFS.find(t => t.name === 'show_county_trends');
           tool.exec();
@@ -2316,6 +2293,7 @@ Rules:
 - You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.
 - Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
 - Use export_flagged to download a CSV of all flagged hospitals when the user wants to export or save their flags.
+- Use render_chart to display Apache ECharts visualizations. Generate a full ECharts option object choosing the best chart type (bar, line, pie, scatter, radar, etc.) for the data. Use the color palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. The theme already sets backgroundColor to transparent.
 - Use show_county_trends to display a county-level comparison table with aggregate metrics.
 - Use show_statewide_summary to display statewide overview cards with totals and risk distribution.
 - Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_hospitals only lists currently visible hospitals.
