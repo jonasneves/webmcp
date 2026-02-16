@@ -864,14 +864,24 @@
     }
 
     /* Suggestion chips (quick actions + follow-ups) */
-    .chat-quick-actions,
     .followup-suggestions {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
     }
 
-    .chat-quick-actions { padding: var(--space-xs) 0; }
+    .chat-quick-actions {
+      display: flex;
+      gap: 6px;
+      padding: var(--space-xs) 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+      padding-right: 24px;
+    }
+
+    .chat-quick-actions::-webkit-scrollbar { display: none; }
 
     .suggestion-chip {
       min-height: 36px;
@@ -885,7 +895,7 @@
       transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
     }
 
-    .quick-action-chip { color: var(--accent); text-align: left; }
+    .quick-action-chip { color: var(--accent); text-align: left; white-space: nowrap; flex-shrink: 0; }
     .quick-action-chip:hover { color: var(--text); border-color: var(--accent); }
 
     .followup-chip { color: var(--text-muted); }
@@ -1148,8 +1158,9 @@
     const QUICK_ACTIONS = [
       'Show high-risk hospitals',
       'Compare MLK and Cedars-Sinai',
-      'Show risk chart for Los Angeles',
-      'Flag all hospitals over 70% risk',
+      'Chart risk distribution by county',
+      'Payer mix breakdown as a pie chart',
+      'Plot risk vs operating margin',
       'Run triage analysis'
     ];
 
