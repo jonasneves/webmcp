@@ -1,29 +1,29 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#f8f9fb">
   <title>WebMCP PoC — Hospital Explorer</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --surface-alt: #334155;
-      --border: #475569;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-dim: #0c4a6e;
-      --risk-low: #22c55e;
-      --risk-med: #f59e0b;
-      --risk-high: #ef4444;
-      --flag: #f59e0b;
-      --badge-green-bg: #052e16;
-      --badge-amber-bg: #451a03;
-      --badge-red-bg: #450a0a;
-      --badge-cyan-bg: #0c4a6e;
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --surface-alt: #edeef1;
+      --border: #d1d5db;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --accent: #0d9488;
+      --accent-dim: #ccfbf1;
+      --risk-low: #16a34a;
+      --risk-med: #d97706;
+      --risk-high: #dc2626;
+      --flag: #d97706;
+      --badge-green-bg: #dcfce7;
+      --badge-amber-bg: #fef3c7;
+      --badge-red-bg: #fee2e2;
+      --badge-cyan-bg: #ccfbf1;
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
@@ -41,27 +41,34 @@
       --space-lg: 24px;
       --space-xl: 32px;
       --space-2xl: 48px;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --duration: 150ms;
       --duration-slow: 300ms;
     }
 
-    html[data-theme="light"] {
-      --bg: #f8fafc;
-      --surface: #f1f5f9;
-      --surface-alt: #e2e8f0;
-      --border: #cbd5e1;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --accent: #0284c7;
-      --accent-dim: #e0f2fe;
-      --badge-green-bg: #dcfce7;
-      --badge-amber-bg: #fef3c7;
-      --badge-red-bg: #fee2e2;
-      --badge-cyan-bg: #e0f2fe;
+    html[data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #1a1d24;
+      --surface-alt: #21252d;
+      --border: #2d3139;
+      --text: #e8eaf0;
+      --text-muted: #8b92a5;
+      --accent: #2dd4bf;
+      --accent-dim: #0f3935;
+      --risk-low: #22c55e;
+      --risk-med: #f59e0b;
+      --risk-high: #ef4444;
+      --flag: #f59e0b;
+      --badge-green-bg: #052e16;
+      --badge-amber-bg: #3d1f00;
+      --badge-red-bg: #3d0a0a;
+      --badge-cyan-bg: #0f3935;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -94,8 +101,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: var(--space-md) var(--space-lg);
+      height: 52px;
+      padding: 0 var(--space-lg);
       border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
     }
 
     .header-left {
@@ -105,7 +116,7 @@
     }
 
     header h1 {
-      font-size: var(--text-lg);
+      font-size: var(--text-base);
       font-weight: 600;
       letter-spacing: -0.02em;
     }
@@ -721,7 +732,7 @@
     /* ── Theme ── */
 
     (function () {
-      const stored = localStorage.getItem('webmcp-theme') || 'dark';
+      const stored = localStorage.getItem('webmcp-theme') || 'light';
       const resolved = stored === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : stored;
@@ -1889,7 +1900,7 @@
         : pref;
       document.documentElement.dataset.theme = resolved;
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.content = resolved === 'light' ? '#f8fafc' : '#0f172a';
+      if (meta) meta.content = resolved === 'light' ? '#f8f9fb' : '#0f1117';
       document.querySelectorAll('.theme-opt').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.theme === pref);
       });
@@ -1903,7 +1914,7 @@
       if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
     });
 
-    applyTheme(localStorage.getItem('webmcp-theme') || 'dark');
+    applyTheme(localStorage.getItem('webmcp-theme') || 'light');
 
     /* ── Settings popover ── */
 

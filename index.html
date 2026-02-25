@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#f8f9fb">
   <title>WebMCP PoC</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --surface-alt: #334155;
-      --border: #475569;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-dim: #0c4a6e;
+      --bg: #f8f9fb;
+      --surface: #ffffff;
+      --surface-alt: #edeef1;
+      --border: #d1d5db;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --accent: #0d9488;
+      --accent-dim: #ccfbf1;
       --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
       --text-xs: 0.6875rem;
       --text-sm: 0.8125rem;
       --text-base: 0.9375rem;
@@ -32,24 +33,26 @@
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
-      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --duration: 150ms;
       --duration-slow: 300ms;
     }
 
-    html[data-theme="light"] {
-      --bg: #f8fafc;
-      --surface: #f1f5f9;
-      --surface-alt: #e2e8f0;
-      --border: #cbd5e1;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --accent: #0284c7;
-      --accent-dim: #e0f2fe;
+    html[data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #1a1d24;
+      --surface-alt: #21252d;
+      --border: #2d3139;
+      --text: #e8eaf0;
+      --text-muted: #8b92a5;
+      --accent: #2dd4bf;
+      --accent-dim: #0f3935;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -74,10 +77,19 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    .hero-kicker {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: var(--space-sm);
+    }
+
     h1 {
       font-size: var(--text-2xl);
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      font-weight: 700;
+      letter-spacing: -0.03em;
       margin-bottom: var(--space-sm);
     }
 
@@ -87,14 +99,24 @@
       margin-bottom: var(--space-2xl);
       max-width: 480px;
       text-align: center;
+      line-height: 1.65;
+    }
+
+    .subtitle code {
+      font-family: var(--mono);
+      font-size: 0.88em;
+      background: var(--surface-alt);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--accent);
     }
 
     .demos {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
       gap: var(--space-md);
       width: 100%;
-      max-width: 880px;
+      max-width: 900px;
     }
 
     .demo-card {
@@ -103,26 +125,39 @@
       gap: var(--space-sm);
       padding: var(--space-lg);
       background: var(--surface);
-      border: 1px solid var(--surface-alt);
+      border: 1px solid rgba(0, 0, 0, 0.07);
       border-radius: var(--radius-lg);
       text-decoration: none;
       color: var(--text);
       box-shadow: var(--shadow-sm);
       transition: border-color var(--duration) var(--ease),
-                  background var(--duration) var(--ease),
                   box-shadow var(--duration) var(--ease),
                   transform var(--duration) var(--ease);
     }
 
+    html[data-theme="dark"] .demo-card { border-color: var(--border); }
+
     .demo-card:hover {
       border-color: var(--accent);
-      background: var(--surface-alt);
       box-shadow: var(--shadow);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
     }
 
     .demo-card:active {
       transform: scale(0.97);
+    }
+
+    .demo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius);
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: var(--space-xs);
+      flex-shrink: 0;
     }
 
     .demo-card h2 {
@@ -134,17 +169,21 @@
     .demo-card p {
       font-size: var(--text-sm);
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .demo-card .demo-tag {
+      display: inline-flex;
+      align-self: flex-start;
       font-size: var(--text-xs);
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--accent);
+      background: var(--accent-dim);
+      padding: 3px 9px;
+      border-radius: 100px;
       margin-top: auto;
-      padding-top: var(--space-sm);
     }
 
     .theme-toggle-btn {
@@ -170,21 +209,25 @@
   </style>
 </head>
 <body>
-  <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle color theme">Dark</button>
+  <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle color theme">Light</button>
+  <p class="hero-kicker">browser · proof of concept</p>
   <h1>WebMCP PoC</h1>
-  <p class="subtitle">Proof-of-concept demos showing AI-driven data exploration with tool use, streaming responses, and live page rendering.</p>
+  <p class="subtitle">Demos showing how web pages expose tools to AI models via <code>navigator.modelContext</code> — with streaming, tool use, and live page rendering.</p>
   <div class="demos">
     <a href="hospital-risk-explorer/" class="demo-card">
+      <div class="demo-icon">🏥</div>
       <h2>Hospital Risk Explorer</h2>
       <p>California hospital financial risk data — filter, compare, flag, and analyze 15 hospitals across 4 counties.</p>
       <span class="demo-tag">Local JSON</span>
     </a>
     <a href="countries/" class="demo-card">
+      <div class="demo-icon">🌍</div>
       <h2>World Countries</h2>
       <p>Global country profiles from REST Countries API — population, area, region, languages, and economic indicators.</p>
       <span class="demo-tag">REST API</span>
     </a>
     <a href="earthquakes/" class="demo-card">
+      <div class="demo-icon">🌋</div>
       <h2>Recent Earthquakes</h2>
       <p>USGS earthquake data from the last 30 days — magnitude, depth, location, and seismic analysis.</p>
       <span class="demo-tag">Live Feed</span>
@@ -192,7 +235,7 @@
   </div>
   <script>
     (function () {
-      const stored = localStorage.getItem('webmcp-theme') || 'dark';
+      const stored = localStorage.getItem('webmcp-theme') || 'light';
       const resolved = stored === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : stored;
@@ -208,12 +251,12 @@
         : pref;
       document.documentElement.dataset.theme = resolved;
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.content = resolved === 'light' ? '#f8fafc' : '#0f172a';
+      if (meta) meta.content = resolved === 'light' ? '#f8f9fb' : '#0f1117';
       themeToggleBtn.textContent = pref === 'light' ? 'Light' : pref === 'system' ? 'Auto' : 'Dark';
     }
 
     themeToggleBtn.addEventListener('click', () => {
-      const cur = localStorage.getItem('webmcp-theme') || 'dark';
+      const cur = localStorage.getItem('webmcp-theme') || 'light';
       applyTheme(cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark');
     });
 
@@ -221,7 +264,7 @@
       if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
     });
 
-    applyTheme(localStorage.getItem('webmcp-theme') || 'dark');
+    applyTheme(localStorage.getItem('webmcp-theme') || 'light');
   </script>
 </body>
 </html>
