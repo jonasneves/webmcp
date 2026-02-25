@@ -2,8 +2,8 @@
 
 Proof-of-concept demonstrating [WebMCP](https://webmachinelearning.github.io/webmcp/) — a protocol that lets web pages expose tools to AI models through `navigator.modelContext`.
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://jonasneves.github.io/webmcp-poc/)
-[![GitHub Pages](https://img.shields.io/github/deployments/jonasneves/webmcp/github-pages?label=deploy&style=flat-square)](https://jonasneves.github.io/webmcp-poc/)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen?style=flat-square)](https://neevs.io/webmcp/)
+[![GitHub Pages](https://img.shields.io/github/deployments/jonasneves/webmcp/github-pages?label=deploy&style=flat-square)](https://neevs.io/webmcp/)
 [![No dependencies](https://img.shields.io/badge/dependencies-none-blue?style=flat-square)]()
 [![Vanilla JS](https://img.shields.io/badge/built%20with-vanilla%20JS-f7df1e?style=flat-square&logo=javascript&logoColor=black)]()
 
