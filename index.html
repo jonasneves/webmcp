@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -39,6 +39,17 @@
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --duration: 150ms;
       --duration-slow: 300ms;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #f1f5f9;
+      --surface-alt: #e2e8f0;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-dim: #e0f2fe;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -135,9 +146,31 @@
       margin-top: auto;
       padding-top: var(--space-sm);
     }
+
+    .theme-toggle-btn {
+      position: fixed;
+      top: var(--space-md);
+      right: var(--space-md);
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+    }
+
+    .theme-toggle-btn:hover { color: var(--text); border-color: var(--text-muted); }
+    .theme-toggle-btn:active { transform: scale(0.97); }
   </style>
 </head>
 <body>
+  <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle color theme">Dark</button>
   <h1>WebMCP PoC</h1>
   <p class="subtitle">Proof-of-concept demos showing AI-driven data exploration with tool use, streaming responses, and live page rendering.</p>
   <div class="demos">
@@ -157,5 +190,38 @@
       <span class="demo-tag">Live Feed</span>
     </a>
   </div>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('webmcp-theme') || 'dark';
+      const resolved = stored === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : stored;
+      document.documentElement.dataset.theme = resolved;
+    })();
+
+    const themeToggleBtn = document.getElementById('theme-toggle');
+
+    function applyTheme(pref) {
+      localStorage.setItem('webmcp-theme', pref);
+      const resolved = pref === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+      document.documentElement.dataset.theme = resolved;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.content = resolved === 'light' ? '#f8fafc' : '#0f172a';
+      themeToggleBtn.textContent = pref === 'light' ? 'Light' : pref === 'system' ? 'Auto' : 'Dark';
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      const cur = localStorage.getItem('webmcp-theme') || 'dark';
+      applyTheme(cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark');
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
+    });
+
+    applyTheme(localStorage.getItem('webmcp-theme') || 'dark');
+  </script>
 </body>
 </html>

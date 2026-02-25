@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -20,6 +20,10 @@
       --size-med: #f59e0b;
       --size-large: #ef4444;
       --flag: #f59e0b;
+      --badge-green-bg: #052e16;
+      --badge-amber-bg: #451a03;
+      --badge-red-bg: #450a0a;
+      --badge-cyan-bg: #0c4a6e;
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
@@ -43,6 +47,21 @@
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --duration: 150ms;
       --duration-slow: 300ms;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #f1f5f9;
+      --surface-alt: #e2e8f0;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-dim: #e0f2fe;
+      --badge-green-bg: #dcfce7;
+      --badge-amber-bg: #fef3c7;
+      --badge-red-bg: #fee2e2;
+      --badge-cyan-bg: #e0f2fe;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -158,10 +177,10 @@
       border-radius: 100px;
     }
 
-    .annotation-badge.read-only { background: #052e16; color: var(--size-small); }
-    .annotation-badge.idempotent { background: #0c4a6e; color: var(--accent); }
-    .annotation-badge.destructive { background: #450a0a; color: var(--size-large); }
-    .annotation-badge.closed-world { background: #451a03; color: var(--size-med); }
+    .annotation-badge.read-only { background: var(--badge-green-bg); color: var(--size-small); }
+    .annotation-badge.idempotent { background: var(--badge-cyan-bg); color: var(--accent); }
+    .annotation-badge.destructive { background: var(--badge-red-bg); color: var(--size-large); }
+    .annotation-badge.closed-world { background: var(--badge-amber-bg); color: var(--size-med); }
 
     .tool-item-desc {
       font-size: var(--text-xs);
@@ -323,9 +342,9 @@
       letter-spacing: 0.04em;
     }
 
-    .size-badge.small { background: #052e16; color: var(--size-small); }
-    .size-badge.medium { background: #451a03; color: var(--size-med); }
-    .size-badge.large { background: #450a0a; color: var(--size-large); }
+    .size-badge.small { background: var(--badge-green-bg); color: var(--size-small); }
+    .size-badge.medium { background: var(--badge-amber-bg); color: var(--size-med); }
+    .size-badge.large { background: var(--badge-red-bg); color: var(--size-large); }
 
     /* Flag dot */
     .flag-dot {
@@ -746,7 +765,7 @@
       padding: var(--space-sm) 14px;
       font-size: var(--text-xs);
       color: var(--size-large);
-      background: #450a0a;
+      background: var(--badge-red-bg);
       border-radius: var(--radius);
     }
 
@@ -788,7 +807,7 @@
       transition: opacity var(--duration) var(--ease);
     }
 
-    .chat-send:disabled { opacity: 0.4; cursor: default; }
+    .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
     .chat-send:not(:disabled):hover { opacity: 0.85; }
 
     .chat-send.stop {
@@ -796,18 +815,28 @@
       font-size: var(--text-sm);
     }
 
-    @keyframes chat-spin {
-      to { transform: rotate(360deg); }
+    @keyframes chat-bounce {
+      0%, 80%, 100% { transform: scale(1); opacity: 0.4; }
+      40% { transform: scale(1.4); opacity: 1; }
     }
 
     .chat-spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--surface-alt);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: chat-spin 0.6s linear infinite;
+      display: flex;
+      gap: 4px;
+      padding: 10px 14px;
+      align-self: flex-start;
     }
+
+    .chat-spinner span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: chat-bounce 1.2s ease-in-out infinite;
+    }
+
+    .chat-spinner span:nth-child(2) { animation-delay: 0.2s; }
+    .chat-spinner span:nth-child(3) { animation-delay: 0.4s; }
 
     .summary-row {
       display: flex;
@@ -1019,6 +1048,38 @@
     .btn-cancel:active,
     .btn-confirm:active,
     .msg-tool-header:active { transform: scale(0.97); }
+
+    @keyframes row-flash {
+      0% { background: var(--accent-dim); }
+      100% { background: transparent; }
+    }
+
+    .flash-new { animation: row-flash 0.6s ease-out; }
+
+    @keyframes msg-fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg { animation: msg-fade-in 0.15s var(--ease); }
+
+    .theme-toggle-btn {
+      min-height: 32px;
+      padding: 0 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+    }
+
+    .theme-toggle-btn:hover { color: var(--text); border-color: var(--text-muted); }
+    .theme-toggle-btn:active { transform: scale(0.97); }
   </style>
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
@@ -1032,8 +1093,9 @@
     <header>
       <div class="header-left">
         <h1>WebMCP PoC</h1>
-        <button class="tools-toggle" id="tools-toggle" aria-expanded="false">&#9660; 7 tools</button>
+        <button class="tools-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel">&#9660; 7 tools</button>
       </div>
+      <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle color theme">Dark</button>
     </header>
 
     <div class="tools-panel" id="tools-panel" data-collapsed="true">
@@ -1099,6 +1161,16 @@
   </dialog>
 
   <script>
+    /* ── Theme ── */
+
+    (function () {
+      const stored = localStorage.getItem('webmcp-theme') || 'dark';
+      const resolved = stored === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : stored;
+      document.documentElement.dataset.theme = resolved;
+    })();
+
     marked.use({ gfm: true, breaks: true });
 
     /* ── Dataset ── */
@@ -2065,6 +2137,32 @@
       });
     });
 
+    /* ── Theme toggle ── */
+
+    const themeToggleBtn = document.getElementById('theme-toggle');
+
+    function applyTheme(pref) {
+      localStorage.setItem('webmcp-theme', pref);
+      const resolved = pref === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+      document.documentElement.dataset.theme = resolved;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.content = resolved === 'light' ? '#f8fafc' : '#0f172a';
+      themeToggleBtn.textContent = pref === 'light' ? 'Light' : pref === 'system' ? 'Auto' : 'Dark';
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      const cur = localStorage.getItem('webmcp-theme') || 'dark';
+      applyTheme(cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark');
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
+    });
+
+    applyTheme(localStorage.getItem('webmcp-theme') || 'dark');
+
     /* ── Chat panel ── */
 
     const chatMessages = document.getElementById('chat-messages');
@@ -2273,6 +2371,7 @@ Rules:
       const el = document.createElement('div');
       el.className = 'chat-spinner';
       el.id = 'chat-spinner';
+      el.innerHTML = '<span></span><span></span><span></span>';
       chatMessages.appendChild(el);
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
