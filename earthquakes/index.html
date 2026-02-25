@@ -1887,6 +1887,7 @@ Rules:
     let conversationMessages = [];
     let chatBusy = false;
     let abortController = null;
+    let pendingToolCards = {};
 
     // Restore API key: config.json > localStorage
     apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
@@ -2162,6 +2163,67 @@ Rules:
       chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    function createPendingToolCard(toolName) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+      const el = document.createElement('div');
+      el.className = 'msg-tool-card pending';
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status';
+      status.textContent = '\u22ef';
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.appendChild(nameStrong);
+      header.append(status, label);
+      el.appendChild(header);
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return el;
+    }
+
+    function resolveToolCard(el, toolName, args, result, isError) {
+      el.className = 'msg-tool-card' + (isError ? ' error' : '');
+      el.innerHTML = '';
+      const resultStr = typeof result === 'string' ? result : '';
+      const summary = resultStr.length > 50 ? resultStr.slice(0, 50) + '...' : resultStr;
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status ' + (isError ? 'error' : 'success');
+      status.textContent = isError ? '\u2717' : '\u2713';
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.append(nameStrong, summary ? ' \u2014 ' + summary : '');
+      const chevron = document.createElement('span');
+      chevron.className = 'msg-tool-chevron';
+      chevron.textContent = '\u25BE';
+      header.append(status, label, chevron);
+      el.appendChild(header);
+      const body = document.createElement('div');
+      body.className = 'msg-tool-body';
+      const argsEl = document.createElement('div');
+      argsEl.className = 'msg-tool-args';
+      argsEl.textContent = JSON.stringify(args, null, 2);
+      body.appendChild(argsEl);
+      if (resultStr) {
+        const resultEl = document.createElement('div');
+        resultEl.className = 'msg-tool-result';
+        resultEl.textContent = '\u2192 ' + resultStr;
+        body.appendChild(resultEl);
+      }
+      el.appendChild(body);
+      header.addEventListener('click', () => { el.classList.toggle('expanded'); });
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     function appendDivider(text) {
       const el = document.createElement('div');
       el.className = 'chat-divider';
@@ -2402,6 +2464,7 @@ Rules:
         for (const tc of toolCalls) {
           let args;
           try { args = JSON.parse(tc.arguments || '{}'); } catch { args = {}; }
+          const pendingEl = createPendingToolCard(tc.name);
           const def = getActiveTools().find(t => t.name === tc.name);
           let result;
           if (def) {
@@ -2409,17 +2472,17 @@ Rules:
               const confirmed = await showConfirmDialog(def.title, args);
               if (!confirmed) {
                 result = { summary: `User declined: ${def.title}` };
-                appendToolMsg(tc.name, args, result.summary, true);
+                resolveToolCard(pendingEl, tc.name, args, result.summary, true);
                 ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
                 continue;
               }
             }
             result = await def.exec(args, client);
-            appendToolMsg(tc.name, args, result.summary);
+            resolveToolCard(pendingEl, tc.name, args, result.summary, false);
             if (result.displayed) { scrollDisplayIntoView(); appendDivider(getPageContext().join(' \u00b7 ')); }
           } else {
             result = { error: `Unknown tool: ${tc.name}` };
-            appendToolMsg(tc.name, args, result.error, true);
+            resolveToolCard(pendingEl, tc.name, args, result.error, true);
           }
           ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
         }
@@ -2462,6 +2525,8 @@ Rules:
                 } else if (block.type === 'tool_use') {
                   contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
                   currentToolInput = '';
+                  hideSpinner();
+                  pendingToolCards[block.id] = createPendingToolCard(block.name);
                 }
                 break;
               }
@@ -2511,6 +2576,8 @@ Rules:
           }
         } catch (err) {
           hideSpinner();
+          Object.values(pendingToolCards).forEach(el => el.remove());
+          pendingToolCards = {};
           if (err.name === 'AbortError') return;
           appendMessage('error', 'Stream interrupted: ' + err.message);
           return;
@@ -2533,6 +2600,8 @@ Rules:
         };
         const toolResults = [];
         for (const tu of toolUses) {
+          const pendingEl = pendingToolCards[tu.id];
+          delete pendingToolCards[tu.id];
           const def = getActiveTools().find(t => t.name === tu.name);
           let result;
           if (def) {
@@ -2540,20 +2609,23 @@ Rules:
               const confirmed = await showConfirmDialog(def.title, tu.input);
               if (!confirmed) {
                 result = { summary: `User declined: ${def.title}` };
-                appendToolMsg(tu.name, tu.input, result.summary, true);
+                if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.summary, true);
+                else appendToolMsg(tu.name, tu.input, result.summary, true);
                 toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
                 continue;
               }
             }
             result = await def.exec(tu.input, client);
-            appendToolMsg(tu.name, tu.input, result.summary);
+            if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.summary, false);
+            else appendToolMsg(tu.name, tu.input, result.summary);
             if (result.displayed) {
               scrollDisplayIntoView();
               appendDivider(getPageContext().join(' \u00b7 '));
             }
           } else {
             result = { error: `Unknown tool: ${tu.name}` };
-            appendToolMsg(tu.name, tu.input, result.error, true);
+            if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.error, true);
+            else appendToolMsg(tu.name, tu.input, result.error, true);
           }
           toolResults.push({
             type: 'tool_result',

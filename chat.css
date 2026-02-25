@@ -208,6 +208,17 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   font-size: var(--text-xs);
   color: var(--text-muted);
   overflow: hidden;
+  animation: msg-fade-in 0.15s var(--ease);
+}
+
+.msg-tool-card.pending .msg-tool-status {
+  color: var(--accent);
+  animation: pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
 }
 
 .msg-tool-header {
@@ -338,6 +349,7 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
 
 .chat-spinner {
   display: flex;
+  align-items: center;
   gap: 4px;
   padding: 10px 14px;
   align-self: flex-start;
