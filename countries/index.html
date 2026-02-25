@@ -635,6 +635,87 @@
 
     .api-key-toggle:hover { color: var(--text); }
 
+    .github-auth-bar {
+      display: none;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 10px var(--space-md);
+      border-bottom: 1px solid var(--surface-alt);
+      flex-shrink: 0;
+    }
+    .github-auth-bar:not(:empty) { display: flex; }
+
+    .github-connect-btn {
+      width: 100%;
+      justify-content: center;
+      height: 32px;
+      padding: 0 12px;
+      font-size: var(--text-sm);
+      font-family: var(--font);
+      font-weight: 500;
+      color: var(--text);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .github-connect-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .github-user-label {
+      flex: 1;
+      font-size: var(--text-xs);
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--accent);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .github-disconnect-btn {
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      font-size: var(--text-xs);
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .github-disconnect-btn:hover { color: var(--risk-high); border-color: var(--risk-high); }
+
+    .github-notice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px var(--space-md);
+      font-size: 11px;
+      color: #92400e;
+      background: #fef3c7;
+      border-bottom: 1px solid #fde68a;
+      flex-shrink: 0;
+    }
+    html[data-theme="dark"] .github-notice { color: #fbbf24; background: #2a2006; border-color: #4a3800; }
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) .github-notice { color: #fbbf24; background: #2a2006; border-color: #4a3800; }
+    }
+
+    .github-notice-dismiss {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: inherit;
+      font-size: 12px;
+      padding: 0;
+      opacity: 0.5;
+      line-height: 1;
+    }
+    .github-notice-dismiss:hover { opacity: 1; }
+
     .chat-messages {
       flex: 1;
       overflow-y: auto;
@@ -1152,12 +1233,22 @@
     <div class="chat-header">
       <select class="model-select" id="model-select" aria-label="Model">
         <option value="anthropic:claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+        <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
         <option value="local:claude" hidden>Claude &middot; Personal account</option>
+        <option value="github:openai/gpt-4.1">GitHub &middot; GPT-4.1</option>
+        <option value="github:openai/gpt-4.1-mini">GitHub &middot; GPT-4.1 mini</option>
+        <option value="github:openai/gpt-5">GitHub &middot; GPT-5</option>
+        <option value="github:openai/gpt-5-mini">GitHub &middot; GPT-5 mini</option>
       </select>
     </div>
-    <div class="api-key-bar">
+    <div class="api-key-bar" id="api-key-bar">
       <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
       <button class="api-key-toggle" id="key-toggle" aria-label="Toggle key visibility">Show</button>
+    </div>
+    <div class="github-auth-bar" id="github-auth-bar"></div>
+    <div class="github-notice" id="github-notice" hidden>
+      &#9888; Tool calls may be less reliable with GitHub Models than with Claude.
+      <button class="github-notice-dismiss" id="github-notice-dismiss" aria-label="Dismiss">&#x2715;</button>
     </div>
     <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
     <div class="chat-utility-bar">
@@ -2201,7 +2292,14 @@
     /* ── Chat panel ── */
 
     const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/claude';
+    const GITHUB_CLIENT_ID = 'Ov23lioKDt8Os7hdiSEh';
+    const CORS_PROXY_URL = 'https://cors-proxy.jonasneves.workers.dev';
+    const OAUTH_CALLBACK_ORIGIN = 'https://neevs.io';
+    const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions';
+
     let currentProvider = 'anthropic';
+    let githubAuth = JSON.parse(localStorage.getItem('webmcp-gh-auth') || 'null');
+    let ghMessages = [];
 
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
@@ -2265,12 +2363,19 @@ Rules:
       return getActiveTools().map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
     }
 
+    function getOpenAITools() {
+      return getActiveTools().map(t => ({
+        type: 'function',
+        function: { name: t.name, description: t.description, parameters: t.schema || { type: 'object', properties: {} } }
+      }));
+    }
+
     let conversationMessages = [];
     let chatBusy = false;
     let abortController = null;
 
     // Restore API key: config.json > localStorage
-    const apiKeyBar = document.querySelector('.api-key-bar');
+    const apiKeyBar = document.getElementById('api-key-bar');
     const keyEditBtn = document.getElementById('key-edit');
 
     apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
@@ -2291,30 +2396,36 @@ Rules:
       }
     }
 
+    function applyProviderUI() {
+      const isLocal = currentProvider === 'local';
+      const isGitHub = currentProvider === 'github';
+      if (isLocal || isGitHub) {
+        apiKeyBar.classList.remove('visible');
+        keyEditBtn.hidden = isLocal;
+      } else {
+        keyEditBtn.hidden = false;
+        if (!apiKeyInput.value) apiKeyBar.classList.add('visible');
+      }
+      updateGitHubAuthBar();
+      const notice = document.getElementById('github-notice');
+      notice.hidden = !isGitHub || !!localStorage.getItem('webmcp-github-notice-dismissed');
+    }
+
     checkLocalProxy().then(running => {
       if (localOption) localOption.hidden = !running;
       const savedModel = localStorage.getItem('webmcp-model') || 'anthropic:claude-haiku-4-5-20251001';
       const fallback = (!running && savedModel === 'local:claude') ? 'anthropic:claude-haiku-4-5-20251001' : savedModel;
       modelSelect.value = fallback;
       currentProvider = fallback.split(':')[0];
-      if (currentProvider === 'local') {
-        keyEditBtn.hidden = true;
-      } else if (!apiKeyInput.value) {
-        apiKeyBar.classList.add('visible');
-      }
+      applyProviderUI();
     });
 
     modelSelect.addEventListener('change', () => {
       currentProvider = modelSelect.value.split(':')[0];
       localStorage.setItem('webmcp-model', modelSelect.value);
-      if (currentProvider === 'local') {
-        apiKeyBar.classList.remove('visible');
-        keyEditBtn.hidden = true;
-      } else {
-        keyEditBtn.hidden = false;
-        if (!apiKeyInput.value) apiKeyBar.classList.add('visible');
-      }
+      applyProviderUI();
       conversationMessages = [];
+      ghMessages = [];
       chatMessages.innerHTML = '';
       renderQuickActions();
     });
@@ -2332,12 +2443,125 @@ Rules:
       keyToggle.textContent = hidden ? 'Hide' : 'Show';
     });
 
+    document.getElementById('github-notice-dismiss').addEventListener('click', () => {
+      localStorage.setItem('webmcp-github-notice-dismissed', '1');
+      document.getElementById('github-notice').hidden = true;
+    });
+
     // Chat reset
     chatReset.addEventListener('click', () => {
       conversationMessages = [];
+      ghMessages = [];
       chatMessages.innerHTML = '';
       renderQuickActions();
     });
+
+    /* ── GitHub OAuth ── */
+
+    async function exchangeGitHubToken(code, redirectUri) {
+      const res = await fetch(`${CORS_PROXY_URL}/token`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ client_id: GITHUB_CLIENT_ID, code, redirect_uri: redirectUri }),
+      });
+      const data = await res.json();
+      if (data.error || !data.access_token) {
+        throw new Error(data.error_description || data.error || 'Token exchange failed');
+      }
+      let username = data.username;
+      if (!username) {
+        const userRes = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `Bearer ${data.access_token}`, Accept: 'application/vnd.github+json' },
+        });
+        if (userRes.ok) username = (await userRes.json()).login;
+      }
+      return { token: data.access_token, username: username || '' };
+    }
+
+    async function connectGitHub() {
+      const redirectUri = OAUTH_CALLBACK_ORIGIN + '/';
+      const authUrl = new URL('https://github.com/login/oauth/authorize');
+      authUrl.searchParams.set('client_id', GITHUB_CLIENT_ID);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('state', crypto.randomUUID());
+      authUrl.searchParams.set('scope', 'read:user');
+
+      const width = 500, height = 600;
+      const left = window.screenX + (window.innerWidth - width) / 2;
+      const top = window.screenY + (window.innerHeight - height) / 2;
+
+      return new Promise((resolve, reject) => {
+        const popup = window.open(
+          authUrl.toString(), 'github-oauth',
+          `width=${width},height=${height},left=${left},top=${top},popup=yes`
+        );
+        if (!popup) { reject(new Error('Popup blocked — allow popups for this site')); return; }
+
+        const handleMessage = async (event) => {
+          if (event.origin !== OAUTH_CALLBACK_ORIGIN) return;
+          const { type, code, error } = event.data || {};
+          if (type !== 'oauth-callback') return;
+          window.removeEventListener('message', handleMessage);
+          clearInterval(pollTimer);
+          if (error) { reject(new Error(error)); return; }
+          if (!code) { reject(new Error('No code received')); return; }
+          try { resolve(await exchangeGitHubToken(code, redirectUri)); } catch (err) { reject(err); }
+        };
+
+        window.addEventListener('message', handleMessage);
+        const pollTimer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(pollTimer);
+            window.removeEventListener('message', handleMessage);
+            reject(new Error('OAuth flow cancelled'));
+          }
+        }, 500);
+      });
+    }
+
+    function updateGitHubAuthBar() {
+      const bar = document.getElementById('github-auth-bar');
+      if (!bar) return;
+      bar.innerHTML = '';
+      if (currentProvider !== 'github') return;
+
+      if (githubAuth) {
+        const label = document.createElement('span');
+        label.className = 'github-user-label';
+        label.textContent = `@${githubAuth.username}`;
+        const disconnectBtn = document.createElement('button');
+        disconnectBtn.className = 'github-disconnect-btn';
+        disconnectBtn.textContent = 'Disconnect';
+        disconnectBtn.addEventListener('click', () => {
+          githubAuth = null;
+          localStorage.removeItem('webmcp-gh-auth');
+          conversationMessages = [];
+          ghMessages = [];
+          chatMessages.innerHTML = '';
+          renderQuickActions();
+          updateGitHubAuthBar();
+        });
+        bar.append(label, disconnectBtn);
+      } else {
+        const connectBtn = document.createElement('button');
+        connectBtn.className = 'github-connect-btn';
+        connectBtn.textContent = 'Connect GitHub';
+        connectBtn.addEventListener('click', async () => {
+          connectBtn.textContent = 'Connecting\u2026';
+          connectBtn.disabled = true;
+          try {
+            githubAuth = await connectGitHub();
+            localStorage.setItem('webmcp-gh-auth', JSON.stringify(githubAuth));
+            updateGitHubAuthBar();
+          } catch (err) {
+            if (err.message !== 'OAuth flow cancelled') appendMessage('error', err.message);
+            connectBtn.textContent = 'Connect GitHub';
+            connectBtn.disabled = false;
+          }
+        });
+        bar.appendChild(connectBtn);
+      }
+    }
 
     // Auto-resize textarea
     chatInput.addEventListener('input', () => {
@@ -2468,12 +2692,19 @@ Rules:
     async function sendMessage(opts = {}) {
       const text = opts.prompt || chatInput.value.trim();
       const displayText = opts.display || text;
-      const apiKey = currentProvider === 'local' ? null : apiKeyInput.value.trim();
       if (!text || chatBusy) return;
 
-      if (currentProvider !== 'local' && !apiKey) {
-        appendMessage('error', 'Enter your Anthropic API key above.');
-        return;
+      if (currentProvider === 'github') {
+        if (!githubAuth?.token) {
+          appendMessage('error', 'Connect your GitHub account above.');
+          return;
+        }
+      } else if (currentProvider !== 'local') {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          appendMessage('error', 'Enter your Anthropic API key above.');
+          return;
+        }
       }
 
       const quickActions = document.getElementById('quick-actions');
@@ -2484,11 +2715,16 @@ Rules:
       chatInput.value = '';
       chatInput.style.height = 'auto';
 
-      conversationMessages.push({ role: 'user', content: text });
+      if (currentProvider === 'github') {
+        ghMessages.push({ role: 'user', content: text });
+      } else {
+        conversationMessages.push({ role: 'user', content: text });
+      }
       abortController = new AbortController();
       setInputEnabled(false);
       showSpinner();
 
+      const apiKey = currentProvider === 'local' ? null : apiKeyInput.value.trim();
       await runConversation(apiKey, abortController.signal);
 
       abortController = null;
@@ -2511,7 +2747,7 @@ Rules:
         signal,
         headers,
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: modelSelect.value.split(':').slice(1).join(':'),
           max_tokens: 1024,
           system: getSystemPrompt(),
           messages,
@@ -2528,37 +2764,171 @@ Rules:
       return res.body;
     }
 
-    async function* parseSSEStream(body) {
+    async function* readStreamLines(body) {
       const reader = body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) yield line;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        let currentEvent = null;
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data && currentEvent) {
-              try {
-                yield { event: currentEvent, data: JSON.parse(data) };
-              } catch {}
-            }
-            currentEvent = null;
-          }
+    async function* parseSSEStream(body) {
+      let currentEvent = null;
+      for await (const line of readStreamLines(body)) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && currentEvent) {
+          try { yield { event: currentEvent, data: JSON.parse(line.slice(6)) }; } catch {}
+          currentEvent = null;
         }
       }
     }
 
+    async function* parseOpenAIStream(body) {
+      for await (const line of readStreamLines(body)) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') return;
+        try { yield JSON.parse(payload); } catch {}
+      }
+    }
+
+    async function runConversationGitHub(signal) {
+      const token = githubAuth?.token;
+      const modelName = modelSelect.value.split(':').slice(1).join(':');
+      while (true) {
+        let body;
+        try {
+          const res = await fetch(GITHUB_API_URL, {
+            method: 'POST',
+            signal,
+            headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'system', content: getSystemPrompt() }, ...ghMessages],
+              tools: getOpenAITools(),
+              tool_choice: 'auto',
+              max_completion_tokens: 1024,
+              stream: true
+            })
+          });
+          if (!res.ok) {
+            hideSpinner();
+            const txt = await res.text();
+            appendMessage('error', `GitHub API ${res.status}: ${txt.slice(0, 200)}`);
+            return;
+          }
+          body = res.body;
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', err.message);
+          return;
+        }
+
+        let currentTextEl = null;
+        let currentTextContent = '';
+        let rafId = 0;
+        const tcMap = {};
+
+        try {
+          for await (const chunk of parseOpenAIStream(body)) {
+            const delta = chunk.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            if (delta.content) {
+              if (!currentTextEl) {
+                hideSpinner();
+                currentTextContent = '';
+                currentTextEl = appendMessage('assistant', '');
+              }
+              currentTextContent += delta.content;
+              if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                  rafId = 0;
+                  if (currentTextEl) {
+                    currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                  }
+                });
+              }
+            }
+
+            if (delta.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const entry = tcMap[tc.index] ?? (tcMap[tc.index] = { id: '', name: '', arguments: '' });
+                if (tc.id) entry.id = tc.id;
+                if (tc.function?.name) entry.name += tc.function.name;
+                if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+              }
+            }
+          }
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', 'Stream interrupted: ' + err.message);
+          return;
+        }
+
+        if (rafId) { cancelAnimationFrame(rafId); if (currentTextEl) currentTextEl.innerHTML = renderMarkdown(currentTextContent); }
+
+        const toolCalls = Object.values(tcMap);
+        const assistantMsg = { role: 'assistant', content: currentTextContent || null };
+        if (toolCalls.length) {
+          assistantMsg.tool_calls = toolCalls.map(tc => ({
+            id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments }
+          }));
+        }
+        ghMessages.push(assistantMsg);
+
+        if (toolCalls.length === 0) {
+          hideSpinner();
+          renderFollowupSuggestions();
+          return;
+        }
+
+        const client = { requestUserInteraction: (cb) => cb() };
+        for (const tc of toolCalls) {
+          let args;
+          try { args = JSON.parse(tc.arguments || '{}'); } catch { args = {}; }
+          const def = getActiveTools().find(t => t.name === tc.name);
+          let result;
+          if (def) {
+            if (!def.readOnlyHint) {
+              const confirmed = await showConfirmDialog(def.title, args);
+              if (!confirmed) {
+                result = { summary: `User declined: ${def.title}` };
+                appendToolMsg(tc.name, args, result.summary, true);
+                ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+                continue;
+              }
+            }
+            result = await def.exec(args, client);
+            appendToolMsg(tc.name, args, result.summary);
+            if (result.displayed) { scrollDisplayIntoView(); appendDivider(getPageContext().join(' \u00b7 ')); }
+          } else {
+            result = { error: `Unknown tool: ${tc.name}` };
+            appendToolMsg(tc.name, args, result.error, true);
+          }
+          ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+        }
+        showSpinner();
+      }
+    }
+
     async function runConversation(apiKey, signal) {
+      if (currentProvider === 'github') return runConversationGitHub(signal);
+
       const proxyUrl = currentProvider === 'local' ? LOCAL_PROXY_URL : null;
       while (true) {
         let body;
