@@ -4,7 +4,23 @@
       "WebFetch(domain:mcpui.dev)",
       "WebSearch",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:webmachinelearning.github.io)",
+      "mcp__ide__getDiagnostics",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:intuitionlabs.ai)",
+      "Bash(open:*)",
+      "Bash(gh api:*)",
+      "Bash(git -C /Users/jonasneves/Github/webmcp-poc add hospital-risk-explorer/ foundry/ hospital-explorer.html)",
+      "Bash(git -C:*)",
+      "Bash(git -C /Users/jonasneves/Github/webmcp-poc status)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(git show:*)",
+      "Bash(gh repo create:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
     ]
   }
 }
