@@ -145,7 +145,7 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
 .msg-user {
   align-self: flex-end;
   max-width: 85%;
-  background: var(--surface-alt);
+  background: var(--accent-dim);
   color: var(--text);
   padding: 7px 10px;
   border-radius: var(--radius);
@@ -193,7 +193,7 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--surface-alt);
+  background: var(--border);
 }
 
 /* ── Tool call cards ─────────────────────────────────────────────── */
@@ -201,7 +201,7 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
 .msg-tool-card {
   align-self: stretch;
   background: var(--surface);
-  border: 1px solid var(--surface-alt);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   font-family: var(--mono);
@@ -247,7 +247,7 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   padding: 0 12px var(--space-sm);
   font-size: var(--text-xs);
   line-height: 1.6;
-  border-top: 1px solid var(--surface-alt);
+  border-top: 1px solid var(--border);
 }
 
 .msg-tool-card.expanded .msg-tool-body { display: block; padding-top: var(--space-sm); }
@@ -383,10 +383,10 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   font-size: var(--text-xs);
   font-family: var(--font);
   background: none;
-  border: 1px solid var(--surface-alt);
+  border: 1px solid var(--border);
   border-radius: 100px;
   cursor: pointer;
-  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease), background var(--duration) var(--ease);
 }
 
 .quick-action-chip {
