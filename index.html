@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#f8f9fb">
+  <meta name="theme-color" content="#eef1f7">
   <title>WebMCP PoC</title>
   <style>
     :root {
-      --bg: #f8f9fb;
+      --bg: #eef1f7;
       --surface: #ffffff;
-      --surface-alt: #edeef1;
-      --border: #d1d5db;
-      --text: #1a1a1a;
-      --text-muted: #6b7280;
+      --surface-alt: #f4f6fb;
+      --border: #cdd2df;
+      --text: #111827;
+      --text-muted: #64748b;
       --accent: #0d9488;
-      --accent-dim: #ccfbf1;
+      --accent-dim: #e0fdf9;
       --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
       --text-xs: 0.6875rem;
@@ -33,9 +33,9 @@
       --radius-sm: 6px;
       --radius: 10px;
       --radius-lg: 14px;
-      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
-      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.08);
       --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
       --duration: 150ms;
       --duration-slow: 300ms;
@@ -251,7 +251,7 @@
         : pref;
       document.documentElement.dataset.theme = resolved;
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.content = resolved === 'light' ? '#f8f9fb' : '#0f1117';
+      if (meta) meta.content = resolved === 'light' ? '#eef1f7' : '#0f1117';
       themeToggleBtn.textContent = pref === 'light' ? 'Light' : pref === 'system' ? 'Auto' : 'Dark';
     }
 
