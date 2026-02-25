@@ -1,6 +1,6 @@
-# WebMCP PoC
+# WebMCP
 
-Proof-of-concept demonstrating [WebMCP](https://anthropic.com/research/model-context-protocol) — a protocol that lets web pages expose tools to AI models through `navigator.modelContext`.
+Proof-of-concept demonstrating [WebMCP](https://webmachinelearning.github.io/webmcp/) — a protocol that lets web pages expose tools to AI models through `navigator.modelContext`.
 
 **[Live Demo](https://jonasneves.github.io/webmcp-poc/)**
 
