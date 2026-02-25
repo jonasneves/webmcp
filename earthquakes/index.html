@@ -878,14 +878,9 @@
 
     .chat-quick-actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 6px;
-      padding: var(--space-xs) var(--space-lg) var(--space-xs) 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -webkit-mask-image: linear-gradient(to right, black calc(100% - var(--space-lg)), transparent);
-      mask-image: linear-gradient(to right, black calc(100% - var(--space-lg)), transparent);
     }
-    .chat-quick-actions::-webkit-scrollbar { display: none; }
 
     .suggestion-chip {
       min-height: 36px;
