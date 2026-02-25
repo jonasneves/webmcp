@@ -725,12 +725,23 @@
     /* ── Constants ── */
 
     const QUICK_ACTIONS = [
+      'Run seismic triage',
       'Show strong earthquakes (5+)',
       'Magnitude distribution as a bar chart',
       'Depth vs magnitude scatter plot',
-      'Earthquake severity as a pie chart',
-      'Summarize recent seismic activity'
+      'Earthquake severity as a pie chart'
     ];
+
+    const SEISMIC_TRIAGE_PROMPT = `Run a full seismic triage of the recent earthquake data. Chain all steps without pausing or asking — execute each in sequence:
+1. Call summarize_data for a statistical overview of recent activity
+2. Filter to magnitude 5+ earthquakes using filter_earthquakes
+3. Flag the most powerful earthquake with a note on its depth and risk level
+4. Render a magnitude distribution bar chart using render_chart
+5. Write a 2-3 sentence triage verdict: overall activity level, the most notable event, and any geographic pattern to watch`;
+
+    const SCENARIO_PROMPTS = {
+      'Run seismic triage': SEISMIC_TRIAGE_PROMPT
+    };
 
     /* ── Utilities ── */
 
@@ -1211,7 +1222,8 @@
         btn.className = 'suggestion-chip quick-action-chip';
         btn.textContent = prompt;
         btn.addEventListener('click', () => {
-          sendMessage({ prompt });
+          const actual = SCENARIO_PROMPTS[prompt] || prompt;
+          sendMessage({ display: prompt, prompt: actual });
         });
         container.appendChild(btn);
       });
@@ -1809,18 +1821,17 @@
     const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that monitors recent earthquake activity from USGS data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
 
 Rules:
-- 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
-- Call tools eagerly. If the user asks to see data, call the tool — don't narrate what you're about to do.
-- End with a short follow-up suggestion (one line) so the user knows what else they can explore.
-- No markdown formatting — this renders as plain text in a chat bubble.
-- No greetings, filler, or preamble.
-- You can flag earthquakes to mark them for attention. Use flag_earthquake when the user wants to mark, note, or bookmark an earthquake.
-- You can compare two earthquakes side-by-side. Use compare_earthquakes when the user wants to see differences.
-- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
-- Use export_flagged to download a CSV of all flagged earthquakes when the user wants to export or save their flags.
-- Use render_chart to display Apache ECharts visualizations. Generate a full ECharts option object choosing the best chart type (bar, line, pie, scatter, radar, etc.) for the data. Use the color palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. The theme already sets backgroundColor to transparent.
-- Your available tools change dynamically based on page state. When earthquakes are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_earthquakes only lists currently visible earthquakes.
-- When the user gives a short or ambiguous input (like "flag" or "compare"), infer the target from the current view context below. If viewing a detail card, act on that earthquake. If viewing a filtered table, act on visible earthquakes.`;
+- Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
+- For analysis or "what's happening" requests: call summarize_data first for raw numbers, then filter or chart as needed.
+- For "what's notable / most dangerous" questions: summarize_data → filter_earthquakes for high magnitude → flag the worst one → render a chart of the distribution.
+- Infer intent from context. Viewing a detail card + "flag it" → flag that earthquake. Viewing a filtered table + "compare the top two" → compare the two highest-magnitude earthquakes visible.
+- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain — add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
+- No markdown formatting — plain text only. No greetings, filler, or preamble.
+- Flag notable earthquakes proactively. Use flag_earthquake for high-magnitude or unusually shallow events — don't wait to be asked.
+- All tools run immediately — do not ask permission before calling them. Only flag_earthquake may request a user note via interaction.
+- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
+- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
+- Your available tools change dynamically based on page state. When earthquakes are flagged, review_flags and clear_all_flags become available.`;
 
     function getSystemPrompt() {
       const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
@@ -1830,6 +1841,8 @@ Rules:
           lines.push(`- Viewing: table of ${data.length} earthquakes`);
           const places = data.slice(0, 8).map(q => `${q.place} (M${fmt(q.magnitude)})`);
           lines.push(`- Visible: ${places.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
+          const major = data.filter(q => q.magnitude >= 5);
+          if (major.length > 0) lines.push(`- Attention: ${major.length} major earthquake(s) (M5+) in current view`);
           break;
         }
         case 'detail':

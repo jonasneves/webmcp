@@ -731,12 +731,20 @@
     /* ── Constants ── */
 
     const QUICK_ACTIONS = [
+      'Run global analysis',
       'Show European countries',
       'Compare USA and China',
       'Population by region as a pie chart',
-      'Top 10 countries by area as a bar chart',
       'Plot population vs area as scatter'
     ];
+
+    const SCENARIO_PROMPTS = {
+      'Run global analysis': `Analyze global country data — chain all steps without pausing:
+1. Call summarize_data for global statistics and regional breakdown
+2. Render a bar chart of the top 10 most populous countries using render_chart
+3. Compare the two largest countries by area using compare_countries
+4. Write 2-3 sentences: the most striking population vs area imbalances and what they reveal about global distribution`
+    };
 
     /* ── Utilities ── */
 
@@ -1178,7 +1186,8 @@
         btn.className = 'suggestion-chip quick-action-chip';
         btn.textContent = prompt;
         btn.addEventListener('click', () => {
-          sendMessage({ prompt });
+          const actual = SCENARIO_PROMPTS[prompt] || prompt;
+          sendMessage({ display: prompt, prompt: actual });
         });
         container.appendChild(btn);
       });
@@ -1757,18 +1766,16 @@
     const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores world country data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page \u2014 the user already sees the full result. You only receive a brief summary.
 
 Rules:
-- 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
-- Call tools eagerly. If the user asks to see data, call the tool \u2014 don't narrate what you're about to do.
-- End with a short follow-up suggestion (one line) so the user knows what else they can explore.
-- No markdown formatting \u2014 this renders as plain text in a chat bubble.
-- No greetings, filler, or preamble.
-- You can flag countries to mark them for attention. Use flag_country when the user wants to mark, note, or bookmark a country.
-- You can compare two countries side-by-side. Use compare_countries when the user wants to see differences.
-- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering \u2014 use the data to write insights.
-- Use export_flagged to download a CSV of all flagged countries when the user wants to export or save their flags.
-- Use render_chart to display Apache ECharts visualizations. Generate a full ECharts option object choosing the best chart type (bar, line, pie, scatter, radar, etc.) for the data. Use the color palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. The theme already sets backgroundColor to transparent.
-- Your available tools change dynamically based on page state. When countries are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt \u2014 compare_countries only lists currently visible countries.
-- When the user gives a short or ambiguous input (like "flag" or "compare"), infer the target from the current view context below. If viewing a detail card, act on that country. If viewing a filtered table, act on visible countries.`;
+- Chain tools proactively \u2014 don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
+- For analysis or "compare regions" requests: call summarize_data first for raw numbers, then filter or chart as needed.
+- For "what's interesting / notable" questions: summarize_data \u2192 render a chart showing the key distribution \u2192 note the standout outlier.
+- Infer intent from context. Viewing a detail card + "compare it" \u2192 compare with the most similar or most contrasting country. Viewing a filtered table + "chart it" \u2192 render a chart of the visible data.
+- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain \u2014 add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
+- No markdown formatting \u2014 plain text only. No greetings, filler, or preamble.
+- All tools run immediately \u2014 do not ask permission before calling them. Only flag_country may request a user note via interaction.
+- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
+- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
+- Your available tools change dynamically based on page state. When countries are flagged, review_flags and clear_all_flags become available.`;
 
     function getSystemPrompt() {
       const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];

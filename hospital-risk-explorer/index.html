@@ -782,20 +782,33 @@
     /* ── Constants ── */
 
     const QUICK_ACTIONS = [
-      'Show high-risk hospitals',
-      'Compare MLK and Cedars-Sinai',
-      'Chart risk distribution by county',
-      'Payer mix breakdown as a pie chart',
+      'Run triage analysis',
+      'What stands out in the data?',
+      'Show county-level patterns',
       'Plot risk vs operating margin',
-      'Run triage analysis'
+      'Payer mix breakdown as a pie chart'
     ];
 
-    const TRIAGE_PROMPT = `Run a full triage analysis of the hospital dataset. Follow these steps in order:
-1. First, call summarize_data to get an overview of the full dataset
-2. Then, call filter_hospitals with risk "high" to see the high-risk hospitals
+    const TRIAGE_PROMPT = `Run a full triage analysis of the hospital dataset. Chain all steps without pausing or asking — execute each in sequence:
+1. Call summarize_data for a statistical overview of the full dataset
+2. Filter to high-risk hospitals using filter_hospitals with risk "high"
 3. Compare the two highest-risk hospitals using compare_hospitals
-4. Flag the worst-performing hospital with a note explaining why
-5. Write a brief synthesis of your findings`;
+4. Flag the worst-performing hospital with a note explaining the key risk factors
+5. Write a 2-3 sentence verdict: what's alarming, what's stable, and the top priority action`;
+
+    const SCENARIO_PROMPTS = {
+      'What stands out in the data?': `Find the most notable patterns — chain without pausing:
+1. Call summarize_data for a full statistical overview
+2. Filter to high-risk hospitals to surface the worst cases
+3. Render a scatter chart of risk probability vs operating margin using render_chart
+4. Write 2-3 sentences: the top pattern, the biggest outlier, and what to watch`,
+
+      'Show county-level patterns': `Analyze California hospital risk by county — chain without pausing:
+1. Call summarize_data to get the full picture
+2. Call show_county_trends to display aggregate county metrics
+3. Render a bar chart of county-level risk concentration using render_chart
+4. Write 1-2 sentences: which county has the highest concentration of at-risk hospitals and why it matters`
+    };
 
     /* ── Utilities ── */
 
@@ -1335,7 +1348,7 @@
         btn.className = 'suggestion-chip quick-action-chip';
         btn.textContent = prompt;
         btn.addEventListener('click', () => {
-          const actual = prompt === 'Run triage analysis' ? TRIAGE_PROMPT : prompt;
+          const actual = prompt === 'Run triage analysis' ? TRIAGE_PROMPT : (SCENARIO_PROMPTS[prompt] || prompt);
           sendMessage({ display: prompt, prompt: actual });
         });
         container.appendChild(btn);
@@ -1986,20 +1999,18 @@
     const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
 
 Rules:
-- 1-2 sentences max after a tool call. Never redescribe what the visualization already shows.
-- Call tools eagerly. If the user asks to see data, call the tool — don't narrate what you're about to do.
-- End with a short follow-up suggestion (one line) so the user knows what else they can explore.
-- No markdown formatting — this renders as plain text in a chat bubble.
-- No greetings, filler, or preamble.
-- You can flag hospitals to mark them for attention. Use flag_hospital when the user wants to mark, note, or bookmark a hospital.
-- You can compare two hospitals side-by-side. Use compare_hospitals when the user wants to see differences.
-- Use summarize_data to compute aggregate statistics before writing analysis. This tool returns numbers without rendering — use the data to write insights.
-- Use export_flagged to download a CSV of all flagged hospitals when the user wants to export or save their flags.
-- Use render_chart to display Apache ECharts visualizations. Generate a full ECharts option object choosing the best chart type (bar, line, pie, scatter, radar, etc.) for the data. Use the color palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. The theme already sets backgroundColor to transparent.
-- Use show_county_trends to display a county-level comparison table with aggregate metrics.
-- Use show_statewide_summary to display statewide overview cards with totals and risk distribution.
-- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available. Tool schemas also adapt — compare_hospitals only lists currently visible hospitals.
-- When the user gives a short or ambiguous input (like "flag" or "compare"), infer the target from the current view context below. If viewing a detail card, act on that hospital. If viewing a filtered table, act on visible hospitals.`;
+- Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
+- For analysis or "how is X doing" requests: call summarize_data first for raw numbers, then filter or chart as needed.
+- For "what's notable / what stands out" questions: summarize_data → filter high-risk → render a chart showing the pattern.
+- Infer intent from context. Viewing a detail card + "flag it" → flag that hospital. Viewing a filtered table + "compare the top two" → compare the two highest-risk hospitals visible.
+- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain — add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
+- No markdown formatting — plain text only. No greetings, filler, or preamble.
+- Flag suspicious hospitals proactively. Use flag_hospital for high-risk, negative-margin, or otherwise concerning cases — don't wait to be asked.
+- All tools run immediately — do not ask permission before calling them. Only flag_hospital may request a user note via interaction.
+- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
+- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
+- Use show_county_trends for a county-level comparison table. Use show_statewide_summary for statewide overview cards.
+- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available.`;
 
     function getSystemPrompt() {
       const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
@@ -2009,6 +2020,8 @@ Rules:
           lines.push(`- Viewing: table of ${data.length} hospitals`);
           const names = data.slice(0, 8).map(h => h.name);
           lines.push(`- Visible: ${names.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
+          const highRisk = data.filter(h => riskTier(h.riskProbability) === 'high');
+          if (highRisk.length > 0) lines.push(`- Attention: ${highRisk.length} high-risk hospital(s) in current view`);
           break;
         }
         case 'detail':
