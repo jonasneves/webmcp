@@ -83,9 +83,3 @@ docs/
   VISION.md                      # What this is building toward
   ROADMAP.md                     # Phased extraction plan
 ```
-
-## Further Reading
-
-- [VISION.md](docs/VISION.md) — the bigger picture: a standalone browser-side AI agent runtime, zero dependencies, ships as an npm package
-- [ROADMAP.md](docs/ROADMAP.md) — phased plan from this PoC to an extractable, publishable runtime
-- [WebMCP spec](https://webmachinelearning.github.io/webmcp/) — the W3C proposal this implements
