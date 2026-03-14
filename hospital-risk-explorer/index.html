@@ -1,0 +1,2784 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#e8ebf2">
+  <title>WebMCP PoC — Hospital Explorer</title>
+  <style>
+    :root {
+      --bg: #e8ebf2;
+      --surface: #ffffff;
+      --surface-alt: #eef0f7;
+      --border: #c8cdd9;
+      --text: #111827;
+      --text-muted: #64748b;
+      --accent: #0d9488;
+      --accent-dim: #c8f0eb;
+      --risk-low: #16a34a;
+      --risk-med: #d97706;
+      --risk-high: #dc2626;
+      --flag: #d97706;
+      --badge-green-bg: #dcfce7;
+      --badge-amber-bg: #fef3c7;
+      --badge-red-bg: #fee2e2;
+      --badge-cyan-bg: #c8f0eb;
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+      --text-xs: 0.6875rem;
+      --text-sm: 0.8125rem;
+      --text-base: 0.9375rem;
+      --text-lg: 1.125rem;
+      --text-xl: 1.375rem;
+      --text-2xl: 1.75rem;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 48px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.08);
+      --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --duration: 150ms;
+      --duration-slow: 300ms;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #1a1d24;
+      --surface-alt: #21252d;
+      --border: #2d3139;
+      --text: #e8eaf0;
+      --text-muted: #8b92a5;
+      --accent: #2dd4bf;
+      --accent-dim: #0f3935;
+      --risk-low: #22c55e;
+      --risk-med: #f59e0b;
+      --risk-high: #ef4444;
+      --flag: #f59e0b;
+      --badge-green-bg: #052e16;
+      --badge-amber-bg: #3d1f00;
+      --badge-red-bg: #3d0a0a;
+      --badge-cyan-bg: #0f3935;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    body {
+      font-family: var(--font);
+      font-size: var(--text-base);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      height: 100dvh;
+      display: flex;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .main-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+      padding: 0 var(--space-lg);
+      border-bottom: none;
+      background: #111827;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+
+    html[data-theme="dark"] header {
+      background: var(--surface);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: var(--text-base);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    html[data-theme="dark"] header h1 { color: var(--text); }
+
+    header .settings-btn { color: rgba(255, 255, 255, 0.5); }
+    header .settings-btn:hover,
+    header .settings-btn[aria-expanded="true"] {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.9);
+    }
+    html[data-theme="dark"] header .settings-btn { color: var(--text-muted); }
+    html[data-theme="dark"] header .settings-btn:hover,
+    html[data-theme="dark"] header .settings-btn[aria-expanded="true"] {
+      background: var(--surface-alt);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    /* Tools panel */
+    .tools-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height var(--duration-slow) var(--ease), border-color var(--duration-slow) var(--ease);
+      border-bottom: 1px solid transparent;
+    }
+
+    .tools-panel[data-collapsed="false"] {
+      max-height: 600px;
+      border-bottom-color: var(--border);
+    }
+
+    .tools-panel-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: var(--space-md) var(--space-lg);
+    }
+
+    .tools-toggle {
+      min-height: 44px;
+      padding: 0 12px;
+      font-size: var(--text-sm);
+      font-family: var(--font);
+      color: rgba(255, 255, 255, 0.5);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color var(--duration) var(--ease);
+    }
+
+    .tools-toggle:hover { color: rgba(255, 255, 255, 0.9); }
+    html[data-theme="dark"] .tools-toggle { color: var(--text-muted); }
+    html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
+
+    .tool-item {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 12px var(--space-md);
+      flex: 1 1 280px;
+      max-width: 400px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tool-item-name {
+      font-family: var(--mono);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: var(--space-xs);
+    }
+
+    .tool-item-badges {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .annotation-badge {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px var(--space-sm);
+      border-radius: 100px;
+    }
+
+    .annotation-badge.read-only { background: var(--badge-green-bg); color: var(--risk-low); }
+    .annotation-badge.idempotent { background: var(--badge-cyan-bg); color: var(--accent); }
+    .annotation-badge.destructive { background: var(--badge-red-bg); color: var(--risk-high); }
+    .annotation-badge.closed-world { background: var(--badge-amber-bg); color: var(--risk-med); }
+
+    .tool-item-desc {
+      font-size: var(--text-xs);
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .tool-item.new {
+      border: 1px solid var(--accent);
+    }
+
+    .tool-item-params {
+      font-size: var(--text-xs);
+      color: var(--accent);
+      margin-top: var(--space-xs);
+      font-family: var(--mono);
+    }
+
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; width: 100%; }
+    }
+
+    main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
+
+    .controls {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent);
+      padding-right: var(--space-xl);
+    }
+
+    .controls::-webkit-scrollbar { display: none; }
+
+    .controls.at-end {
+      mask-image: none;
+      -webkit-mask-image: none;
+      padding-right: 0;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 var(--space-md);
+      font-size: var(--text-sm);
+      font-family: var(--font);
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+    }
+
+    .chip:hover { background: var(--surface-alt); color: var(--text); }
+    .chip.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+    .chip-separator {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      align-self: center;
+      flex-shrink: 0;
+    }
+
+    #display { min-height: 200px; }
+
+    .empty-state {
+      padding: var(--space-2xl) var(--space-lg);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: var(--text-sm);
+    }
+
+    /* Loading skeleton */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .loading-skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .skeleton-row {
+      height: 44px;
+      border-radius: var(--radius);
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%);
+      background-size: 800px 44px;
+      animation: shimmer 1.5s infinite linear;
+    }
+
+    /* Table view */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .hospital-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+      min-width: 640px;
+    }
+
+    .hospital-table th,
+    .compare-table th {
+      text-align: left;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hospital-table th {
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+
+    .hospital-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--surface-alt);
+      white-space: nowrap;
+    }
+
+    .hospital-table tbody tr {
+      cursor: pointer;
+      transition: background var(--duration) var(--ease);
+    }
+
+    .hospital-table tbody tr:hover { background: var(--surface); }
+    .hospital-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+    .hospital-name-cell {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .risk-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      font-size: var(--text-xs);
+      font-weight: 600;
+      border-radius: 100px;
+      letter-spacing: 0.04em;
+    }
+
+    .risk-badge.low { background: var(--badge-green-bg); color: var(--risk-low); }
+    .risk-badge.medium { background: var(--badge-amber-bg); color: var(--risk-med); }
+    .risk-badge.high { background: var(--badge-red-bg); color: var(--risk-high); }
+
+    /* Flag dot */
+    .flag-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--flag);
+      flex-shrink: 0;
+    }
+
+    .flag-note {
+      padding: var(--space-sm) var(--space-lg) 0;
+      font-size: var(--text-sm);
+      color: var(--flag);
+      font-style: italic;
+    }
+
+    /* Comparison view */
+    .compare-table {
+      width: 100%;
+      max-width: 640px;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+    }
+
+    .compare-table th {
+      padding: 10px var(--space-md);
+    }
+
+    .compare-table td {
+      padding: 12px var(--space-md);
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .compare-metric {
+      color: var(--text-muted);
+      font-size: var(--text-sm);
+    }
+
+    .compare-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    .compare-better {
+      color: var(--risk-low);
+      font-weight: 700;
+    }
+
+    /* Detail view */
+    .detail-card {
+      max-width: 640px;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .detail-header {
+      padding: 20px var(--space-lg);
+      border-bottom: 1px solid var(--surface-alt);
+    }
+
+    .detail-header h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: var(--text-xl);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-xs);
+    }
+
+    .detail-meta {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--surface-alt);
+    }
+
+    .detail-cell {
+      padding: var(--space-md) var(--space-lg);
+      background: var(--surface);
+    }
+
+    .detail-cell-label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: var(--space-xs);
+    }
+
+    .detail-cell-value {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .payer-bar {
+      display: flex;
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: var(--space-sm);
+    }
+
+    .payer-bar > div { transition: width 400ms var(--ease); }
+    .payer-segment-medicaid { background: var(--risk-high); }
+    .payer-segment-medicare { background: var(--risk-med); }
+    .payer-segment-commercial { background: var(--risk-low); }
+    .payer-segment-other { background: #8b5cf6; }
+
+    .payer-bar-wrapper {
+      padding: var(--space-md) var(--space-lg);
+    }
+
+    .payer-bar-label {
+      margin-bottom: var(--space-sm);
+    }
+
+    .payer-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      border-top: 1px solid var(--surface-alt);
+    }
+
+    .payer-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .payer-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .payer-legend-dot.medicaid { background: var(--risk-high); }
+    .payer-legend-dot.medicare { background: var(--risk-med); }
+    .payer-legend-dot.commercial { background: var(--risk-low); }
+    .payer-legend-dot.other { background: #8b5cf6; }
+
+    .color-risk-low { color: var(--risk-low); }
+    .color-risk-medium { color: var(--risk-med); }
+    .color-risk-high { color: var(--risk-high); }
+
+    .detail-suffix {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+
+    .view-label {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin-bottom: var(--space-md);
+    }
+
+    .chart-container {
+      width: 100%;
+      min-height: 400px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 0 var(--space-md);
+      font-size: var(--text-sm);
+      font-family: var(--font);
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      cursor: pointer;
+      margin-bottom: var(--space-md);
+      transition: background var(--duration) var(--ease);
+    }
+
+    .back-btn:hover { background: var(--accent-dim); }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-md);
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 20px var(--space-lg);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
+    }
+
+    .summary-card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+
+    .summary-card-value {
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: var(--space-xs);
+      letter-spacing: -0.02em;
+    }
+
+    .summary-card-label {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: var(--space-xs);
+    }
+
+    .summary-card-meta {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+    }
+  </style>
+  <link rel="stylesheet" href="../chat.css">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="main-column">
+    <header>
+      <div class="header-left">
+        <h1>WebMCP PoC</h1>
+        <button class="tools-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel">&#9660; 9 tools</button>
+      </div>
+      <div class="settings-wrap">
+        <button class="settings-btn" id="settings-btn" aria-label="Settings" aria-expanded="false" aria-controls="settings-popover" title="Settings">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+            <path d="M6.08 1.5a.5.5 0 0 0-.495.43l-.198 1.382a4.5 4.5 0 0 0-.968.565L3.1 3.29a.5.5 0 0 0-.617.172L1.5 4.9a.5.5 0 0 0 .1.657l1.1.9A4.5 4.5 0 0 0 2.6 7.5c0 .328.034.648.1.943l-1.1.9a.5.5 0 0 0-.1.657l.984 1.438a.5.5 0 0 0 .617.172l1.319-.588c.298.213.617.398.968.565l.198 1.383a.5.5 0 0 0 .495.43h1.84a.5.5 0 0 0 .495-.43l.198-1.383a4.5 4.5 0 0 0 .968-.565l1.319.588a.5.5 0 0 0 .617-.172L13.4 10a.5.5 0 0 0-.1-.657l-1.1-.9c.066-.295.1-.615.1-.943s-.034-.648-.1-.943l1.1-.9A.5.5 0 0 0 13.5 4.9l-.984-1.438a.5.5 0 0 0-.617-.172l-1.319.588a4.5 4.5 0 0 0-.968-.565L9.415 1.93A.5.5 0 0 0 8.92 1.5H6.08ZM7.5 9.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" fill="currentColor"/>
+          </svg>
+        </button>
+        <div class="settings-popover" id="settings-popover" hidden role="dialog" aria-label="Settings">
+
+          <div class="settings-section">
+            <div class="settings-section-label">Appearance</div>
+            <div class="theme-toggle" role="group" aria-label="Color theme">
+              <button class="theme-opt" data-theme="system">System</button>
+              <button class="theme-opt" data-theme="light">Light</button>
+              <button class="theme-opt" data-theme="dark">Dark</button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-section-label">AI Model</div>
+            <select class="chat-model-select" id="model-select" aria-label="Model">
+              <option value="anthropic:claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+              <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
+              <option value="local:claude" hidden>Claude &middot; Personal account</option>
+              <option value="github:openai/gpt-4.1">GitHub &middot; GPT-4.1</option>
+              <option value="github:openai/gpt-4.1-mini">GitHub &middot; GPT-4.1 mini</option>
+              <option value="github:openai/gpt-5">GitHub &middot; GPT-5</option>
+              <option value="github:openai/gpt-5-mini">GitHub &middot; GPT-5 mini</option>
+            </select>
+          </div>
+
+          <form class="settings-section" id="chat-claude-bar" onsubmit="event.preventDefault()">
+            <div class="settings-section-label">Anthropic API Key</div>
+            <div class="settings-auth-row">
+              <input type="password" class="chat-auth-input" id="api-key" placeholder="sk-ant-&#8230;" autocomplete="off" aria-label="Anthropic API key">
+              <button type="submit" class="btn btn-sm" id="key-save">Save</button>
+            </div>
+          </form>
+
+          <div class="settings-section" id="github-auth-bar">
+            <!-- rendered by updateGitHubAuthBar() -->
+          </div>
+
+          <div class="github-notice settings-notice" id="github-notice" hidden>
+            <span>&#9888; Tool calls may be less reliable with GitHub Models than with Claude.</span>
+            <button class="github-notice-dismiss" id="github-notice-dismiss" aria-label="Dismiss">&#x2715;</button>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <div class="tools-panel" id="tools-panel" data-collapsed="true">
+      <div class="tools-panel-inner" id="tools-panel-inner"></div>
+    </div>
+
+    <main>
+      <nav class="controls" aria-label="Filters">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="Los Angeles">Los Angeles</button>
+        <button class="chip" data-filter="San Francisco">San Francisco</button>
+        <button class="chip" data-filter="Sacramento">Sacramento</button>
+        <button class="chip" data-filter="San Diego">San Diego</button>
+        <div class="chip-separator"></div>
+        <button class="chip" data-view="chart">Risk Overview</button>
+        <button class="chip" data-filter="high">High Risk Only</button>
+        <button class="chip" data-view="trends">County Trends</button>
+        <button class="chip" data-view="statewide">Statewide Summary</button>
+      </nav>
+
+      <div id="display"></div>
+    </main>
+  </div>
+
+  <aside class="chat-panel">
+    <div class="chat-header">
+      <span class="chat-header-title">AI Chat</span>
+      <span class="chat-model-label" id="chat-model-label">Claude</span>
+      <button class="btn btn-sm" id="chat-reset" aria-label="Clear chat">Clear</button>
+    </div>
+    <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
+    <div class="chat-input-area">
+      <div class="chat-input-wrap">
+        <textarea class="chat-input" id="chat-input" placeholder="Ask about hospitals&#8230;" rows="3" aria-label="Chat message"></textarea>
+        <button class="chat-send-btn" id="chat-send" aria-label="Send message" title="Send">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="chat-abort-btn" id="chat-abort" hidden aria-label="Stop generating" title="Stop">
+          <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
+            <rect width="11" height="11" rx="2" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <p class="dialog-title" id="confirm-title">Confirm action</p>
+      <p class="dialog-tool" id="confirm-tool"></p>
+      <p class="dialog-args" id="confirm-args"></p>
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Cancel</button>
+        <button class="btn-confirm" value="confirm">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="prompt-dialog" aria-labelledby="prompt-title">
+    <form method="dialog">
+      <p class="dialog-title" id="prompt-title"></p>
+      <input type="text" class="dialog-input" id="prompt-input" autocomplete="off">
+      <div class="dialog-actions">
+        <button class="btn-cancel" value="cancel">Skip</button>
+        <button class="btn-confirm" value="confirm">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module">
+    import { GITHUB_CLIENT_ID, OAUTH_CALLBACK_ORIGIN, connectGitHub } from 'https://neevs.io/auth/connect.js';
+
+    /* ── Theme ── */
+
+    (function () {
+      const stored = localStorage.getItem('webmcp-theme') || 'light';
+      const resolved = stored === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : stored;
+      document.documentElement.dataset.theme = resolved;
+    })();
+
+    marked.use({ gfm: true, breaks: true });
+
+    /* ── Dataset ── */
+
+    let HOSPITALS = [];
+
+    /* ── State ── */
+
+    const flaggedHospitals = new Map();
+    let currentView = { type: 'table', data: null, label: null, filters: null };
+    let currentToastTimeout = null;
+    let previousToolNames = new Set();
+    let toolsInitialized = false;
+
+    /* ── Constants ── */
+
+    const QUICK_ACTIONS = [
+      'Run triage analysis',
+      'What stands out in the data?',
+      'Show county-level patterns',
+      'Plot risk vs operating margin',
+      'Payer mix breakdown as a pie chart'
+    ];
+
+    const TRIAGE_PROMPT = `Run a full triage analysis of the hospital dataset. Chain all steps without pausing or asking — execute each in sequence:
+1. Call summarize_data for a statistical overview of the full dataset
+2. Filter to high-risk hospitals using filter_hospitals with risk "high"
+3. Compare the two highest-risk hospitals using compare_hospitals
+4. Flag the worst-performing hospital with a note explaining the key risk factors
+5. Write a 2-3 sentence verdict: what's alarming, what's stable, and the top priority action`;
+
+    const SCENARIO_PROMPTS = {
+      'What stands out in the data?': `Find the most notable patterns — chain without pausing:
+1. Call summarize_data for a full statistical overview
+2. Filter to high-risk hospitals to surface the worst cases
+3. Render a scatter chart of risk probability vs operating margin using render_chart
+4. Write 2-3 sentences: the top pattern, the biggest outlier, and what to watch`,
+
+      'Show county-level patterns': `Analyze California hospital risk by county — chain without pausing:
+1. Call summarize_data to get the full picture
+2. Call show_county_trends to display aggregate county metrics
+3. Render a bar chart of county-level risk concentration using render_chart
+4. Write 1-2 sentences: which county has the highest concentration of at-risk hospitals and why it matters`
+    };
+
+    /* ── Utilities ── */
+
+    function riskTier(p) {
+      if (p >= 0.65) return 'high';
+      if (p >= 0.35) return 'medium';
+      return 'low';
+    }
+
+    function fmt(n, decimals = 1) {
+      return n.toFixed(decimals);
+    }
+
+    function pct(n) {
+      return fmt(n) + '%';
+    }
+
+    function matchName(hospital, query) {
+      return hospital.name.toLowerCase().includes(query.toLowerCase());
+    }
+
+    function filterData({ county, risk, search } = {}) {
+      return HOSPITALS.filter(h => {
+        if (county && h.county !== county) return false;
+        if (risk && riskTier(h.riskProbability) !== risk) return false;
+        if (search && !matchName(h, search)) return false;
+        return true;
+      });
+    }
+
+    function scrollDisplayIntoView() {
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        display.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function refreshCurrentView() {
+      if (currentView.type === 'table') {
+        renderTable(currentView.data || HOSPITALS, currentView.label, currentView.filters);
+      } else if (currentView.type === 'chart' && currentView.data) {
+        renderEChart(currentView.data, currentView.label);
+      } else if (currentView.type === 'detail' && currentView.data) {
+        renderDetail(currentView.data);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        renderComparison(currentView.data[0], currentView.data[1]);
+      }
+    }
+
+    /* ── URL State ── */
+
+    function encodeViewToHash() {
+      const params = new URLSearchParams();
+      params.set('view', currentView.type);
+      const f = currentView.filters || {};
+
+      if (currentView.type === 'table') {
+        if (f.county) params.set('county', f.county);
+        if (f.risk) params.set('risk', f.risk);
+      } else if (currentView.type === 'detail' && currentView.data) {
+        params.set('name', currentView.data.name);
+      } else if (currentView.type === 'comparison' && currentView.data) {
+        params.set('h1', currentView.data[0].name);
+        params.set('h2', currentView.data[1].name);
+      }
+
+      history.replaceState(null, '', '#' + params.toString());
+    }
+
+    function decodeHashToView() {
+      const hash = location.hash.slice(1);
+      if (!hash) return false;
+
+      const params = new URLSearchParams(hash);
+      const view = params.get('view');
+
+      if (view === 'table') {
+        const county = params.get('county');
+        const risk = params.get('risk');
+        if (county) {
+          renderTable(filterData({ county }), `hospitals in ${county}`, { county });
+        } else if (risk) {
+          renderTable(filterData({ risk }), `${risk}-risk hospitals`, { risk });
+        } else {
+          renderTable(HOSPITALS);
+        }
+        return true;
+      }
+
+      if (view === 'chart') {
+        renderTable(HOSPITALS);
+        return true;
+      }
+
+      if (view === 'detail') {
+        const name = params.get('name');
+        const h = HOSPITALS.find(h => h.name === name);
+        if (h) { renderDetail(h); return true; }
+      }
+
+      if (view === 'comparison') {
+        const h1 = HOSPITALS.find(h => h.name === params.get('h1'));
+        const h2 = HOSPITALS.find(h => h.name === params.get('h2'));
+        if (h1 && h2) { renderComparison(h1, h2); return true; }
+      }
+
+      return false;
+    }
+
+    window.addEventListener('hashchange', () => {
+      if (HOSPITALS.length) decodeHashToView();
+    });
+
+    /* ── Rendering ── */
+
+    const display = document.getElementById('display');
+
+    echarts.registerTheme('webmcp', {
+      backgroundColor: 'transparent',
+      textStyle: { fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+      title: { textStyle: { color: '#f1f5f9' } },
+      legend: { textStyle: { color: '#94a3b8' } },
+      categoryAxis: {
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#1e293b' } }
+      },
+      valueAxis: {
+        axisLine: { lineStyle: { color: '#475569' } },
+        axisLabel: { color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#1e293b' } }
+      },
+      tooltip: {
+        backgroundColor: '#1e293b',
+        borderColor: '#475569',
+        textStyle: { color: '#f1f5f9' }
+      }
+    });
+
+    let chartInstance = null;
+
+    function renderEChart(option, label) {
+      currentView = { type: 'chart', data: option, label, filters: {} };
+      if (chartInstance) { chartInstance.dispose(); chartInstance = null; }
+      display.innerHTML = `
+        <p class="view-label">${label}</p>
+        <div id="chart-container" class="chart-container"></div>
+      `;
+      const container = document.getElementById('chart-container');
+      chartInstance = echarts.init(container, 'webmcp');
+      chartInstance.setOption(option);
+      encodeViewToHash();
+      syncTools();
+    }
+
+    window.addEventListener('resize', () => {
+      if (chartInstance) chartInstance.resize();
+    });
+
+    function renderSkeleton() {
+      display.innerHTML = `
+        <div class="loading-skeleton">
+          ${Array.from({ length: 8 }, (_, i) =>
+            `<div class="skeleton-row" style="animation-delay: ${i * 80}ms"></div>`
+          ).join('')}
+        </div>
+      `;
+    }
+
+    function renderTable(hospitals, label, filters) {
+      currentView = { type: 'table', data: hospitals, label, filters };
+      const summary = label || `${hospitals.length} hospitals`;
+
+      if (hospitals.length === 0) {
+        display.innerHTML = `<p class="empty-state">No hospitals match the current filters.</p>`;
+        encodeViewToHash();
+        syncTools();
+        return;
+      }
+
+      display.innerHTML = `
+        <div class="summary-row">
+          <p class="view-label">Showing ${summary}</p>
+          <span class="summary-count">${hospitals.length} result${hospitals.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="table-scroll">
+        <table class="hospital-table">
+          <thead>
+            <tr>
+              <th>Hospital</th>
+              <th>County</th>
+              <th>Risk</th>
+              <th>Medi-Cal</th>
+              <th>Equity Burden</th>
+              <th>Margin</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${hospitals.map(h => {
+              const isFlagged = flaggedHospitals.has(h.name);
+              return `
+              <tr tabindex="0" data-name="${h.name}">
+                <td><span class="hospital-name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${h.name}</span></td>
+                <td>${h.county}</td>
+                <td><span class="risk-badge ${riskTier(h.riskProbability)}">${riskTier(h.riskProbability)}</span></td>
+                <td>${pct(h.mediCalPct)}</td>
+                <td>${h.equityBurdenScore}</td>
+                <td class="${h.operatingMargin < 0 ? 'color-risk-high' : 'color-risk-low'}">${fmt(h.operatingMargin)}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderDetail(hospital) {
+      const h = hospital;
+      const tier = riskTier(h.riskProbability);
+      const flag = flaggedHospitals.get(h.name);
+      currentView = { type: 'detail', data: h, label: null, filters: null };
+
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <div class="detail-card">
+          <div class="detail-header">
+            <h2>${flag ? '<span class="flag-dot"></span>' : ''}${h.name}</h2>
+            <p class="detail-meta">${h.county} &middot; ${h.type} &middot; ${h.ownership} &middot; <span class="risk-badge ${tier}">${tier} risk</span></p>
+          </div>
+          ${flag ? `<p class="flag-note">${flag.note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>` : ''}
+          <div class="detail-grid">
+            <div class="detail-cell">
+              <div class="detail-cell-label">Risk Probability</div>
+              <div class="detail-cell-value color-risk-${tier}">${pct(h.riskProbability * 100)}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Equity Burden</div>
+              <div class="detail-cell-value">${h.equityBurdenScore}<span class="detail-suffix"> / 100</span></div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Operating Margin</div>
+              <div class="detail-cell-value ${h.operatingMargin < 0 ? 'color-risk-high' : 'color-risk-low'}">${fmt(h.operatingMargin)}%</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Occupancy Rate</div>
+              <div class="detail-cell-value">${pct(h.occupancyRate)}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Licensed Beds</div>
+              <div class="detail-cell-value">${h.licensedBeds}</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-cell-label">Medi-Cal Share</div>
+              <div class="detail-cell-value ${h.mediCalPct > 40 ? 'color-risk-high' : ''}">${pct(h.mediCalPct)}</div>
+            </div>
+          </div>
+          <div class="payer-bar-wrapper">
+            <div class="detail-cell-label payer-bar-label">Payer Mix</div>
+            <div class="payer-bar">
+              <div class="payer-segment-medicaid" style="width: ${h.mediCalPct}%"></div>
+              <div class="payer-segment-medicare" style="width: ${h.medicarePct}%"></div>
+              <div class="payer-segment-commercial" style="width: ${h.commercialPct}%"></div>
+              <div class="payer-segment-other" style="width: ${h.otherPct}%"></div>
+            </div>
+          </div>
+          <div class="payer-legend">
+            <span class="payer-legend-item"><span class="payer-legend-dot medicaid"></span> Medi-Cal ${pct(h.mediCalPct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot medicare"></span> Medicare ${pct(h.medicarePct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot commercial"></span> Commercial ${pct(h.commercialPct)}</span>
+            <span class="payer-legend-item"><span class="payer-legend-dot other"></span> Other ${pct(h.otherPct)}</span>
+          </div>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderComparison(h1, h2) {
+      currentView = { type: 'comparison', data: [h1, h2], label: null, filters: null };
+
+      const metrics = [
+        { label: 'Risk Probability', key: 'riskProbability', format: v => pct(v * 100), lowerBetter: true },
+        { label: 'Equity Burden', key: 'equityBurdenScore', format: v => `${v} / 100`, lowerBetter: true },
+        { label: 'Operating Margin', key: 'operatingMargin', format: v => `${fmt(v)}%`, lowerBetter: false },
+        { label: 'Medi-Cal Share', key: 'mediCalPct', format: v => pct(v), lowerBetter: true },
+        { label: 'Occupancy Rate', key: 'occupancyRate', format: v => pct(v), lowerBetter: false },
+        { label: 'Licensed Beds', key: 'licensedBeds', format: v => v, lowerBetter: false },
+      ];
+
+      function betterClass(v1, v2, lowerBetter) {
+        if (v1 === v2) return ['', ''];
+        const v1Wins = lowerBetter ? v1 < v2 : v1 > v2;
+        return v1Wins ? ['compare-better', ''] : ['', 'compare-better'];
+      }
+
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">Comparing two hospitals</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>${h1.name}</th>
+              <th>${h2.name}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${metrics.map(m => {
+              const [c1, c2] = betterClass(h1[m.key], h2[m.key], m.lowerBetter);
+              return `
+              <tr>
+                <td class="compare-metric">${m.label}</td>
+                <td class="compare-value ${c1}">${m.format(h1[m.key])}</td>
+                <td class="compare-value ${c2}">${m.format(h2[m.key])}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderCountyTrends(trends) {
+      currentView = { type: 'trends', data: trends, label: null, filters: null };
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">County comparison (${trends.length} counties)</p>
+        <div class="table-scroll">
+        <table class="hospital-table">
+          <thead>
+            <tr>
+              <th>County</th>
+              <th>Hospitals</th>
+              <th>Avg Risk</th>
+              <th>Avg Margin</th>
+              <th>Avg Equity Burden</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${trends.map(t => {
+              const tier = riskTier(t.avgRisk);
+              return `
+              <tr>
+                <td>${t.county}</td>
+                <td>${t.count}</td>
+                <td><span class="risk-badge ${tier}">${fmt(t.avgRisk * 100)}%</span></td>
+                <td class="${t.avgMargin < 0 ? 'color-risk-high' : 'color-risk-low'}">${fmt(t.avgMargin)}%</td>
+                <td>${fmt(t.avgEquityBurden, 0)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    function renderStatewideCards(data) {
+      currentView = { type: 'statewide', data, label: null, filters: null };
+      display.innerHTML = `
+        <button class="back-btn">&#8592; Back to list</button>
+        <p class="view-label">Statewide overview</p>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-card-label">Total Hospitals</div>
+            <div class="summary-card-value">${data.totalHospitals}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Total Licensed Beds</div>
+            <div class="summary-card-value">${data.totalBeds.toLocaleString()}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Average Risk</div>
+            <div class="summary-card-value color-risk-${riskTier(data.avgRisk)}">${fmt(data.avgRisk * 100)}%</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">Risk Distribution</div>
+            <div class="summary-card-value">${data.riskDistribution.high} <span class="detail-suffix">high-risk</span></div>
+            <div class="summary-card-meta">${data.riskDistribution.medium} medium, ${data.riskDistribution.low} low</div>
+          </div>
+        </div>
+      `;
+      encodeViewToHash();
+      syncTools();
+    }
+
+    /* ── Display event delegation ── */
+
+    display.addEventListener('click', (e) => {
+      const row = e.target.closest('tr[data-name]');
+      if (row) { showDetail(row.dataset.name); return; }
+      const backBtn = e.target.closest('.back-btn');
+      if (backBtn) renderTable(HOSPITALS);
+    });
+
+    display.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const row = e.target.closest('tr[data-name]');
+      if (row) showDetail(row.dataset.name);
+    });
+
+    function showDetail(name) {
+      const h = HOSPITALS.find(h => h.name === name);
+      if (!h) return;
+      renderDetail(h);
+    }
+
+    /* ── Toast ── */
+
+    function showToast(message, onUndo) {
+      dismissToast();
+
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+
+      const msgSpan = document.createElement('span');
+      msgSpan.className = 'toast-message';
+      msgSpan.textContent = message;
+      toast.appendChild(msgSpan);
+
+      const undoBtn = document.createElement('button');
+      undoBtn.className = 'toast-undo';
+      undoBtn.textContent = 'Undo';
+      undoBtn.addEventListener('click', () => {
+        dismissToast();
+        onUndo();
+      });
+      toast.appendChild(undoBtn);
+
+      container.appendChild(toast);
+      currentToastTimeout = setTimeout(dismissToast, 5000);
+    }
+
+    function dismissToast() {
+      if (currentToastTimeout) {
+        clearTimeout(currentToastTimeout);
+        currentToastTimeout = null;
+      }
+      document.getElementById('toast-container').innerHTML = '';
+    }
+
+    /* ── Persistence ── */
+
+    function persistFlags() {
+      const data = [...flaggedHospitals.entries()].map(([name, flag]) => ({ name, ...flag }));
+      localStorage.setItem('webmcp-flags', JSON.stringify(data));
+    }
+
+    function loadFlags() {
+      try {
+        const data = JSON.parse(localStorage.getItem('webmcp-flags') || '[]');
+        data.forEach(({ name, ...flag }) => flaggedHospitals.set(name, flag));
+      } catch {}
+    }
+
+    /* ── Confirmation dialog ── */
+
+    function showConfirmDialog(toolName, args) {
+      const dialog = document.getElementById('confirm-dialog');
+      document.getElementById('confirm-tool').textContent = toolName;
+      document.getElementById('confirm-args').textContent = JSON.stringify(args, null, 2);
+      dialog.returnValue = '';
+      dialog.showModal();
+      return new Promise(resolve => {
+        dialog.addEventListener('close', () => {
+          resolve(dialog.returnValue === 'confirm');
+        }, { once: true });
+      });
+    }
+
+    function showPromptDialog(message) {
+      const dialog = document.getElementById('prompt-dialog');
+      const input = document.getElementById('prompt-input');
+      document.getElementById('prompt-title').textContent = message;
+      input.value = '';
+      dialog.returnValue = '';
+      dialog.showModal();
+      input.focus();
+      function onEnter(e) {
+        if (e.key === 'Enter') { e.preventDefault(); dialog.close('confirm'); }
+      }
+      input.addEventListener('keydown', onEnter);
+      return new Promise(resolve => {
+        dialog.addEventListener('close', () => {
+          input.removeEventListener('keydown', onEnter);
+          resolve(dialog.returnValue === 'confirm' ? (input.value || null) : null);
+        }, { once: true });
+      });
+    }
+
+    /* ── Keyboard shortcuts ── */
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.matches('input, textarea')) {
+        chatInput.focus();
+      }
+      if (e.key === 'Escape') {
+        const sp = document.getElementById('settings-popover');
+        const sb = document.getElementById('settings-btn');
+        if (sp && !sp.hidden) {
+          sp.hidden = true;
+          sb?.setAttribute('aria-expanded', 'false');
+          sb?.focus();
+          return;
+        }
+        const panel = document.getElementById('tools-panel');
+        if (panel.dataset.collapsed === 'false') { toggleToolsPanel(); return; }
+        dismissToast();
+      }
+    });
+
+    /* ── Controls scroll fade ── */
+
+    const controlsNav = document.querySelector('.controls');
+    function updateScrollFade() {
+      const atEnd = controlsNav.scrollLeft + controlsNav.clientWidth >= controlsNav.scrollWidth - 4;
+      controlsNav.classList.toggle('at-end', atEnd);
+    }
+    controlsNav.addEventListener('scroll', updateScrollFade, { passive: true });
+    updateScrollFade();
+
+    /* ── Quick actions ── */
+
+    function renderQuickActions() {
+      const container = document.createElement('div');
+      container.className = 'chat-quick-actions';
+      container.id = 'quick-actions';
+
+      QUICK_ACTIONS.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-chip quick-action-chip';
+        btn.textContent = prompt;
+        btn.addEventListener('click', () => {
+          const actual = prompt === 'Run triage analysis' ? TRIAGE_PROMPT : (SCENARIO_PROMPTS[prompt] || prompt);
+          sendMessage({ display: prompt, prompt: actual });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+    }
+
+    /* ── Follow-up suggestions ── */
+
+    function getFollowupSuggestions() {
+      const suggestions = [];
+
+      switch (currentView.type) {
+        case 'table': {
+          suggestions.push('Show risk chart');
+          const highRisk = (currentView.data || HOSPITALS)
+            .filter(h => riskTier(h.riskProbability) === 'high')
+            .sort((a, b) => b.riskProbability - a.riskProbability);
+          if (highRisk.length >= 2) {
+            suggestions.push(`Compare ${highRisk[0].name} and ${highRisk[1].name}`);
+          }
+          break;
+        }
+        case 'chart':
+          suggestions.push('Show table view');
+          suggestions.push('Filter to high risk only');
+          break;
+        case 'detail': {
+          const h = currentView.data;
+          suggestions.push(`Flag ${h.name}`);
+          const similar = HOSPITALS
+            .filter(other => other.name !== h.name)
+            .sort((a, b) =>
+              Math.abs(a.riskProbability - h.riskProbability) - Math.abs(b.riskProbability - h.riskProbability)
+            );
+          if (similar.length) {
+            suggestions.push(`Compare with ${similar[0].name}`);
+          }
+          break;
+        }
+        case 'comparison': {
+          const [h1, h2] = currentView.data;
+          const worse = h1.riskProbability > h2.riskProbability ? h1 : h2;
+          suggestions.push(`Show detail for ${worse.name}`);
+          suggestions.push(`Flag ${worse.name}`);
+          break;
+        }
+      }
+
+      return suggestions.slice(0, 2);
+    }
+
+    function renderFollowupSuggestions() {
+      clearFollowupSuggestions();
+      const suggestions = getFollowupSuggestions();
+      if (!suggestions.length) return;
+
+      const container = document.createElement('div');
+      container.className = 'followup-suggestions';
+      container.id = 'followup-suggestions';
+
+      suggestions.forEach(text => {
+        const btn = document.createElement('button');
+        btn.className = 'suggestion-chip followup-chip';
+        btn.textContent = text;
+        btn.addEventListener('click', () => {
+          sendMessage({ prompt: text });
+        });
+        container.appendChild(btn);
+      });
+
+      chatMessages.appendChild(container);
+    }
+
+    function clearFollowupSuggestions() {
+      const existing = document.getElementById('followup-suggestions');
+      if (existing) existing.remove();
+    }
+
+    /* ── Dynamic tools ── */
+
+    function getContextualTools() {
+      const tools = [];
+      if (flaggedHospitals.size > 0) {
+        tools.push({
+          name: 'review_flags',
+          title: 'Review Flags',
+          description: `Show all ${flaggedHospitals.size} currently flagged hospitals with their notes and risk metrics.`,
+          readOnlyHint: true,
+          idempotentHint: true,
+          destructiveHint: false,
+          openWorldHint: false,
+          schema: { type: 'object', properties: {} },
+          exec: async () => {
+            const flagged = [...flaggedHospitals.keys()]
+              .map(name => HOSPITALS.find(h => h.name === name))
+              .filter(Boolean);
+            renderTable(flagged, 'flagged hospitals');
+            return {
+              displayed: true,
+              count: flagged.length,
+              summary: `Showing ${flagged.length} flagged hospital(s).`,
+              hospitals: flagged.map(h => ({
+                name: h.name,
+                note: flaggedHospitals.get(h.name).note,
+                risk: riskTier(h.riskProbability)
+              }))
+            };
+          }
+        });
+        tools.push({
+          name: 'clear_all_flags',
+          title: 'Clear All Flags',
+          description: `Remove all ${flaggedHospitals.size} hospital flags. This action cannot be undone.`,
+          readOnlyHint: false,
+          idempotentHint: true,
+          destructiveHint: true,
+          openWorldHint: false,
+          schema: { type: 'object', properties: {} },
+          exec: async (input, client) => {
+            const count = flaggedHospitals.size;
+            const confirmed = await client.requestUserInteraction(() =>
+              showConfirmDialog(`Clear all ${count} flags`, { flags: [...flaggedHospitals.keys()] })
+            );
+            if (!confirmed) return { summary: 'User cancelled.' };
+            flaggedHospitals.clear();
+            persistFlags();
+            refreshCurrentView();
+            syncTools();
+            return { summary: `Cleared ${count} flag(s).` };
+          }
+        });
+      }
+      return tools;
+    }
+
+    function getActiveTools() {
+      const tools = TOOL_DEFS.map(t => {
+        if (t.name === 'compare_hospitals') {
+          const visible = (currentView.type === 'table' && currentView.data) ? currentView.data : HOSPITALS;
+          const names = visible.map(h => h.name);
+          return {
+            ...t,
+            schema: {
+              ...t.schema,
+              properties: {
+                hospital1: { ...t.schema.properties.hospital1, enum: names },
+                hospital2: { ...t.schema.properties.hospital2, enum: names }
+              }
+            }
+          };
+        }
+        return t;
+      });
+      return [...tools, ...getContextualTools()];
+    }
+
+    function getPageContext() {
+      const parts = [];
+      switch (currentView.type) {
+        case 'table':
+          parts.push('Table');
+          if (currentView.data) parts.push(`${currentView.data.length} hospitals`);
+          break;
+        case 'chart': parts.push('Chart'); break;
+        case 'detail':
+          if (currentView.data) parts.push(`Detail: ${currentView.data.name}`);
+          break;
+        case 'comparison':
+          if (currentView.data) parts.push(`${currentView.data[0].name} vs ${currentView.data[1].name}`);
+          break;
+      }
+      if (currentView.filters?.county) parts.push(currentView.filters.county);
+      if (currentView.filters?.risk) parts.push(`${currentView.filters.risk} risk`);
+      if (flaggedHospitals.size > 0) parts.push(`${flaggedHospitals.size} flagged`);
+      return parts;
+    }
+
+    function syncTools() {
+      const tools = getActiveTools();
+      const currentNames = new Set(tools.map(t => t.name));
+      const newNames = toolsInitialized
+        ? new Set([...currentNames].filter(n => !previousToolNames.has(n)))
+        : new Set();
+
+      previousToolNames = currentNames;
+      renderToolsPanel(tools, newNames);
+      toolsInitialized = true;
+    }
+
+    /* ── Tools panel ── */
+
+    function renderToolsPanel(tools, newNames = new Set()) {
+      const inner = document.getElementById('tools-panel-inner');
+      const toggle = document.getElementById('tools-toggle');
+      const panel = document.getElementById('tools-panel');
+      const collapsed = panel.dataset.collapsed === 'true';
+      toggle.innerHTML = `${collapsed ? '&#9660;' : '&#9650;'} ${tools.length} tools`;
+
+      inner.innerHTML = tools.map(t => {
+        const badges = [];
+        if (t.readOnlyHint) badges.push('<span class="annotation-badge read-only">read-only</span>');
+        if (t.idempotentHint) badges.push('<span class="annotation-badge idempotent">idempotent</span>');
+        if (t.destructiveHint) badges.push('<span class="annotation-badge destructive">destructive</span>');
+        if (!t.openWorldHint) badges.push('<span class="annotation-badge closed-world">closed-world</span>');
+
+        const isNew = newNames.has(t.name);
+        const hospitalEnum = Object.entries(t.schema.properties || {})
+          .find(([k, v]) => v.enum && (k === 'hospital1' || k === 'hospital2'));
+        const paramsHtml = hospitalEnum
+          ? `<div class="tool-item-params">${hospitalEnum[1].enum.length} hospitals available</div>`
+          : '';
+        const desc = t.description.split('.')[0] + '.';
+
+        return `
+          <div class="tool-item${isNew ? ' new' : ''}">
+            <div class="tool-item-name">${t.name}</div>
+            <div class="tool-item-badges">${badges.join('')}</div>
+            <div class="tool-item-desc">${desc}</div>
+            ${paramsHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleToolsPanel() {
+      const panel = document.getElementById('tools-panel');
+      const toggle = document.getElementById('tools-toggle');
+      const collapsed = panel.dataset.collapsed === 'true';
+      panel.dataset.collapsed = collapsed ? 'false' : 'true';
+      toggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+      const tools = getActiveTools();
+      toggle.innerHTML = `${collapsed ? '&#9650;' : '&#9660;'} ${tools.length} tools`;
+    }
+
+    document.getElementById('tools-toggle').addEventListener('click', toggleToolsPanel);
+
+    /* ── Shared tool definitions ── */
+
+    const TOOL_DEFS = [
+      {
+        name: 'filter_hospitals',
+        title: 'Filter Hospitals',
+        description: 'Filter and display California hospitals on the page. Renders a table showing matching hospitals with risk tier, Medi-Cal share, equity burden score, and operating margin. The user can then click any row to see full details.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            county: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Filter by county' },
+            risk: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Filter by ML-predicted risk tier' },
+            search: { type: 'string', description: 'Search hospital name (partial match)' }
+          }
+        },
+        exec: async (input) => {
+          const filtered = filterData(input);
+          const parts = [];
+          if (input.county) parts.push(`in ${input.county}`);
+          if (input.risk) parts.push(`${input.risk} risk`);
+          if (input.search) parts.push(`matching "${input.search}"`);
+          const label = parts.length ? parts.join(', ') : 'all hospitals';
+          renderTable(filtered, label, { county: input.county, risk: input.risk });
+          return { displayed: true, count: filtered.length, summary: `Rendered ${filtered.length} hospitals (${label}). User can now see the table and click any row for details.` };
+        }
+      },
+      {
+        name: 'render_chart',
+        title: 'Render Chart',
+        description: 'Render an Apache ECharts visualization. Generate a full ECharts option object with the appropriate chart type (bar, line, pie, scatter, radar, etc.) based on the data. Use the data available from previous tool calls. Colors should use the palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"].',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            option: {
+              type: 'object',
+              description: 'Full ECharts option object (series, xAxis, yAxis, tooltip, legend, etc.)'
+            },
+            label: {
+              type: 'string',
+              description: 'Short description shown above the chart'
+            }
+          },
+          required: ['option', 'label']
+        },
+        exec: async (input) => {
+          renderEChart(input.option, input.label);
+          return { displayed: true, summary: `Chart rendered: ${input.label}` };
+        }
+      },
+      {
+        name: 'show_hospital_detail',
+        title: 'Hospital Detail',
+        description: 'Display a detailed profile card for a specific hospital, showing risk probability, equity burden score, operating margin, payer mix breakdown, occupancy, and bed count. Renders visually on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Hospital name (partial match supported)' }
+          },
+          required: ['name']
+        },
+        exec: async (input) => {
+          const hospital = HOSPITALS.find(h => matchName(h, input.name));
+          if (!hospital) return { displayed: false, summary: `No hospital found matching "${input.name}".` };
+          renderDetail(hospital);
+          const tier = riskTier(hospital.riskProbability);
+          return { displayed: true, summary: `Showing ${hospital.name} — ${tier} risk, equity burden ${hospital.equityBurdenScore}/100, margin ${fmt(hospital.operatingMargin)}%.` };
+        }
+      },
+      {
+        name: 'flag_hospital',
+        title: 'Flag Hospital',
+        description: 'Flag or unflag a hospital with a note. Flagged hospitals display an amber indicator dot in tables and detail views. Use this to mark hospitals that warrant attention or follow-up.',
+        readOnlyHint: true,
+        idempotentHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Hospital name (partial match supported)' },
+            note: { type: 'string', description: 'Reason for flagging (displayed on detail card)' },
+            unflag: { type: 'boolean', description: 'Set to true to remove the flag' }
+          },
+          required: ['name']
+        },
+        exec: async (input, client) => {
+          const hospital = HOSPITALS.find(h => matchName(h, input.name));
+          if (!hospital) return { summary: `No hospital found matching "${input.name}".` };
+
+          if (input.unflag) {
+            const previousFlag = flaggedHospitals.get(hospital.name);
+            flaggedHospitals.delete(hospital.name);
+            persistFlags();
+            refreshCurrentView();
+            showToast('Flag removed', () => {
+              flaggedHospitals.set(hospital.name, previousFlag || { note: 'Flagged for review', timestamp: Date.now() });
+              persistFlags();
+              refreshCurrentView();
+            });
+            return { summary: `Removed flag from ${hospital.name}.` };
+          }
+
+          let note = input.note;
+          if (!note) {
+            note = await client.requestUserInteraction(() =>
+              showPromptDialog(`Add a note for flagging ${hospital.name} (optional)`)
+            );
+          }
+
+          const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
+          flaggedHospitals.set(hospital.name, flagData);
+          persistFlags();
+          refreshCurrentView();
+          showToast('Hospital flagged', () => {
+            flaggedHospitals.delete(hospital.name);
+            persistFlags();
+            refreshCurrentView();
+          });
+          return { summary: `Flagged ${hospital.name}: "${flagData.note}".` };
+        }
+      },
+      {
+        name: 'compare_hospitals',
+        title: 'Compare Hospitals',
+        description: 'Display a side-by-side comparison table of two hospitals across key metrics: risk probability, equity burden, operating margin, Medi-Cal share, occupancy rate, and licensed beds. Better values are highlighted in green.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            hospital1: { type: 'string', description: 'First hospital name (partial match)' },
+            hospital2: { type: 'string', description: 'Second hospital name (partial match)' }
+          },
+          required: ['hospital1', 'hospital2']
+        },
+        exec: async (input) => {
+          const h1 = HOSPITALS.find(h => matchName(h, input.hospital1));
+          const h2 = HOSPITALS.find(h => matchName(h, input.hospital2));
+          if (!h1) return { displayed: false, summary: `No hospital found matching "${input.hospital1}".` };
+          if (!h2) return { displayed: false, summary: `No hospital found matching "${input.hospital2}".` };
+          renderComparison(h1, h2);
+          return { displayed: true, summary: `Comparing ${h1.name} vs ${h2.name}. Key differences: risk ${pct(h1.riskProbability * 100)} vs ${pct(h2.riskProbability * 100)}, margin ${fmt(h1.operatingMargin)}% vs ${fmt(h2.operatingMargin)}%.` };
+        }
+      },
+      {
+        name: 'summarize_data',
+        title: 'Summarize Data',
+        description: 'Compute aggregate statistics for the hospital dataset. Returns numerical summaries (averages, distributions, extremes) without rendering any visualization. Use this to analyze data before deciding what to show.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            county: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Limit summary to a specific county' }
+          }
+        },
+        exec: async (input) => {
+          const data = input.county ? filterData({ county: input.county }) : HOSPITALS;
+          const avg = (fn) => data.reduce((s, h) => s + fn(h), 0) / data.length;
+
+          const avgMargin = avg(h => h.operatingMargin);
+          const avgRisk = avg(h => h.riskProbability);
+          const avgEquityBurden = avg(h => h.equityBurdenScore);
+          const avgOccupancy = avg(h => h.occupancyRate);
+          const totalBeds = data.reduce((s, h) => s + h.licensedBeds, 0);
+
+          const riskDistribution = { low: 0, medium: 0, high: 0 };
+          data.forEach(h => riskDistribution[riskTier(h.riskProbability)]++);
+
+          const sorted = [...data].sort((a, b) => b.riskProbability - a.riskProbability);
+          const highestRisk = sorted[0];
+          const lowestRisk = sorted[sorted.length - 1];
+
+          const scope = input.county || 'all counties';
+          return {
+            scope,
+            count: data.length,
+            avgMargin: +avgMargin.toFixed(1),
+            avgRisk: +avgRisk.toFixed(2),
+            avgEquityBurden: +avgEquityBurden.toFixed(0),
+            avgOccupancy: +avgOccupancy.toFixed(1),
+            totalBeds,
+            riskDistribution,
+            highestRisk: { name: highestRisk.name, risk: highestRisk.riskProbability },
+            lowestRisk: { name: lowestRisk.name, risk: lowestRisk.riskProbability },
+            summary: `${data.length} hospitals (${scope}): avg risk ${(avgRisk * 100).toFixed(0)}%, avg margin ${avgMargin.toFixed(1)}%, ${riskDistribution.high} high-risk. Highest: ${highestRisk.name} (${(highestRisk.riskProbability * 100).toFixed(0)}%), lowest: ${lowestRisk.name} (${(lowestRisk.riskProbability * 100).toFixed(0)}%).`
+          };
+        }
+      },
+      {
+        name: 'export_flagged',
+        title: 'Export Flagged',
+        description: 'Download a CSV file of all currently flagged hospitals with their flag notes and key metrics. Produces a file download, does not render a visualization.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {}
+        },
+        exec: async () => {
+          if (flaggedHospitals.size === 0) return { summary: 'No hospitals are currently flagged.' };
+
+          const headers = ['Name', 'County', 'Risk Tier', 'Risk Probability', 'Operating Margin', 'Equity Burden', 'Flag Note', 'Flagged At'];
+          const rows = [...flaggedHospitals.entries()].map(([name, flag]) => {
+            const h = HOSPITALS.find(h => h.name === name);
+            return [name, h.county, riskTier(h.riskProbability), h.riskProbability, h.operatingMargin, h.equityBurdenScore, flag.note, new Date(flag.timestamp).toISOString()];
+          });
+
+          const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'flagged-hospitals.csv';
+          a.click();
+          URL.revokeObjectURL(url);
+
+          return { summary: `Exported ${flaggedHospitals.size} flagged hospital(s) as CSV.` };
+        }
+      },
+      {
+        name: 'show_county_trends',
+        title: 'County Trends',
+        description: 'Display a comparison table of aggregate metrics by county, including average risk, margin, and equity burden. Renders a table on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const counties = {};
+          HOSPITALS.forEach(h => {
+            if (!counties[h.county]) counties[h.county] = [];
+            counties[h.county].push(h);
+          });
+
+          const trends = Object.entries(counties).map(([county, hospitals]) => {
+            const avg = (fn) => hospitals.reduce((s, h) => s + fn(h), 0) / hospitals.length;
+            return {
+              county,
+              count: hospitals.length,
+              avgRisk: avg(h => h.riskProbability),
+              avgMargin: avg(h => h.operatingMargin),
+              avgEquityBurden: avg(h => h.equityBurdenScore)
+            };
+          });
+
+          renderCountyTrends(trends);
+          return { displayed: true, summary: `Showing county trends for ${trends.length} counties.` };
+        }
+      },
+      {
+        name: 'show_statewide_summary',
+        title: 'Statewide Summary',
+        description: 'Display summary cards with statewide aggregate metrics including total hospitals, beds, average risk, and risk distribution. Renders cards on the page.',
+        readOnlyHint: true,
+        idempotentHint: true,
+        destructiveHint: false,
+        openWorldHint: false,
+        schema: { type: 'object', properties: {} },
+        exec: async () => {
+          const avg = (fn) => HOSPITALS.reduce((s, h) => s + fn(h), 0) / HOSPITALS.length;
+          const riskDist = { low: 0, medium: 0, high: 0 };
+          HOSPITALS.forEach(h => riskDist[riskTier(h.riskProbability)]++);
+
+          renderStatewideCards({
+            totalHospitals: HOSPITALS.length,
+            totalBeds: HOSPITALS.reduce((s, h) => s + h.licensedBeds, 0),
+            avgRisk: avg(h => h.riskProbability),
+            riskDistribution: riskDist
+          });
+          return { displayed: true, summary: `Showing statewide summary: ${HOSPITALS.length} hospitals, ${riskDist.high} high-risk.` };
+        }
+      }
+    ];
+
+    /* ── Button controls (mirror tool functionality) ── */
+
+    document.querySelectorAll('.chip[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        const filter = btn.dataset.filter;
+        if (filter === 'all') {
+          renderTable(HOSPITALS);
+        } else if (filter === 'high') {
+          const filtered = filterData({ risk: 'high' });
+          renderTable(filtered, 'high-risk hospitals', { risk: 'high' });
+        } else {
+          const filtered = filterData({ county: filter });
+          renderTable(filtered, `hospitals in ${filter}`, { county: filter });
+        }
+      });
+    });
+
+    document.querySelectorAll('.chip[data-view]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        const view = btn.dataset.view;
+        if (view === 'chart') {
+          const tiers = { low: 0, medium: 0, high: 0 };
+          HOSPITALS.forEach(h => tiers[riskTier(h.riskProbability)]++);
+          renderEChart({
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'category', data: ['Low', 'Medium', 'High'] },
+            yAxis: { type: 'value' },
+            series: [{ type: 'bar', data: [
+              { value: tiers.low, itemStyle: { color: '#22c55e' } },
+              { value: tiers.medium, itemStyle: { color: '#f59e0b' } },
+              { value: tiers.high, itemStyle: { color: '#ef4444' } }
+            ] }]
+          }, 'Risk distribution across all hospitals');
+        } else if (view === 'trends') {
+          const tool = TOOL_DEFS.find(t => t.name === 'show_county_trends');
+          tool.exec();
+        } else if (view === 'statewide') {
+          const tool = TOOL_DEFS.find(t => t.name === 'show_statewide_summary');
+          tool.exec();
+        }
+      });
+    });
+
+    /* ── Theme toggle ── */
+
+    function applyTheme(pref) {
+      localStorage.setItem('webmcp-theme', pref);
+      const resolved = pref === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : pref;
+      document.documentElement.dataset.theme = resolved;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.content = resolved === 'light' ? '#e8ebf2' : '#0f1117';
+      document.querySelectorAll('.theme-opt').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === pref);
+      });
+    }
+
+    document.querySelectorAll('.theme-opt').forEach(btn => {
+      btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+    });
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
+    });
+
+    applyTheme(localStorage.getItem('webmcp-theme') || 'light');
+
+    /* ── Settings popover ── */
+
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPopover = document.getElementById('settings-popover');
+
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = settingsPopover.hidden;
+      settingsPopover.hidden = !open;
+      settingsBtn.setAttribute('aria-expanded', String(open));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (settingsPopover && !settingsPopover.hidden &&
+          !settingsPopover.contains(e.target) && e.target !== settingsBtn) {
+        settingsPopover.hidden = true;
+        settingsBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    /* ── Chat panel ── */
+
+    const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/claude';
+    const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions';
+
+    let currentProvider = 'anthropic';
+    let githubAuth = JSON.parse(localStorage.getItem('webmcp-gh-auth') || 'null');
+    let ghMessages = [];
+
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const chatAbort = document.getElementById('chat-abort');
+    const chatReset = document.getElementById('chat-reset');
+    const apiKeyInput = document.getElementById('api-key');
+    const modelSelect = document.getElementById('model-select');
+    const localOption = modelSelect.querySelector('option[value="local:claude"]');
+
+    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
+
+Rules:
+- Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
+- For analysis or "how is X doing" requests: call summarize_data first for raw numbers, then filter or chart as needed.
+- For "what's notable / what stands out" questions: summarize_data → filter high-risk → render a chart showing the pattern.
+- Infer intent from context. Viewing a detail card + "flag it" → flag that hospital. Viewing a filtered table + "compare the top two" → compare the two highest-risk hospitals visible.
+- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain — add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
+- No markdown formatting — plain text only. No greetings, filler, or preamble.
+- Flag suspicious hospitals proactively. Use flag_hospital for high-risk, negative-margin, or otherwise concerning cases — don't wait to be asked.
+- All tools run immediately — do not ask permission before calling them. Only flag_hospital may request a user note via interaction.
+- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
+- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
+- Use show_county_trends for a county-level comparison table. Use show_statewide_summary for statewide overview cards.
+- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available.`;
+
+    function getSystemPrompt() {
+      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
+      switch (currentView.type) {
+        case 'table': {
+          const data = currentView.data || HOSPITALS;
+          lines.push(`- Viewing: table of ${data.length} hospitals`);
+          const names = data.slice(0, 8).map(h => h.name);
+          lines.push(`- Visible: ${names.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
+          const highRisk = data.filter(h => riskTier(h.riskProbability) === 'high');
+          if (highRisk.length > 0) lines.push(`- Attention: ${highRisk.length} high-risk hospital(s) in current view`);
+          break;
+        }
+        case 'detail':
+          if (currentView.data) {
+            const h = currentView.data;
+            lines.push(`- Viewing: detail card for ${h.name} (${h.county}, risk: ${h.riskProbability}%, margin: ${h.operatingMargin}%)`);
+          }
+          break;
+        case 'chart':
+          lines.push('- Viewing: risk distribution chart');
+          break;
+        case 'comparison':
+          if (currentView.data) {
+            lines.push(`- Viewing: comparison of ${currentView.data[0].name} vs ${currentView.data[1].name}`);
+          }
+          break;
+      }
+      if (currentView.filters?.county) lines.push(`- Filtered by county: ${currentView.filters.county}`);
+      if (currentView.filters?.risk) lines.push(`- Filtered by risk: ${currentView.filters.risk}`);
+      if (flaggedHospitals.size > 0) {
+        lines.push(`- Flagged hospitals (${flaggedHospitals.size}): ${[...flaggedHospitals.keys()].join(', ')}`);
+      }
+      return lines.join('\n');
+    }
+
+    function getClaudeTools() {
+      return getActiveTools().map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
+    }
+
+    function getOpenAITools() {
+      return getActiveTools().map(t => ({
+        type: 'function',
+        function: { name: t.name, description: t.description, parameters: t.schema || { type: 'object', properties: {} } }
+      }));
+    }
+
+    let conversationMessages = [];
+    let chatBusy = false;
+    let abortController = null;
+    let pendingToolCards = {};
+
+    // Restore API key: config.json > localStorage
+    apiKeyInput.value = localStorage.getItem('webmcp-api-key') || '';
+
+    fetch('config.json').then(r => r.ok ? r.json() : null).then(cfg => {
+      if (cfg?.apiKey && !apiKeyInput.value) {
+        apiKeyInput.value = cfg.apiKey;
+        localStorage.setItem('webmcp-api-key', cfg.apiKey);
+      }
+    }).catch(() => {});
+
+    async function checkLocalProxy() {
+      try {
+        const res = await fetch(LOCAL_PROXY_URL, { method: 'OPTIONS', signal: AbortSignal.timeout(800) });
+        return res.status === 204;
+      } catch {
+        return false;
+      }
+    }
+
+    function updateModelLabel() {
+      const label = document.getElementById('chat-model-label');
+      if (!label) return;
+      const text = modelSelect.options[modelSelect.selectedIndex]?.text || '';
+      label.textContent = text;
+    }
+
+    function applyProviderUI() {
+      const isLocal = currentProvider === 'local';
+      const isGitHub = currentProvider === 'github';
+
+      // API key section visibility in settings
+      const claudeBar = document.getElementById('chat-claude-bar');
+      if (claudeBar) claudeBar.hidden = isLocal || isGitHub;
+
+      // GitHub auth bar and notice
+      updateGitHubAuthBar();
+      const notice = document.getElementById('github-notice');
+      notice.hidden = !isGitHub || !!localStorage.getItem('webmcp-github-notice-dismissed');
+
+      updateModelLabel();
+    }
+
+    checkLocalProxy().then(running => {
+      if (localOption) localOption.hidden = !running;
+      const savedModel = localStorage.getItem('webmcp-model') || 'anthropic:claude-haiku-4-5-20251001';
+      const fallback = (!running && savedModel === 'local:claude') ? 'anthropic:claude-haiku-4-5-20251001' : savedModel;
+      modelSelect.value = fallback;
+      currentProvider = fallback.split(':')[0];
+      applyProviderUI();
+    });
+
+    modelSelect.addEventListener('change', () => {
+      currentProvider = modelSelect.value.split(':')[0];
+      localStorage.setItem('webmcp-model', modelSelect.value);
+      applyProviderUI();
+      conversationMessages = [];
+      ghMessages = [];
+      chatMessages.innerHTML = '';
+      renderQuickActions();
+    });
+
+    apiKeyInput.addEventListener('input', () => localStorage.setItem('webmcp-api-key', apiKeyInput.value));
+
+    document.getElementById('key-save')?.addEventListener('click', () => {
+      localStorage.setItem('webmcp-api-key', apiKeyInput.value);
+    });
+
+    document.getElementById('github-notice-dismiss').addEventListener('click', () => {
+      localStorage.setItem('webmcp-github-notice-dismissed', '1');
+      document.getElementById('github-notice').hidden = true;
+    });
+
+    // Chat reset
+    chatReset.addEventListener('click', () => {
+      conversationMessages = [];
+      ghMessages = [];
+      chatMessages.innerHTML = '';
+      renderQuickActions();
+    });
+
+    function updateGitHubAuthBar() {
+      const bar = document.getElementById('github-auth-bar');
+      if (!bar) return;
+      bar.innerHTML = '';
+      if (currentProvider !== 'github') return;
+
+      if (githubAuth) {
+        const label = document.createElement('span');
+        label.className = 'github-user-label';
+        label.textContent = `@${githubAuth.username}`;
+        const disconnectBtn = document.createElement('button');
+        disconnectBtn.className = 'github-disconnect-btn';
+        disconnectBtn.textContent = 'Disconnect';
+        disconnectBtn.addEventListener('click', () => {
+          githubAuth = null;
+          localStorage.removeItem('webmcp-gh-auth');
+          conversationMessages = [];
+          ghMessages = [];
+          chatMessages.innerHTML = '';
+          renderQuickActions();
+          updateGitHubAuthBar();
+        });
+        bar.append(label, disconnectBtn);
+      } else {
+        const connectBtn = document.createElement('button');
+        connectBtn.className = 'github-connect-btn';
+        connectBtn.textContent = 'Connect GitHub';
+        connectBtn.addEventListener('click', async () => {
+          connectBtn.textContent = 'Connecting\u2026';
+          connectBtn.disabled = true;
+          try {
+            githubAuth = await connectGitHub('read:user', 'webmcp/hospital-risk-explorer');
+            localStorage.setItem('webmcp-gh-auth', JSON.stringify(githubAuth));
+            updateGitHubAuthBar();
+          } catch (err) {
+            if (err.message !== 'OAuth flow cancelled') appendMessage('error', err.message);
+            connectBtn.textContent = 'Connect GitHub';
+            connectBtn.disabled = false;
+          }
+        });
+        bar.appendChild(connectBtn);
+      }
+    }
+
+    // Auto-resize textarea
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    chatSend.addEventListener('click', () => sendMessage());
+
+    chatAbort.addEventListener('click', () => {
+      if (abortController) abortController.abort();
+    });
+
+    function renderMarkdown(text) {
+      return DOMPurify.sanitize(marked.parse(text));
+    }
+
+    function appendMessage(type, content) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const el = document.createElement('div');
+      el.className = `msg msg-${type}`;
+      if (type === 'assistant') {
+        el.innerHTML = renderMarkdown(content);
+      } else {
+        el.textContent = content;
+      }
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return el;
+    }
+
+    function appendToolMsg(toolName, args, result, isError) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+
+      const el = document.createElement('div');
+      el.className = 'msg-tool-card' + (isError ? ' error' : '');
+
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status ' + (isError ? 'error' : 'success');
+      status.textContent = isError ? '\u2717' : '\u2713';
+
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const resultStr = typeof result === 'string' ? result : '';
+      const summary = resultStr.length > 50 ? resultStr.slice(0, 50) + '...' : resultStr;
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.append(nameStrong, summary ? ' \u2014 ' + summary : '');
+
+      const chevron = document.createElement('span');
+      chevron.className = 'msg-tool-chevron';
+      chevron.textContent = '\u25BE';
+
+      header.append(status, label, chevron);
+      el.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'msg-tool-body';
+
+      const argsEl = document.createElement('div');
+      argsEl.className = 'msg-tool-args';
+      argsEl.textContent = JSON.stringify(args, null, 2);
+      body.appendChild(argsEl);
+
+      if (resultStr) {
+        const resultEl = document.createElement('div');
+        resultEl.className = 'msg-tool-result';
+        resultEl.textContent = '\u2192 ' + resultStr;
+        body.appendChild(resultEl);
+      }
+
+      el.appendChild(body);
+
+      header.addEventListener('click', () => {
+        el.classList.toggle('expanded');
+      });
+
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function createPendingToolCard(toolName) {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+      const el = document.createElement('div');
+      el.className = 'msg-tool-card pending';
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status';
+      status.textContent = '\u22ef';
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.appendChild(nameStrong);
+      header.append(status, label);
+      el.appendChild(header);
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return el;
+    }
+
+    function resolveToolCard(el, toolName, args, result, isError) {
+      el.className = 'msg-tool-card' + (isError ? ' error' : '');
+      el.innerHTML = '';
+      const resultStr = typeof result === 'string' ? result : '';
+      const summary = resultStr.length > 50 ? resultStr.slice(0, 50) + '...' : resultStr;
+      const header = document.createElement('div');
+      header.className = 'msg-tool-header';
+      const status = document.createElement('span');
+      status.className = 'msg-tool-status ' + (isError ? 'error' : 'success');
+      status.textContent = isError ? '\u2717' : '\u2713';
+      const label = document.createElement('span');
+      label.className = 'msg-tool-label';
+      const nameStrong = document.createElement('strong');
+      nameStrong.className = 'msg-tool-name';
+      nameStrong.textContent = toolName;
+      label.append(nameStrong, summary ? ' \u2014 ' + summary : '');
+      const chevron = document.createElement('span');
+      chevron.className = 'msg-tool-chevron';
+      chevron.textContent = '\u25BE';
+      header.append(status, label, chevron);
+      el.appendChild(header);
+      const body = document.createElement('div');
+      body.className = 'msg-tool-body';
+      const argsEl = document.createElement('div');
+      argsEl.className = 'msg-tool-args';
+      argsEl.textContent = JSON.stringify(args, null, 2);
+      body.appendChild(argsEl);
+      if (resultStr) {
+        const resultEl = document.createElement('div');
+        resultEl.className = 'msg-tool-result';
+        resultEl.textContent = '\u2192 ' + resultStr;
+        body.appendChild(resultEl);
+      }
+      el.appendChild(body);
+      header.addEventListener('click', () => { el.classList.toggle('expanded'); });
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendDivider(text) {
+      const el = document.createElement('div');
+      el.className = 'chat-divider';
+      el.textContent = text;
+      chatMessages.appendChild(el);
+    }
+
+    function showSpinner() {
+      const el = document.createElement('div');
+      el.className = 'chat-spinner';
+      el.id = 'chat-spinner';
+      el.innerHTML = '<span></span><span></span><span></span>';
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideSpinner() {
+      const s = document.getElementById('chat-spinner');
+      if (s) s.remove();
+    }
+
+    function setInputEnabled(enabled) {
+      chatBusy = !enabled;
+      chatInput.disabled = !enabled;
+      chatSend.hidden = !enabled;
+      chatAbort.hidden = enabled;
+    }
+
+    async function sendMessage(opts = {}) {
+      const text = opts.prompt || chatInput.value.trim();
+      const displayText = opts.display || text;
+      if (!text || chatBusy) return;
+
+      if (currentProvider === 'github') {
+        if (!githubAuth?.token) {
+          appendMessage('error', 'Connect your GitHub account above.');
+          return;
+        }
+      } else if (currentProvider !== 'local') {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          appendMessage('error', 'Enter your Anthropic API key above.');
+          return;
+        }
+      }
+
+      const quickActions = document.getElementById('quick-actions');
+      if (quickActions) quickActions.remove();
+      clearFollowupSuggestions();
+
+      appendMessage('user', displayText);
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+
+      if (currentProvider === 'github') {
+        ghMessages.push({ role: 'user', content: text });
+      } else {
+        conversationMessages.push({ role: 'user', content: text });
+      }
+      abortController = new AbortController();
+      setInputEnabled(false);
+      showSpinner();
+
+      const apiKey = currentProvider === 'local' ? null : apiKeyInput.value.trim();
+      await runConversation(apiKey, abortController.signal);
+
+      abortController = null;
+      setInputEnabled(true);
+      chatInput.focus();
+    }
+
+    /* ── Streaming API ── */
+
+    async function streamClaudeAPI(apiKey, messages, signal, proxyUrl = null) {
+      const url = proxyUrl || 'https://api.anthropic.com/v1/messages';
+      const headers = { 'Content-Type': 'application/json' };
+      if (!proxyUrl) {
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        headers['anthropic-dangerous-direct-browser-access'] = 'true';
+      }
+      const res = await fetch(url, {
+        method: 'POST',
+        signal,
+        headers,
+        body: JSON.stringify({
+          model: modelSelect.value.split(':').slice(1).join(':'),
+          max_tokens: 1024,
+          system: getSystemPrompt(),
+          messages,
+          tools: getClaudeTools(),
+          stream: true
+        })
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`API ${res.status}: ${body.slice(0, 200)}`);
+      }
+
+      return res.body;
+    }
+
+    async function* readStreamLines(body) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) yield line;
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+
+    async function* parseSSEStream(body) {
+      let currentEvent = null;
+      for await (const line of readStreamLines(body)) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ') && currentEvent) {
+          try { yield { event: currentEvent, data: JSON.parse(line.slice(6)) }; } catch {}
+          currentEvent = null;
+        }
+      }
+    }
+
+    async function* parseOpenAIStream(body) {
+      for await (const line of readStreamLines(body)) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') return;
+        try { yield JSON.parse(payload); } catch {}
+      }
+    }
+
+    async function runConversationGitHub(signal) {
+      const token = githubAuth?.token;
+      const modelName = modelSelect.value.split(':').slice(1).join(':');
+      while (true) {
+        let body;
+        try {
+          const res = await fetch(GITHUB_API_URL, {
+            method: 'POST',
+            signal,
+            headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [{ role: 'system', content: getSystemPrompt() }, ...ghMessages],
+              tools: getOpenAITools(),
+              tool_choice: 'auto',
+              max_completion_tokens: 1024,
+              stream: true
+            })
+          });
+          if (!res.ok) {
+            hideSpinner();
+            const txt = await res.text();
+            appendMessage('error', `GitHub API ${res.status}: ${txt.slice(0, 200)}`);
+            return;
+          }
+          body = res.body;
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', err.message);
+          return;
+        }
+
+        let currentTextEl = null;
+        let currentTextContent = '';
+        let rafId = 0;
+        const tcMap = {};
+
+        try {
+          for await (const chunk of parseOpenAIStream(body)) {
+            const delta = chunk.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            if (delta.content) {
+              if (!currentTextEl) {
+                hideSpinner();
+                currentTextContent = '';
+                currentTextEl = appendMessage('assistant', '');
+              }
+              currentTextContent += delta.content;
+              if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                  rafId = 0;
+                  if (currentTextEl) {
+                    currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                  }
+                });
+              }
+            }
+
+            if (delta.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const entry = tcMap[tc.index] ?? (tcMap[tc.index] = { id: '', name: '', arguments: '' });
+                if (tc.id) entry.id = tc.id;
+                if (tc.function?.name) entry.name += tc.function.name;
+                if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+              }
+            }
+          }
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', 'Stream interrupted: ' + err.message);
+          return;
+        }
+
+        if (rafId) { cancelAnimationFrame(rafId); if (currentTextEl) currentTextEl.innerHTML = renderMarkdown(currentTextContent); }
+
+        const toolCalls = Object.values(tcMap);
+        const assistantMsg = { role: 'assistant', content: currentTextContent || null };
+        if (toolCalls.length) {
+          assistantMsg.tool_calls = toolCalls.map(tc => ({
+            id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments }
+          }));
+        }
+        ghMessages.push(assistantMsg);
+
+        if (toolCalls.length === 0) {
+          hideSpinner();
+          renderFollowupSuggestions();
+          return;
+        }
+
+        const client = { requestUserInteraction: (cb) => cb() };
+        for (const tc of toolCalls) {
+          let args;
+          try { args = JSON.parse(tc.arguments || '{}'); } catch { args = {}; }
+          const pendingEl = createPendingToolCard(tc.name);
+          const def = getActiveTools().find(t => t.name === tc.name);
+          let result;
+          if (def) {
+            if (!def.readOnlyHint) {
+              const confirmed = await showConfirmDialog(def.title, args);
+              if (!confirmed) {
+                result = { summary: `User declined: ${def.title}` };
+                resolveToolCard(pendingEl, tc.name, args, result.summary, true);
+                ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+                continue;
+              }
+            }
+            result = await def.exec(args, client);
+            resolveToolCard(pendingEl, tc.name, args, result.summary, false);
+            if (result.displayed) { scrollDisplayIntoView(); appendDivider(getPageContext().join(' \u00b7 ')); }
+          } else {
+            result = { error: `Unknown tool: ${tc.name}` };
+            resolveToolCard(pendingEl, tc.name, args, result.error, true);
+          }
+          ghMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+        }
+        showSpinner();
+      }
+    }
+
+    async function runConversation(apiKey, signal) {
+      if (currentProvider === 'github') return runConversationGitHub(signal);
+
+      const proxyUrl = currentProvider === 'local' ? LOCAL_PROXY_URL : null;
+      while (true) {
+        let body;
+        try {
+          body = await streamClaudeAPI(apiKey, conversationMessages, signal, proxyUrl);
+        } catch (err) {
+          hideSpinner();
+          if (err.name === 'AbortError') return;
+          appendMessage('error', err.message);
+          return;
+        }
+
+        const contentBlocks = [];
+        let currentTextEl = null;
+        let currentTextContent = '';
+        let currentToolInput = '';
+        let currentBlockType = null;
+        let mdRenderPending = 0;
+
+        try {
+          for await (const { event, data } of parseSSEStream(body)) {
+            switch (event) {
+              case 'content_block_start': {
+                const block = data.content_block;
+                currentBlockType = block.type;
+                if (block.type === 'text') {
+                  hideSpinner();
+                  currentTextContent = block.text || '';
+                  currentTextEl = appendMessage('assistant', currentTextContent);
+                } else if (block.type === 'tool_use') {
+                  contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
+                  currentToolInput = '';
+                  hideSpinner();
+                  pendingToolCards[block.id] = createPendingToolCard(block.name);
+                }
+                break;
+              }
+
+              case 'content_block_delta': {
+                if (data.delta.type === 'text_delta') {
+                  currentTextContent += data.delta.text;
+                  if (currentTextEl) {
+                    if (!mdRenderPending) {
+                      mdRenderPending = requestAnimationFrame(() => {
+                        mdRenderPending = 0;
+                        if (currentTextEl) {
+                          currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                                            }
+                      });
+                    }
+                  }
+                } else if (data.delta.type === 'input_json_delta') {
+                  currentToolInput += data.delta.partial_json;
+                }
+                break;
+              }
+
+              case 'content_block_stop': {
+                if (currentBlockType === 'text' && currentTextContent) {
+                  if (mdRenderPending) { cancelAnimationFrame(mdRenderPending); mdRenderPending = 0; }
+                  if (currentTextEl) currentTextEl.innerHTML = renderMarkdown(currentTextContent);
+                  contentBlocks.push({ type: 'text', text: currentTextContent });
+                  currentTextEl = null;
+                  currentTextContent = '';
+                } else if (currentBlockType === 'tool_use') {
+                  const toolBlock = contentBlocks[contentBlocks.length - 1];
+                  try {
+                    toolBlock.input = currentToolInput ? JSON.parse(currentToolInput) : {};
+                  } catch {
+                    toolBlock.input = {};
+                  }
+                  currentToolInput = '';
+                }
+                currentBlockType = null;
+                break;
+              }
+
+              case 'message_delta':
+                break;
+            }
+          }
+        } catch (err) {
+          hideSpinner();
+          Object.values(pendingToolCards).forEach(el => el.remove());
+          pendingToolCards = {};
+          if (err.name === 'AbortError') return;
+          appendMessage('error', 'Stream interrupted: ' + err.message);
+          return;
+        }
+
+        // Add the full assistant message to conversation history
+        conversationMessages.push({ role: 'assistant', content: contentBlocks });
+
+        // Check for tool use
+        const toolUses = contentBlocks.filter(b => b.type === 'tool_use');
+        if (toolUses.length === 0) {
+          hideSpinner();
+          renderFollowupSuggestions();
+          return;
+        }
+
+        // Execute tools and gather results
+        const client = {
+          requestUserInteraction: (callback) => callback()
+        };
+        const toolResults = [];
+        for (const tu of toolUses) {
+          const pendingEl = pendingToolCards[tu.id];
+          delete pendingToolCards[tu.id];
+          const def = getActiveTools().find(t => t.name === tu.name);
+          let result;
+          if (def) {
+            if (!def.readOnlyHint) {
+              const confirmed = await showConfirmDialog(def.title, tu.input);
+              if (!confirmed) {
+                result = { summary: `User declined: ${def.title}` };
+                if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.summary, true);
+                else appendToolMsg(tu.name, tu.input, result.summary, true);
+                toolResults.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
+                continue;
+              }
+            }
+            result = await def.exec(tu.input, client);
+            if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.summary, false);
+            else appendToolMsg(tu.name, tu.input, result.summary);
+            if (result.displayed) {
+              scrollDisplayIntoView();
+              appendDivider(getPageContext().join(' \u00b7 '));
+            }
+          } else {
+            result = { error: `Unknown tool: ${tu.name}` };
+            if (pendingEl) resolveToolCard(pendingEl, tu.name, tu.input, result.error, true);
+            else appendToolMsg(tu.name, tu.input, result.error, true);
+          }
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: tu.id,
+            content: JSON.stringify(result)
+          });
+        }
+
+        conversationMessages.push({ role: 'user', content: toolResults });
+        showSpinner();
+      }
+    }
+
+    /* ── Init ── */
+
+    async function init() {
+      renderSkeleton();
+
+      try {
+        const res = await fetch('hospitals.json');
+        HOSPITALS = await res.json();
+      } catch (err) {
+        display.innerHTML = `<p class="msg-error">Failed to load hospital data: ${err.message}</p>`;
+        return;
+      }
+
+      loadFlags();
+
+      if (!decodeHashToView()) {
+        renderTable(HOSPITALS);
+      }
+
+      renderQuickActions();
+    }
+
+    init();
+  </script>
+</body>
+</html>
