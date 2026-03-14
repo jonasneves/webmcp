@@ -1,0 +1,46 @@
+#!/bin/sh
+# Deploy static site to gh-pages via worktree. No Actions workflow needed.
+set -e
+
+BRANCH="gh-pages"
+WORKTREE_DIR=".deploy-worktree"
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if [ "$local_ref" = "refs/heads/main" ]; then
+
+    if ! git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+      git branch "$BRANCH" --no-track $(git rev-list --max-parents=0 HEAD)
+    fi
+
+    git worktree add -f "$WORKTREE_DIR" "$BRANCH" 2>/dev/null
+
+    rsync -a --delete \
+      --exclude '.git' \
+      --exclude '.githooks' \
+      --exclude '.gitignore' \
+      --exclude '.gitattributes' \
+      --exclude '.deploy-worktree' \
+      --exclude '.DS_Store' \
+      --exclude '.env.example' \
+      --exclude '.claude' \
+      --exclude '.github' \
+      --exclude 'README.md' \
+      --exclude 'local-proxy.js' \
+      --exclude 'config.json' \
+      --exclude 'node_modules' \
+      ./ "$WORKTREE_DIR/"
+
+    cd "$WORKTREE_DIR"
+    git add -A
+    if ! git diff --cached --quiet; then
+      git commit -m "deploy: $(git -C .. log -1 --format='%s' main)"
+      git push origin "$BRANCH"
+      echo "Deployed to $BRANCH"
+    else
+      echo "No changes to deploy"
+    fi
+    cd ..
+
+    git worktree remove "$WORKTREE_DIR" --force 2>/dev/null
+  fi
+done
