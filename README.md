@@ -69,17 +69,17 @@ The local proxy (`local-proxy.js`) forwards requests to Claude using `CLAUDE_COD
 Single-page apps — no build step, no external dependencies.
 
 ```
-index.html                       # Landing page linking to all three demos
-hospital-risk-explorer/
-  index.html                     # Hospital demo — 9–11 dynamic tools, all views
-  hospitals.json                 # 15 California hospitals (local JSON dataset)
-countries/
-  index.html                     # Countries demo — fetches restcountries.com at load
-earthquakes/
-  index.html                     # Earthquake demo — fetches USGS live feed at load
+docs/                            # Served by GitHub Pages (main /docs)
+  index.html                     # Landing page linking to all three demos
+  hospital-risk-explorer/
+    index.html                   # Hospital demo — 9–11 dynamic tools, all views
+    hospitals.json               # 15 California hospitals (local JSON dataset)
+  countries/
+    index.html                   # Countries demo — fetches restcountries.com at load
+  earthquakes/
+    index.html                   # Earthquake demo — fetches USGS live feed at load
+  chat.css                       # Shared chat panel styles
 local-proxy.js                   # Local Claude proxy (port 7337, uses CLAUDE_CODE_OAUTH_TOKEN)
-chat.css                         # Shared chat panel styles
-docs/
-  VISION.md                      # What this is building toward
-  ROADMAP.md                     # Phased extraction plan
+VISION.md                        # What this is building toward
+ROADMAP.md                       # Phased extraction plan
 ```
