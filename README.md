@@ -60,9 +60,7 @@ All three demos support the same set of AI providers:
 |----------|--------|------|
 | Anthropic | Claude Haiku 4.5, Claude Sonnet 4.6 | API key |
 | GitHub Models | GPT-4.1, GPT-4.1 mini, GPT-5, GPT-5 mini | GitHub OAuth (free) |
-| Local proxy | Claude via OAuth | `node local-proxy.js` |
-
-The local proxy (`local-proxy.js`) forwards requests to Claude using `CLAUDE_CODE_OAUTH_TOKEN` — useful for development without an API key.
+| Local proxy | Claude via OAuth | [ai-bridge](https://github.com/jonasneves/ai-bridge) (port 7337) |
 
 ## Architecture
 
@@ -79,7 +77,6 @@ docs/                            # Served by GitHub Pages (main /docs)
   earthquakes/
     index.html                   # Earthquake demo — fetches USGS live feed at load
   chat.css                       # Shared chat panel styles
-local-proxy.js                   # Local Claude proxy (port 7337, uses CLAUDE_CODE_OAUTH_TOKEN)
 VISION.md                        # What this is building toward
 ROADMAP.md                       # Phased extraction plan
 ```
