@@ -1,34 +1,58 @@
 // Tool registry + navigator.modelContext polyfill + tools panel renderer.
 //
-// The polyfill makes the page conform to the WebMCP spec shape: pages
-// register tools via navigator.modelContext.registerTool, and the runtime
-// reads them through navigator.modelContext.tools. Native browsers that
-// ship WebMCP later expose the same surface — at which point this polyfill
-// becomes a no-op (we check for an existing implementation first).
+// We keep an internal registry of the full tool definitions (with `exec`,
+// `schema`, trust hints, etc.) — the runtime reads from it directly. If the
+// browser ships native WebMCP we *also* register a spec-adapted view so
+// browser AI agents can discover the same tools through the standard API.
 //
 // Spec: https://webmachinelearning.github.io/webmcp/
 
-const registry = new Map();  // name -> tool definition
+const registry = new Map();  // name -> full tool def (internal shape)
 
-function ensurePolyfill() {
-  if (navigator.modelContext) return;
+// Polyfill: install only if the browser doesn't already have a native
+// implementation. The polyfill mirrors what we'd want browsers to expose.
+if (!navigator.modelContext) {
   navigator.modelContext = {
-    registerTool(def) { registry.set(def.name, def); },
-    unregisterTool(name) { registry.delete(name); },
-    clearContext() { registry.clear(); },
-    provideContext(_context) { /* reserved — used by the spec for ambient context */ },
-    get tools() { return [...registry.values()]; },
+    registerTool(def) { /* spec view, no-op storage */ },
+    unregisterTool(_name) {},
+    clearContext() {},
+    provideContext(_ctx) {},
+    get tools() { return [...registry.values()].map(toSpecShape); },
   };
 }
 
-ensurePolyfill();
+// Translate our internal tool shape into what native WebMCP expects.
+// Spec uses `inputSchema` + `execute`; we carry `schema` + `exec` plus
+// presentation hints the spec doesn't define.
+function toSpecShape(def) {
+  return {
+    name: def.name,
+    description: def.description,
+    inputSchema: def.schema,
+    execute: def.exec,
+    annotations: {
+      title: def.title,
+      readOnlyHint: def.readOnlyHint,
+      idempotentHint: def.idempotentHint,
+      destructiveHint: def.destructiveHint,
+      openWorldHint: def.openWorldHint,
+    },
+  };
+}
 
 export function registerTools(defs) {
-  defs.forEach(d => navigator.modelContext.registerTool(d));
+  for (const d of defs) {
+    registry.set(d.name, d);
+    // Best-effort mirror to native. Specs and browser implementations are
+    // still in flux — if validation rejects our adapted shape, log and
+    // continue rather than break the page.
+    try { navigator.modelContext.registerTool(toSpecShape(d)); }
+    catch (err) { console.warn('[tools] native registerTool rejected', d.name, err); }
+  }
 }
 
 export function listTools() {
-  return navigator.modelContext.tools;
+  return [...registry.values()];
 }
 
 // Tools panel UI — surfaces what's currently registered + their trust
