@@ -2,32 +2,72 @@
 
 [hidden] { display: none !important; }
 
-/* ── Chat panel ──────────────────────────────────────────────────── */
+/* ── App shell (overrides each demo's body flex) ──────────────────
+ * Page does not scroll. Chat owns the left column; the working area
+ * (tools panel, controls, display) owns the right. Both columns
+ * scroll independently. `display: contents` flattens .main-column
+ * so its children (header, tools-panel, main) participate directly
+ * in the body grid without any HTML change. */
+
+body {
+  display: grid !important;
+  grid-template-columns: minmax(360px, 420px) 1fr;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas:
+    "header header"
+    "tools  tools"
+    "chat   work";
+  column-gap: 0;
+}
+
+.main-column { display: contents; }
+header        { grid-area: header; }
+.tools-panel  { grid-area: tools; }
+main          { grid-area: work; min-width: 0; }
+.chat-panel   { grid-area: chat; }
+
+@media (max-width: 768px) {
+  body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+      "header"
+      "tools"
+      "work"
+      "chat";
+    overflow-y: auto !important;
+  }
+  main, .chat-panel { overflow: visible !important; }
+  .chat-panel { max-height: 60dvh; }
+}
+
+/* ── Chat panel (the conversation surface) ────────────────────────
+ * Sits in its own warmer card on the left. Three rows: head (fixed),
+ * body (scrolls), input (fixed). Lifted directly from the sungate
+ * "chat-shell" pattern so the demos feel like a conversation rather
+ * than a sidebar grafted onto a dashboard. */
 
 .chat-panel {
-  width: 380px;
-  flex-shrink: 0;
-  border-left: 1px solid var(--border);
-  background: var(--bg);
+  margin: var(--space-md);
+  margin-right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-header {
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  height: 40px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
-  background: #111827;
-  gap: 8px;
-}
-
-html[data-theme="dark"] .chat-header {
-  background: var(--surface);
+  padding: 10px var(--space-md);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: var(--space-sm);
+  background: var(--surface);
 }
 
 .chat-header-title {
@@ -35,28 +75,25 @@ html[data-theme="dark"] .chat-header {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
-
-html[data-theme="dark"] .chat-header-title { color: var(--text-muted); }
 
 .chat-model-label {
   flex: 1;
   font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--text-muted);
   font-family: var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0.7;
 }
-
-html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
 
 .chat-model-label::before {
   content: "·";
   margin-right: 6px;
-  color: var(--text-muted);
+  opacity: 0.5;
 }
 
 /* GitHub auth elements (rendered by updateGitHubAuthBar) */
@@ -119,11 +156,13 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-sm);
   min-height: 0;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .chat-messages > :first-child { margin-top: auto; }
@@ -134,6 +173,18 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   font-size: var(--text-sm);
   padding: var(--space-lg) var(--space-md);
   line-height: 1.6;
+}
+
+/* Quick actions are the empty-state CTA stack — give them breathing room
+ * when nothing else has been said. */
+.chat-messages > .chat-quick-actions:only-child {
+  margin: auto 0;
+  align-self: stretch;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.chat-messages > .chat-quick-actions:only-child .quick-action-chip {
+  text-align: left;
 }
 
 .msg {
@@ -286,56 +337,77 @@ html[data-theme="dark"] .chat-model-label { color: var(--text-muted); }
   border-radius: var(--radius);
 }
 
-/* ── Input area ──────────────────────────────────────────────────── */
+/* ── Input area — pill shape, send button rides inside ──────────── */
 
 .chat-input-area {
   border-top: 1px solid var(--border);
-  padding: 10px 12px;
+  padding: var(--space-sm) var(--space-md);
+  padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
+  background: var(--surface);
 }
 
-.chat-input-wrap { position: relative; }
-
-.chat-input {
-  width: 100%;
-  min-height: 64px;
-  max-height: 140px;
-  padding: 9px 48px 9px 10px;
-  font-size: var(--text-sm);
-  font-family: var(--font);
-  color: var(--text);
+.chat-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px 6px 6px var(--space-md);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 22px;
+  transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+
+.chat-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 28px;
+  max-height: 140px;
+  padding: 6px 0;
+  /* iOS auto-zooms when an input has font-size < 16px; bump on mobile. */
+  font-size: 16px;
+  font-family: var(--font);
+  color: var(--text);
+  background: transparent;
+  border: none;
   resize: none;
-  line-height: 1.45;
+  line-height: 1.5;
+  outline: none;
+}
+
+@media (min-width: 769px) {
+  .chat-input { font-size: var(--text-sm); }
 }
 
 .chat-input::placeholder { color: var(--text-muted); }
-.chat-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .chat-send-btn,
 .chat-abort-btn {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 30px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: background var(--duration) var(--ease), transform var(--duration) var(--ease), opacity var(--duration) var(--ease);
 }
 
 .chat-send-btn { background: var(--accent); color: var(--bg); }
-.chat-send-btn:hover { opacity: 0.85; }
-.chat-send-btn:active { transform: translateY(-50%) scale(0.92); }
-.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: translateY(-50%); }
-.chat-send-btn:focus-visible, .chat-abort-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chat-send-btn:hover:not(:disabled) { background: var(--accent); opacity: 0.85; }
+.chat-send-btn:active:not(:disabled) { transform: scale(0.92); }
+.chat-send-btn:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+.chat-send-btn:focus-visible,
+.chat-abort-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .chat-abort-btn { background: var(--surface-alt); color: var(--text-muted); }
 .chat-abort-btn:hover { background: var(--risk-high); color: #fff; }
