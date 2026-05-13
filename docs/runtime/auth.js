@@ -1,7 +1,10 @@
 // Provider/auth UI: model picker, API key form, GitHub OAuth connect button,
 // local-Claude availability detection.
 
-import { connectGitHub } from 'https://neevs.io/auth/connect.js';
+// Direct subdomain — the apex (neevs.io) redirects through neves.cloud and
+// the intermediate hops strip the Access-Control-Allow-Origin header, so
+// any page that imports from /auth/ fails CORS preflight. Pin the final URL.
+import { connectGitHub } from 'https://auth.neevs.io/connect.js';
 import { checkLocalClaudeReachable } from './providers.js';
 
 const STORAGE = {
