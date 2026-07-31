@@ -7,16 +7,22 @@
  * display) owns the left column and reads first; chat is the side
  * channel on the right. Both columns scroll independently.
  * `display: contents` flattens .main-column so its children (header,
- * tools-panel, main) participate directly in the body grid without
- * any HTML change. */
+ * tools-panel, source-bar, main) participate directly in the body grid
+ * without any HTML change.
+ *
+ * Every one of those children needs a named area. A child without one is
+ * auto-placed into an implicit row after the last named area — which is
+ * how the source bar first shipped to the bottom of the page, under the
+ * table it was describing, while its DOM position was correct all along. */
 
 body {
   display: grid !important;
   grid-template-columns: 1fr minmax(360px, 420px);
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto 1fr;
   grid-template-areas:
     "header header"
     "tools  tools"
+    "source source"
     "work   chat";
   column-gap: 0;
 }
@@ -24,16 +30,18 @@ body {
 .main-column { display: contents; }
 header        { grid-area: header; }
 .tools-panel  { grid-area: tools; }
+.source-bar   { grid-area: source; }
 main          { grid-area: work; min-width: 0; }
 .chat-panel   { grid-area: chat; }
 
 @media (max-width: 768px) {
   body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
       "header"
       "tools"
+      "source"
       "work"
       "chat";
     overflow-y: auto !important;
