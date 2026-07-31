@@ -70,6 +70,21 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Pages serves HTML with max-age=600 but CSS/JS with max-age=14400, so a
+      # returning visitor gets new markup against four-hour-old styles — worse
+      # than either being uniformly stale. Stamping the commit onto every asset
+      # URL means the fresh HTML asks for URLs the cache has never seen. Done to
+      # the artifact only: the source tree stays buildless and `npx serve docs`
+      # is unaffected.
+      - name: Stamp asset URLs so a stale cache can't outlive a deploy
+        run: |
+          V=$(git rev-parse --short HEAD)
+          find docs -name '*.html' -print0 | xargs -0 sed -i -E \
+            "s#(\"\.\./|\")(app|chat)\.css\"#\1\2.css?v=$V\"#g; s#(from '\.\./runtime/index\.js)'#\1?v=$V'#g"
+          find docs/runtime -name '*.js' -print0 | xargs -0 sed -i -E \
+            "s#(from '\./[a-z-]+\.js)'#\1?v=$V'#g"
+          grep -o "app.css?v=[a-f0-9]*" docs/countries/index.html | head -1
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
