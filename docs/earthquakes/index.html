@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#e8ebf2">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
   <title>WebMCP PoC — Earthquake Monitor</title>
   <link rel="stylesheet" href="../app.css">
   <link rel="stylesheet" href="../chat.css">
@@ -66,12 +67,12 @@
             </div>
           </form>
 
-          <div class="settings-section" id="chat-openai-bar" hidden>
+          <form class="settings-section" id="chat-openai-bar" hidden onsubmit="event.preventDefault()">
             <div class="settings-section-label">OpenAI API Key</div>
             <div class="settings-auth-row">
               <input type="password" class="chat-auth-input" id="openai-key" placeholder="sk-&#8230;" autocomplete="off" aria-label="OpenAI API key">
             </div>
-          </div>
+          </form>
 
           <div class="settings-section" id="github-auth-bar">
             <!-- rendered by updateGitHubAuthBar() -->

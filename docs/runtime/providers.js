@@ -10,7 +10,7 @@
 // we use it. Otherwise we fall through to the HTTP localhost proxy.
 
 export const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/v1/messages';
-export const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions';
+export const GITHUB_API_URL = 'https://models.inference.ai.azure.com/chat/completions';
 export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 // termd runs the whole agent loop on the operator's own machine and hands tool
 // calls back to us.
@@ -53,7 +53,12 @@ export function probeAiBridge() {
   });
 }
 
+// Mixed content: an https page cannot reach http://127.0.0.1 at all, so the
+// probe can only fail — noisily, in every visitor's console. Skip it there.
+export const localhostReachable = () => location.protocol !== 'https:';
+
 export async function checkLocalProxy() {
+  if (!localhostReachable()) return false;
   try {
     const res = await fetch(LOCAL_PROXY_URL, { method: 'OPTIONS', signal: AbortSignal.timeout(800) });
     return res.status === 204;
@@ -165,6 +170,7 @@ export function streamGitHubModelsAPI({ token, model, messages, tools, signal })
 }
 
 export async function checkTermd() {
+  if (!localhostReachable()) return false;
   try {
     const res = await fetch(`${TERMD_URL}/health`, { signal: AbortSignal.timeout(800) });
     return res.ok;

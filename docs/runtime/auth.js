@@ -56,8 +56,8 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
     openaiKeyInput.value = localStorage.getItem(STORAGE.openaiKey) || '';
     openaiKeyInput.addEventListener('input', () => localStorage.setItem(STORAGE.openaiKey, openaiKeyInput.value));
   }
-  fetch('config.json')
-    .then(r => r.ok ? r.json() : null)
+  (location.protocol === 'https:' ? Promise.resolve(null) : fetch('config.json'))
+    .then(r => (r && r.ok) ? r.json() : null)
     .then(cfg => {
       if (cfg?.apiKey && !apiKeyInput.value) {
         apiKeyInput.value = cfg.apiKey;

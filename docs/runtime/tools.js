@@ -11,8 +11,12 @@ const registry = new Map();  // name -> full tool def (internal shape)
 
 // Polyfill: install only if the browser doesn't already have a native
 // implementation. The polyfill mirrors what we'd want browsers to expose.
-if (!navigator.modelContext) {
-  navigator.modelContext = {
+export const mcHost = ('modelContext' in document) ? document
+  : ('modelContext' in navigator) ? navigator
+  : document;
+
+if (!mcHost.modelContext) {
+  mcHost.modelContext = {
     registerTool(def) { /* spec view, no-op storage */ },
     unregisterTool(_name) {},
     clearContext() {},
@@ -46,7 +50,7 @@ export function registerTools(defs) {
     // Best-effort mirror to native. Specs and browser implementations are
     // still in flux — if validation rejects our adapted shape, log and
     // continue rather than break the page.
-    try { navigator.modelContext.registerTool(toSpecShape(d)); }
+    try { mcHost.modelContext.registerTool(toSpecShape(d)); }
     catch (err) { console.warn('[tools] native registerTool rejected', d.name, err); }
   }
 }
