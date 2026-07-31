@@ -318,7 +318,14 @@ async function runConversationTermd(messages, { signal, getSystemPrompt, getDivi
   try {
     body = await streamTermdAgent({
       prompt: `${getSystemPrompt()}\n\n---\n\n${prompt}`,
-      tools: listTools().map(t => ({ name: t.name, description: t.description, input_schema: t.parameters })),
+      // `schema` is the field on a tool def; `parameters` is the OpenAI wire
+      // name and does not exist here. A tool with no arguments still needs an
+      // object schema, so fall back rather than send undefined.
+      tools: listTools().map(t => ({
+        name: t.name,
+        description: t.description,
+        input_schema: t.schema || { type: 'object', properties: {} },
+      })),
       signal,
     });
   } catch (err) {
