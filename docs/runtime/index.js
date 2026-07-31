@@ -99,6 +99,7 @@ export function mount(cfg) {
       openai: () => !getOpenAIKey() && 'Enter your OpenAI API key in settings.',
       anthropic: () => !getApiKey() && 'Enter your Anthropic API key in settings.',
       local: () => false,
+      termd: () => false,   // the daemon is the credential; it is localhost-only
     }[getProvider()];
     const complaint = missing ? missing() : false;
     if (complaint) {

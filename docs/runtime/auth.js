@@ -1,7 +1,7 @@
 // Provider/auth UI: model picker, API key form, GitHub OAuth connect button,
 // local-Claude availability detection.
 
-import { checkLocalClaudeReachable } from './providers.js';
+import { checkLocalClaudeReachable, checkTermd } from './providers.js';
 
 // Pin the direct subdomain: the apex redirects and the intermediate hops strip
 // Access-Control-Allow-Origin, so importing via a redirect fails CORS preflight.
@@ -46,6 +46,7 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
   const modelSelect = document.getElementById('model-select');
   const apiKeyInput = document.getElementById('api-key');
   const localOption = modelSelect.querySelector('option[value="local:claude"]');
+  const termdOption = modelSelect.querySelector('option[value="termd:agent"]');
 
   // Restore API key from localStorage, then attempt config.json override
   // (only meaningful on localhost dev).
@@ -65,14 +66,18 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
     })
     .catch(() => {});
 
-  checkLocalClaudeReachable().then(reachable => {
+  // Both localhost providers are hidden until they answer, so the menu never
+  // offers something that cannot work from this page.
+  Promise.all([checkLocalClaudeReachable(), checkTermd()]).then(([reachable, termdUp]) => {
     if (localOption) localOption.hidden = !reachable;
+    if (termdOption) termdOption.hidden = !termdUp;
     const saved = localStorage.getItem(STORAGE.model) || defaultModel;
     // A stored id that no longer exists as an option (a retired model, or one
     // that lost its date suffix) would leave the select blank while
     // currentProvider was read from the stale string. Fall back instead.
     const known = [...modelSelect.options].some(o => o.value === saved);
-    const value = (!known || (!reachable && saved === 'local:claude')) ? defaultModel : saved;
+    const unreachable = (!reachable && saved === 'local:claude') || (!termdUp && saved === 'termd:agent');
+    const value = (!known || unreachable) ? defaultModel : saved;
     modelSelect.value = value;
     localStorage.setItem(STORAGE.model, value);
     state.currentProvider = value.split(':')[0];
@@ -102,9 +107,10 @@ export function applyProviderUI() {
   const isLocal = state.currentProvider === 'local';
   const isGitHub = state.currentProvider === 'github';
   const isOpenAI = state.currentProvider === 'openai';
+  const isTermd = state.currentProvider === 'termd';
 
   const claudeBar = document.getElementById('chat-claude-bar');
-  if (claudeBar) claudeBar.hidden = isLocal || isGitHub || isOpenAI;
+  if (claudeBar) claudeBar.hidden = isLocal || isGitHub || isOpenAI || isTermd;
 
   const openaiBar = document.getElementById('chat-openai-bar');
   if (openaiBar) openaiBar.hidden = !isOpenAI;

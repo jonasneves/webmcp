@@ -3,6 +3,7 @@
 
 import {
   streamClaudeAPI, streamGitHubModelsAPI, streamOpenAIAPI,
+  streamTermdAgent, answerTermdTool,
   parseSSEStream, parseOpenAIStream,
 } from './providers.js';
 import {
@@ -300,12 +301,73 @@ async function runConversationOpenAIShape(messages, { signal, getSystemPrompt, g
   }
 }
 
+// termd loop ────────────────────────────────────────────────────────────
+//
+// The odd one out: termd runs the agent loop on the operator's machine, so
+// there is no history to carry and no tool_result to inject. We send the
+// prompt with the page's tool definitions, then answer the calls that come
+// back. executeTool is reused unchanged, which is the point — the trust gate
+// and the tool cards behave the same whether the loop runs here or there.
+
+async function runConversationTermd(messages, { signal, getSystemPrompt, getDividerContext, onComplete }) {
+  const last = [...messages].reverse().find(m => m.role === 'user');
+  const prompt = typeof last?.content === 'string' ? last.content : '';
+  let body;
+  try {
+    body = await streamTermdAgent({
+      prompt: `${getSystemPrompt()}\n\n---\n\n${prompt}`,
+      tools: listTools().map(t => ({ name: t.name, description: t.description, input_schema: t.parameters })),
+      signal,
+    });
+  } catch (err) {
+    hideSpinner();
+    if (err.name === 'AbortError') return;
+    appendMessage('error', err.message);
+    return;
+  }
+
+  let textEl = null, text = '';
+  try {
+    // termd's stream is data:-prefixed JSON with no event names, which is the
+    // shape parseOpenAIStream already reads.
+    for await (const evt of parseOpenAIStream(body)) {
+      if (evt.type === 'text') {
+        if (!textEl) { hideSpinner(); textEl = appendMessage('assistant', ''); }
+        text += evt.text;
+        textEl.innerHTML = renderMarkdown(text);
+      } else if (evt.type === 'tool_request') {
+        hideSpinner();
+        const pendingEl = createPendingToolCard(evt.name);
+        const result = await executeTool(evt.name, evt.input || {}, pendingEl, getDividerContext);
+        // A 404 means the call already settled (timed out, or the turn ended).
+        // Nothing to retry against, so surface it rather than looping.
+        const landed = await answerTermdTool(evt.token, result?.error ? { error: result.error } : { content: result });
+        if (!landed) appendMessage('error', `termd stopped waiting for ${evt.name}.`);
+        showSpinner();
+      } else if (evt.type === 'result' && evt.isError) {
+        appendMessage('error', evt.text || 'termd turn failed.');
+      } else if (evt.type === 'error') {
+        appendMessage('error', evt.error || 'termd error.');
+      } else if (evt.type === 'done') {
+        break;
+      }
+    }
+  } catch (err) {
+    hideSpinner();
+    if (err.name !== 'AbortError') appendMessage('error', 'Stream interrupted: ' + err.message);
+    return;
+  }
+  hideSpinner();
+  onComplete?.();
+}
+
 export async function runConversation(messages, opts) {
   const provider = getProvider();
   if (provider === 'github') {
     return runConversationOpenAIShape(messages, opts,
       (args) => streamGitHubModelsAPI({ ...args, token: getGitHubAuth()?.token }));
   }
+  if (provider === 'termd') return runConversationTermd(messages, opts);
   if (provider === 'openai') {
     return runConversationOpenAIShape(messages, opts,
       (args) => streamOpenAIAPI({ ...args, apiKey: getOpenAIKey() }));

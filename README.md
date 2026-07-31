@@ -62,6 +62,7 @@ npx serve docs
 | OpenAI | Your API key | Direct browser fetch — `api.openai.com` permits it |
 | GitHub Models | GitHub OAuth | Free tier, GPT-4.1 / GPT-5 |
 | Local proxy | none | Anthropic-shaped endpoint on `:7337`; an HTTPS page can't reach `http://127.0.0.1`, so this is localhost-only unless a browser extension bridges it |
+| termd | none | The agent loop runs on your machine and calls the page's tools back over HTTP. Same-origin only — see below |
 
 Keys are held in `localStorage` per provider and sent straight to that provider. There is no server in this repo to send them to.
 
@@ -84,5 +85,12 @@ docs/
 ## Constraints worth knowing
 
 Demos may only use APIs that send `access-control-allow-origin` — there is no backend to proxy through. That rules out otherwise-obvious sources: OpenSky echoes its own origin, and REST Countries now redirects to a CDN with no CORS headers, which is why the countries demo moved to the World Bank.
+
+The termd provider is the inverse of the others: instead of the browser running
+the agent loop and calling out to a model, termd
+runs the loop locally and calls back into the page for every tool. It only works
+when these pages are served by the daemon itself — termd ships no CORS headers on
+purpose, because it has no authentication and anything that reaches its port gets
+a shell. The option stays hidden anywhere else, which is every deploy of this repo.
 
 Nothing here is load-bearing on a remote module. `marked`, `dompurify` and `echarts` come from a CDN; the runtime itself is dependency-free. Deploys are gated on every one of those URLs still resolving, because a moved dependency is otherwise invisible until a user opens the page.

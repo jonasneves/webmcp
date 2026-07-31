@@ -12,6 +12,22 @@
 export const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/v1/messages';
 export const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions';
 export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+// termd runs the whole agent loop on the operator's own machine and hands tool
+// calls back to us.
+//
+// It only works SAME-ORIGIN — i.e. when these pages are served by the daemon
+// itself. termd sends no CORS headers, deliberately: it has no authentication,
+// and anything that can reach its port gets a shell as the operator, so the
+// same-origin policy is the gate. A page on any other origin (including another
+// port on localhost, and every https:// deploy) cannot call it, and the option
+// below stays hidden because the probe fails. Don't "fix" that by loosening CORS
+// on the daemon; serve the page from it instead.
+// Overridable so a second daemon (a dev build on another port) can be pointed at
+// without editing source: localStorage['webmcp-termd-url'].
+export const TERMD_URL = (() => {
+  try { return localStorage.getItem('webmcp-termd-url') || 'http://127.0.0.1:5000'; }
+  catch { return 'http://127.0.0.1:5000'; }
+})();
 
 let aiBridgeAvailable = false;
 window.addEventListener('message', (e) => {
@@ -146,6 +162,41 @@ async function streamChatCompletions({ url, token, label, model, messages, tools
 
 export function streamGitHubModelsAPI({ token, model, messages, tools, signal }) {
   return streamChatCompletions({ url: GITHUB_API_URL, token, label: 'GitHub API', model, messages, tools, signal });
+}
+
+export async function checkTermd() {
+  try {
+    const res = await fetch(`${TERMD_URL}/health`, { signal: AbortSignal.timeout(800) });
+    return res.ok;
+  } catch { return false; }
+}
+
+/* Unlike the other providers this is not a model API. termd owns the
+ * conversation, the history and the agent loop; we hand it a prompt plus the
+ * page's tool definitions and answer the tool calls it streams back. */
+export async function streamTermdAgent({ prompt, tools, cwd, signal }) {
+  const res = await fetch(`${TERMD_URL}/agent/stream`, {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ prompt, tools, cwd, maxTurns: 24 }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`termd ${res.status}: ${body.slice(0, 200)}`);
+  }
+  return res.body;
+}
+
+/* Answer a parked tool call. A 404 means the call already settled — it timed
+ * out, or the turn ended — so the caller should stop rather than retry. */
+export async function answerTermdTool(token, result) {
+  const res = await fetch(`${TERMD_URL}/agent/tool/${encodeURIComponent(token)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(result),
+  });
+  return res.ok;
 }
 
 export function streamOpenAIAPI({ apiKey, model, messages, tools, signal }) {
