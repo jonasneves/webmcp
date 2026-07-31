@@ -94,7 +94,9 @@ function streamClaudeViaBridge(body, signal) {
 }
 
 export async function streamClaudeAPI({ apiKey, model, messages, system, tools, signal, transport }) {
-  const body = { model, max_tokens: 1024, system, messages, tools, stream: true };
+  // Thinking shares this budget on Sonnet 5 / Opus 5, and the response is
+  // streamed, so a tight cap truncates mid-answer for no benefit.
+  const body = { model, max_tokens: 16000, system, messages, tools, stream: true };
 
   if (transport === 'local' && aiBridgeAvailable) {
     return streamClaudeViaBridge(body, signal);

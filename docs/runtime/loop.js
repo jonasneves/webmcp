@@ -114,6 +114,12 @@ async function runConversationClaude(messages, { signal, getSystemPrompt, getDiv
               hideSpinner();
               currentTextContent = block.text || '';
               currentTextEl = appendMessage('assistant', currentTextContent);
+            } else if (block.type === 'thinking') {
+              // Models from Sonnet 5 / Opus 5 on think by default. The block has to
+              // be replayed to the same model unchanged — signature included — or the
+              // next turn of a tool-use loop is rejected. `thinking` text is empty
+              // unless display:"summarized" was requested; the signature still matters.
+              contentBlocks.push({ type: 'thinking', thinking: block.thinking || '', signature: block.signature || '' });
             } else if (block.type === 'tool_use') {
               contentBlocks.push({ type: 'tool_use', id: block.id, name: block.name, input: {} });
               currentToolInput = '';
@@ -133,6 +139,12 @@ async function runConversationClaude(messages, { signal, getSystemPrompt, getDiv
               }
             } else if (data.delta.type === 'input_json_delta') {
               currentToolInput += data.delta.partial_json;
+            } else if (data.delta.type === 'thinking_delta') {
+              const b = contentBlocks[contentBlocks.length - 1];
+              if (b?.type === 'thinking') b.thinking += data.delta.thinking;
+            } else if (data.delta.type === 'signature_delta') {
+              const b = contentBlocks[contentBlocks.length - 1];
+              if (b?.type === 'thinking') b.signature += data.delta.signature;
             }
             break;
           }

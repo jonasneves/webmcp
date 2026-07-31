@@ -35,7 +35,7 @@ export function getSelectedModelName() {
   return getSelectedModel().split(':').slice(1).join(':');
 }
 
-export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthropic:claude-haiku-4-5-20251001' }) {
+export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthropic:claude-haiku-4-5' }) {
   state = {
     currentProvider: 'anthropic',
     githubAuth: JSON.parse(localStorage.getItem(STORAGE.ghAuth) || 'null'),
@@ -68,8 +68,13 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
   checkLocalClaudeReachable().then(reachable => {
     if (localOption) localOption.hidden = !reachable;
     const saved = localStorage.getItem(STORAGE.model) || defaultModel;
-    const value = (!reachable && saved === 'local:claude') ? defaultModel : saved;
+    // A stored id that no longer exists as an option (a retired model, or one
+    // that lost its date suffix) would leave the select blank while
+    // currentProvider was read from the stale string. Fall back instead.
+    const known = [...modelSelect.options].some(o => o.value === saved);
+    const value = (!known || (!reachable && saved === 'local:claude')) ? defaultModel : saved;
     modelSelect.value = value;
+    localStorage.setItem(STORAGE.model, value);
     state.currentProvider = value.split(':')[0];
     applyProviderUI();
   });
