@@ -41,41 +41,18 @@
           </div>
 
           <div class="settings-section">
-            <div class="settings-section-label">AI Model</div>
-            <div class="theme-toggle transport-toggle" role="group" aria-label="Where the model runs">
-              <button class="theme-opt transport-opt active" data-transport="api">API</button>
-              <button class="theme-opt transport-opt" data-transport="termd" hidden>Local agent</button>
-            </div>
+            <div class="settings-section-label">Local agent</div>
             <select class="chat-model-select" id="model-select" aria-label="Model">
-              <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5</option>
-              <option value="anthropic:claude-sonnet-5">Claude Sonnet 5</option>
-              <option value="anthropic:claude-opus-5">Claude Opus 5</option>
-              <option value="local:claude" hidden>Claude &middot; Personal account</option>
-              <option value="termd:default" hidden>Local agent &middot; daemon default</option>
-              <option value="termd:sonnet" hidden>Local agent &middot; Sonnet</option>
-              <option value="termd:opus" hidden>Local agent &middot; Opus</option>
-              <option value="termd:haiku" hidden>Local agent &middot; Haiku</option>
-              <option value="openai:gpt-4.1">OpenAI &middot; GPT-4.1</option>
-              <option value="openai:gpt-4.1-mini">OpenAI &middot; GPT-4.1 mini</option>
-              <option value="openai:gpt-5">OpenAI &middot; GPT-5</option>
-              <option value="openai:gpt-5-mini">OpenAI &middot; GPT-5 mini</option>
+              <option value="termd:default">Daemon default</option>
+              <option value="termd:sonnet">Claude Sonnet 5</option>
+              <option value="termd:opus">Claude Opus 5</option>
+              <option value="termd:haiku">Claude Haiku 4.5</option>
             </select>
+            <p class="settings-note" id="termd-status" hidden>
+              Not detected. These demos run the model on your own machine &mdash;
+              <a href="https://jonasneves.com/termd/" target="_blank" rel="noopener">install termd and the bridge extension</a>, then reload.
+            </p>
           </div>
-
-          <form class="settings-section" id="chat-claude-bar" onsubmit="event.preventDefault()">
-            <div class="settings-section-label">Anthropic API Key</div>
-            <div class="settings-auth-row">
-              <input type="password" class="chat-auth-input" id="api-key" placeholder="sk-ant-&#8230;" autocomplete="off" aria-label="Anthropic API key">
-              <button type="submit" class="btn btn-sm" id="key-save">Save</button>
-            </div>
-          </form>
-
-          <form class="settings-section" id="chat-openai-bar" hidden onsubmit="event.preventDefault()">
-            <div class="settings-section-label">OpenAI API Key</div>
-            <div class="settings-auth-row">
-              <input type="password" class="chat-auth-input" id="openai-key" placeholder="sk-&#8230;" autocomplete="off" aria-label="OpenAI API key">
-            </div>
-          </form>
 
         </div>
       </div>
@@ -84,6 +61,10 @@
     <div class="tools-panel" id="tools-panel" data-collapsed="true">
       <div class="tools-panel-inner" id="tools-panel-inner"></div>
     </div>
+
+    <!-- Filled by the runtime from mount({ dataSource }). Hidden until the
+         fetch lands, so it never describes rows that aren't there yet. -->
+    <div class="source-bar" id="source-bar" hidden></div>
 
     <main>
       <nav class="controls" aria-label="Views and filters">
@@ -998,12 +979,18 @@ Rules:
 
     /* ── Mount ── */
 
+    // Declared before mount(), which renders the source bar synchronously —
+    // a `let` read from inside that first render would hit its dead zone.
+    // Null until the fetch lands, which is what keeps the bar hidden.
+    let SOURCE = null;
+
     runtime = mount({
       tools: TOOL_DEFS,
       getDynamicTools,
       adjustTool,
       getSystemPrompt,
       getDividerContext,
+      dataSource: () => SOURCE,
       quickActions: QUICK_ACTIONS,
       promptFor: (label) => SCENARIO_PROMPTS[label] || label,
       getFollowupSuggestions,
@@ -1059,6 +1046,25 @@ Rules:
           .filter(c => c.population)          // no population = no usable row
           .sort((a, b) => b.population - a.population);
         if (!COUNTRIES.length) throw new Error('no country rows returned');
+
+        // mrnev=1 is the whole reason this bar has to exist. Every value is
+        // whatever year that country last reported that indicator, so a
+        // column is a ragged edge of years, not a snapshot. The span is read
+        // back off the rows rather than hardcoded — it moves as countries file.
+        const years = COUNTRIES
+          .flatMap(c => METRIC_KEYS.map(k => Number(c[`${k}Year`])))
+          .filter(Boolean);
+        SOURCE = {
+          publisher: 'World Bank',
+          dataset: 'World Development Indicators',
+          url: 'https://data.worldbank.org',
+          rows: `${COUNTRIES.length} countries`,
+          coverage: years.length
+            ? `each country's latest reported year, ${Math.min(...years)}–${Math.max(...years)}`
+            : null,
+          retrieved: Date.now(),
+          caveat: 'Two values in the same column can be from different years — countries report on their own schedules. Rankings are not a same-year comparison.',
+        };
       } catch (err) {
         display.innerHTML = `<p class="msg-error">Failed to load World Bank data: ${err.message}</p>`;
         return;

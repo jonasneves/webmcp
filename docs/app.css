@@ -14,6 +14,13 @@
   --border: #c8cdd9;
   --text: #111827;
   --text-muted: #64748b;
+  /* Darker than --text-muted on purpose: muted lands at 3.99:1 on this
+   * background, under the 4.5:1 floor, and the source bar is small text a
+   * reader is meant to actually read. 6.34:1. */
+  --text-source: #4b5563;
+  /* --risk-med (#d97706) is 2.80:1 here — amber never clears a light
+   * background as text. Same signal, amber-800. 6.23:1. */
+  --text-caveat: #92400e;
   --accent: #0d9488;
   --accent-dim: #c8f0eb;
   --risk-low: #16a34a;
@@ -56,6 +63,8 @@ html[data-theme="dark"] {
   --border: #2d3139;
   --text: #e8eaf0;
   --text-muted: #8b92a5;
+  --text-source: #8b92a5;   /* 4.94:1 on --surface-alt — already clears it */
+  --text-caveat: #f59e0b;   /* 7.15:1 — amber is only a problem on light */
   --accent: #2dd4bf;
   --accent-dim: #0f3935;
   --risk-low: #22c55e;
@@ -254,6 +263,53 @@ html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
 @media (max-width: 900px) {
   body { flex-direction: column; }
   .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; width: 100%; }
+}
+
+/* ── Source bar ───────────────────────────────────────────────────
+ * Who published the numbers below, what period they cover, and what was
+ * dropped on the way in. Sits between the header and the data because
+ * that is the order the questions arrive in.
+ *
+ * Deliberately not a live region: it re-renders on every filter click,
+ * and a screen reader hearing "World Bank · 217 countries · retrieved 4
+ * minutes ago" on each one would be worse than silence. It is standing
+ * description, not a state change. */
+.source-bar {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--text-source);
+  flex-shrink: 0;
+}
+
+.source-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-xs); }
+
+.source-origin { font-weight: 600; color: var(--text); text-decoration: none; }
+/* Underline only. Swapping in --accent on hover reads well and lands at
+ * 3.29:1 on this background — the underline already carries the affordance,
+ * so the colour change was buying nothing and costing the floor. */
+.source-origin:hover { text-decoration: underline; }
+.source-arrow { font-size: 0.9em; }
+.source-sep { opacity: 0.5; }
+
+.source-caveat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  margin-top: 2px;
+  color: var(--text-caveat);
+}
+.source-caveat-mark { flex-shrink: 0; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
@@ -581,6 +637,12 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   color: var(--text-muted);
 }
 
-/* The transport toggle sits above the model list and decides which family of
- * models that list shows — hosted APIs, or the local agent. */
-.transport-toggle { margin-bottom: var(--space-sm); }
+/* Shown only when the local agent doesn't answer — the one failure a visitor
+ * can hit, so it carries the install link rather than a dead Send button. */
+.settings-note {
+  margin: var(--space-sm) 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.settings-note a { color: var(--accent); }

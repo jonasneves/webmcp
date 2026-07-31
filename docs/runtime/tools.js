@@ -120,14 +120,3 @@ export function initToolsToggle() {
     toggle.innerHTML = `${collapsed ? '&#9650;' : '&#9660;'} ${tools.length} tools`;
   });
 }
-
-// Adapters for upstream API tool-call shapes.
-export function toAnthropicTools(tools) {
-  return tools.map(t => ({ name: t.name, description: t.description, input_schema: t.schema }));
-}
-export function toOpenAITools(tools) {
-  return tools.map(t => ({
-    type: 'function',
-    function: { name: t.name, description: t.description, parameters: t.schema || { type: 'object', properties: {} } }
-  }));
-}

@@ -5,11 +5,12 @@
 // What lives where:
 //   ui.js        — toast, dialogs, markdown
 //   theme.js     — light/dark/system theme
-//   providers.js — Anthropic + OpenAI adapters, ai-bridge transport
+//   providers.js — termd transport (bridge extension or same-origin)
 //   chat.js      — message rendering, tool cards, spinner
-//   auth.js      — model picker, API key UI, provider reachability
+//   auth.js      — model picker, local-agent reachability
 //   tools.js     — navigator.modelContext polyfill, tools-panel sidebar
 //   loop.js      — agent loop, trust gating, tool dispatch
+//   source.js    — data provenance: the source bar and its system-prompt block
 //
 // Per-demo: HTML structure, dataset, TOOL_DEFS, render functions,
 //           hash routing, init.
@@ -19,9 +20,10 @@ import { initChatRefs, getChatInputEl, clearChatMessages,
          renderQuickActions, renderFollowupSuggestions, clearFollowupSuggestions,
          clearQuickActions, appendMessage, showSpinner, setInputEnabled,
          getChatMessagesEl } from './chat.js';
-import { initAuth, getProvider, getApiKey, getOpenAIKey } from './auth.js';
+import { initAuth, isAgentReachable } from './auth.js';
 import { registerTools, listTools, syncToolsPanel, initToolsToggle } from './tools.js';
 import { runConversation } from './loop.js';
+import { renderSourceBar, sourcePromptBlock } from './source.js';
 import { dismissToast } from './ui.js';
 
 /**
@@ -32,6 +34,9 @@ import { dismissToast } from './ui.js';
  * @param {()=>Array} [cfg.getDynamicTools]  Optional: extra tools that depend on app state
  * @param {(tool)=>tool} [cfg.adjustTool]    Optional: rewrite a tool's schema based on current view
  * @param {()=>string} cfg.getSystemPrompt   Returns the full system prompt for this turn
+ * @param {()=>object} [cfg.dataSource]      Provenance of the loaded data — see source.js. Rendered
+ *                                           under the header and appended to every system prompt,
+ *                                           so the page and the model describe one source.
  * @param {()=>string[]} cfg.getDividerContext  Short labels shown on the in-chat divider after a tool render
  * @param {string[]} cfg.quickActions        Initial chip labels
  * @param {(label:string)=>string} [cfg.promptFor]  Expand a quick-action label to the full prompt
@@ -52,11 +57,19 @@ export function mount(cfg) {
     if (cfg.adjustTool) snapshot = snapshot.map(cfg.adjustTool);
     if (cfg.getDynamicTools) snapshot = [...snapshot, ...cfg.getDynamicTools()];
     syncToolsPanel(snapshot);
+    // Same hook the demos already call after every render, so the bar fills in
+    // when the fetch lands and its relative timestamp stays honest afterwards.
+    renderSourceBar(cfg.dataSource);
   };
   refresh();
   initToolsToggle();
 
-  const getSystemPrompt = cfg.getSystemPrompt;
+  // The demo writes its prompt; the runtime appends the provenance. Neither
+  // half can drift from the bar on screen, because both read one descriptor.
+  const getSystemPrompt = () => {
+    const block = sourcePromptBlock(cfg.dataSource);
+    return block ? `${cfg.getSystemPrompt()}\n\n${block}` : cfg.getSystemPrompt();
+  };
   const getDividerContext = cfg.getDividerContext;
 
   // Conversation state — one log shared between providers. The Anthropic
@@ -91,17 +104,11 @@ export function mount(cfg) {
     const text = (fullPrompt ?? '').trim();
     if (!text) return;
 
-    // Each provider carries its own credential; a single Anthropic-key check
-    // here used to block every provider that doesn't use one.
-    const missing = {
-      openai: () => !getOpenAIKey() && 'Enter your OpenAI API key in settings.',
-      anthropic: () => !getApiKey() && 'Enter your Anthropic API key in settings.',
-      local: () => false,
-      termd: () => false,   // the daemon is the credential; it is localhost-only
-    }[getProvider()];
-    const complaint = missing ? missing() : false;
-    if (complaint) {
-      appendMessage('error', complaint);
+    // No credential to check any more — the daemon holds whatever auth the
+    // model needs. The one thing that can be missing is the daemon itself.
+    if (!isAgentReachable()) {
+      appendMessage('error',
+        'Local agent not reachable. Install and start termd (jonasneves.com/termd), then reload.');
       return;
     }
 

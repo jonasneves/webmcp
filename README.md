@@ -56,14 +56,15 @@ Each demo's `index.html` is data plus tool definitions. The runtime and both sty
 npx serve docs
 ```
 
-| Provider | Auth | Notes |
-|---|---|---|
-| Anthropic | Your API key | Direct browser fetch |
-| OpenAI | Your API key | Direct browser fetch — `api.openai.com` permits it |
-| Local proxy | none | Anthropic-shaped endpoint on `:7337`; an HTTPS page can't reach `http://127.0.0.1`, so this is localhost-only unless a browser extension bridges it |
-| termd | none | The agent loop runs on your machine and calls the page's tools back over HTTP. Needs the bridge extension, or same-origin — see below |
+The model runs on your machine. Install the daemon and its bridge extension —
+[jonasneves.com/termd](https://jonasneves.com/termd/) — then reload; the demos
+detect it and the model picker offers whatever it can run.
 
-Keys are held in `localStorage` per provider and sent straight to that provider. There is no server in this repo to send them to.
+There is no API key anywhere in this repo. No key is typed into a page, none is
+stored, and no page holds a credential — the daemon owns whatever auth the model
+needs, on your machine. Hosted providers were dropped for that reason: what is
+worth showing is not that a browser can call a model API, it's that an agent
+running locally can drive a page it does not own.
 
 ## Layout
 
@@ -76,7 +77,7 @@ docs/
     index.js            mount() entry
     loop.js             agent loop (SSE, tool_use → tool_result)
     tools.js            modelContext polyfill + registry + tool panel
-    providers.js        Anthropic · OpenAI · termd · ai-bridge adapters
+    providers.js        termd transport — bridge extension or same-origin
     auth.js chat.js ui.js theme.js
   countries/ earthquakes/ hospital-risk-explorer/
 ```
@@ -85,12 +86,18 @@ docs/
 
 Every demo reads live public data — nothing here is invented. Demos may only use APIs that send `access-control-allow-origin` — there is no backend to proxy through. That rules out otherwise-obvious sources: OpenSky echoes its own origin, and REST Countries now redirects to a CDN with no CORS headers, which is why the countries demo moved to the World Bank.
 
-The termd provider is the inverse of the others: instead of the browser running
-the agent loop and calling out to a model, termd
-runs the loop locally and calls back into the page for every tool. termd ships no CORS headers on purpose — it has no authentication, and anything
-that reaches its port gets a shell — so a page cannot call it directly. Two ways
-through: serve these pages from the daemon itself, or install the two-file bridge
-extension that ships with termd, which runs on its own origin and relays the
-stream. Without either, the probe fails and the option stays hidden.
+The loop is inverted from the usual shape. Rather than the browser driving a
+model and calling out for tools, termd runs the agent loop on your machine and
+calls *back* into the page for every tool — so the page is the tool provider,
+not the client.
+
+termd ships no CORS headers on purpose: it has no authentication, and anything
+that reaches its port gets a shell, so the same-origin policy is the only gate
+in front of it. A page therefore cannot call it directly. Two ways through:
+serve these pages from the daemon itself, or install the two-file bridge
+extension, which runs on its own origin — where `host_permissions` exempt it
+from CORS and mixed content — and relays the stream. Its
+`externally_connectable` allowlist is the access control. Without either, the
+probe fails and the page says so instead of offering a dead Send button.
 
 Nothing here is load-bearing on a remote module. `marked`, `dompurify` and `echarts` come from a CDN; the runtime itself is dependency-free. Deploys are gated on every one of those URLs still resolving, because a moved dependency is otherwise invisible until a user opens the page.

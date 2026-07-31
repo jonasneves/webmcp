@@ -62,41 +62,18 @@
           </div>
 
           <div class="settings-section">
-            <div class="settings-section-label">AI Model</div>
-            <div class="theme-toggle transport-toggle" role="group" aria-label="Where the model runs">
-              <button class="theme-opt transport-opt active" data-transport="api">API</button>
-              <button class="theme-opt transport-opt" data-transport="termd" hidden>Local agent</button>
-            </div>
+            <div class="settings-section-label">Local agent</div>
             <select class="chat-model-select" id="model-select" aria-label="Model">
-              <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5</option>
-              <option value="anthropic:claude-sonnet-5">Claude Sonnet 5</option>
-              <option value="anthropic:claude-opus-5">Claude Opus 5</option>
-              <option value="local:claude" hidden>Claude &middot; Personal account</option>
-              <option value="termd:default" hidden>Local agent &middot; daemon default</option>
-              <option value="termd:sonnet" hidden>Local agent &middot; Sonnet</option>
-              <option value="termd:opus" hidden>Local agent &middot; Opus</option>
-              <option value="termd:haiku" hidden>Local agent &middot; Haiku</option>
-              <option value="openai:gpt-4.1">OpenAI &middot; GPT-4.1</option>
-              <option value="openai:gpt-4.1-mini">OpenAI &middot; GPT-4.1 mini</option>
-              <option value="openai:gpt-5">OpenAI &middot; GPT-5</option>
-              <option value="openai:gpt-5-mini">OpenAI &middot; GPT-5 mini</option>
+              <option value="termd:default">Daemon default</option>
+              <option value="termd:sonnet">Claude Sonnet 5</option>
+              <option value="termd:opus">Claude Opus 5</option>
+              <option value="termd:haiku">Claude Haiku 4.5</option>
             </select>
+            <p class="settings-note" id="termd-status" hidden>
+              Not detected. These demos run the model on your own machine &mdash;
+              <a href="https://jonasneves.com/termd/" target="_blank" rel="noopener">install termd and the bridge extension</a>, then reload.
+            </p>
           </div>
-
-          <form class="settings-section" id="chat-claude-bar" onsubmit="event.preventDefault()">
-            <div class="settings-section-label">Anthropic API Key</div>
-            <div class="settings-auth-row">
-              <input type="password" class="chat-auth-input" id="api-key" placeholder="sk-ant-&#8230;" autocomplete="off" aria-label="Anthropic API key">
-              <button type="submit" class="btn btn-sm" id="key-save">Save</button>
-            </div>
-          </form>
-
-          <form class="settings-section" id="chat-openai-bar" hidden onsubmit="event.preventDefault()">
-            <div class="settings-section-label">OpenAI API Key</div>
-            <div class="settings-auth-row">
-              <input type="password" class="chat-auth-input" id="openai-key" placeholder="sk-&#8230;" autocomplete="off" aria-label="OpenAI API key">
-            </div>
-          </form>
 
         </div>
       </div>
@@ -105,6 +82,10 @@
     <div class="tools-panel" id="tools-panel" data-collapsed="true">
       <div class="tools-panel-inner" id="tools-panel-inner"></div>
     </div>
+
+    <!-- Filled by the runtime from mount({ dataSource }). Hidden until the
+         fetch lands, so it never describes rows that aren't there yet. -->
+    <div class="source-bar" id="source-bar" hidden></div>
 
     <main>
       <nav class="controls" aria-label="Views and filters">
@@ -685,7 +666,7 @@
 
     /* ── System prompt + page context ── */
 
-    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores California hospital financial data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
+    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores US hospital inpatient and ICU bed capacity. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
 
 Rules:
 - Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
@@ -866,12 +847,17 @@ Rules:
 
     /* ── Mount runtime ── */
 
+    // Declared before mount(), which renders the source bar synchronously —
+    // a `let` read from inside that first render would hit its dead zone.
+    let SOURCE = null;
+
     runtime = mount({
       tools: TOOL_DEFS,
       getDynamicTools,
       adjustTool,
       getSystemPrompt,
       getDividerContext,
+      dataSource: () => SOURCE,
       quickActions: QUICK_ACTIONS,
       promptFor: (label) => label === 'Run triage analysis' ? TRIAGE_PROMPT : (SCENARIO_PROMPTS[label] || label),
       getFollowupSuggestions,
@@ -900,10 +886,23 @@ Rules:
           'total_beds_7_day_coverage=7',
           'inpatient_beds_used_7_day_coverage=7',
         ].join(' AND ');
-        const url = 'https://healthdata.gov/resource/anag-cw7u.json'
+        const RESOURCE = 'https://healthdata.gov/resource/anag-cw7u.json';
+        const url = RESOURCE
           + `?$where=${encodeURIComponent(where)}`
           + `&$select=${encodeURIComponent(FIELDS.join(','))}&$limit=5000`;
-        const res = await fetch(url);
+
+        // Those filters run server-side, so without a second count the page
+        // has no idea how much it is not showing. It is most of the file:
+        // 4,747 facilities filed that week and about 1,265 clear the bar.
+        // A bonus, not load-bearing — a failed count costs the denominator,
+        // not the page.
+        const [res, filed] = await Promise.all([
+          fetch(url),
+          fetch(`${RESOURCE}?$select=count(1) as n&$where=${encodeURIComponent(`collection_week='${WEEK}'`)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(rows => Number(rows?.[0]?.n) || null)
+            .catch(() => null),
+        ]);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const raw = await res.json();
 
@@ -930,6 +929,20 @@ Rules:
         }).filter(h => h.name && h.occupancy != null)
           .sort((a, b) => b.occupancy - a.occupancy);
         if (!HOSPITALS.length) throw new Error('no hospitals returned for that week');
+
+        const dropped = filed ? filed - HOSPITALS.length : null;
+        SOURCE = {
+          publisher: 'U.S. Department of Health & Human Services',
+          dataset: 'COVID-19 Reported Patient Impact and Hospital Capacity by Facility',
+          url: 'https://healthdata.gov/d/anag-cw7u',
+          rows: `${HOSPITALS.length.toLocaleString()} facilities`,
+          excluded: dropped > 0
+            ? `${dropped.toLocaleString()} of ${filed.toLocaleString()} dropped: fewer than 7 days reported, or counts HHS suppressed`
+            : null,
+          coverage: 'week of 21 April 2024 — the last week of the program',
+          retrieved: Date.now(),
+          caveat: 'Reporting ended with that week. These are 2024 figures, not current hospital capacity.',
+        };
       } catch (err) {
         display.innerHTML = `<p class="msg-error">Failed to load HHS hospital data: ${err.message}</p>`;
         return;
