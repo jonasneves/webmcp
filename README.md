@@ -56,11 +56,14 @@ Each demo's `index.html` is data plus tool definitions. The runtime and both sty
 npx serve docs
 ```
 
-| Provider | Auth |
-|---|---|
-| Anthropic | API key, direct browser fetch |
-| GitHub Models | GitHub OAuth (free) |
-| Local proxy | An OpenAI/Anthropic-shaped endpoint on `:7337` — use your own |
+| Provider | Auth | Notes |
+|---|---|---|
+| Anthropic | Your API key | Direct browser fetch |
+| OpenAI | Your API key | Direct browser fetch — `api.openai.com` permits it |
+| GitHub Models | GitHub OAuth | Free tier, GPT-4.1 / GPT-5 |
+| Local proxy | none | Anthropic-shaped endpoint on `:7337`; an HTTPS page can't reach `http://127.0.0.1`, so this is localhost-only unless a browser extension bridges it |
+
+Keys are held in `localStorage` per provider and sent straight to that provider. There is no server in this repo to send them to.
 
 ## Layout
 

@@ -2,7 +2,7 @@
 // inject result → continue. One implementation, two providers via adapter.
 
 import {
-  streamClaudeAPI, streamGitHubModelsAPI,
+  streamClaudeAPI, streamGitHubModelsAPI, streamOpenAIAPI,
   parseSSEStream, parseOpenAIStream,
 } from './providers.js';
 import {
@@ -12,7 +12,7 @@ import {
 } from './chat.js';
 import { showConfirmDialog, scrollDisplayIntoView, renderMarkdown } from './ui.js';
 import { toAnthropicTools, toOpenAITools, listTools } from './tools.js';
-import { getProvider, getGitHubAuth, getApiKey, getSelectedModelName } from './auth.js';
+import { getProvider, getGitHubAuth, getApiKey, getOpenAIKey, getSelectedModelName } from './auth.js';
 
 // Trust gate: prompt the user only for tools annotated as actually
 // destructive. The previous gate fired on the absence of `readOnlyHint`,
@@ -189,16 +189,19 @@ async function runConversationClaude(messages, { signal, getSystemPrompt, getDiv
 }
 
 // GitHub Models / OpenAI-shape loop ─────────────────────────────────────
+//
+// Both providers use the chat-completions wire format, so one loop drives
+// them; `stream` decides whether the request carries a GitHub OAuth token or
+// the user's own OpenAI key.
 
-async function runConversationGitHub(messages, { signal, getSystemPrompt, getDividerContext, onComplete }) {
-  const token = getGitHubAuth()?.token;
+async function runConversationOpenAIShape(messages, { signal, getSystemPrompt, getDividerContext, onComplete }, stream) {
   const model = getSelectedModelName();
 
   while (true) {
     let body;
     try {
-      body = await streamGitHubModelsAPI({
-        token, model, signal,
+      body = await stream({
+        model, signal,
         messages: [{ role: 'system', content: getSystemPrompt() }, ...messages],
         tools: toOpenAITools(listTools()),
       });
@@ -286,7 +289,14 @@ async function runConversationGitHub(messages, { signal, getSystemPrompt, getDiv
 }
 
 export async function runConversation(messages, opts) {
-  return getProvider() === 'github'
-    ? runConversationGitHub(messages, opts)
-    : runConversationClaude(messages, opts);
+  const provider = getProvider();
+  if (provider === 'github') {
+    return runConversationOpenAIShape(messages, opts,
+      (args) => streamGitHubModelsAPI({ ...args, token: getGitHubAuth()?.token }));
+  }
+  if (provider === 'openai') {
+    return runConversationOpenAIShape(messages, opts,
+      (args) => streamOpenAIAPI({ ...args, apiKey: getOpenAIKey() }));
+  }
+  return runConversationClaude(messages, opts);
 }

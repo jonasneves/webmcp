@@ -19,7 +19,7 @@ import { initChatRefs, getChatInputEl, clearChatMessages,
          renderQuickActions, renderFollowupSuggestions, clearFollowupSuggestions,
          clearQuickActions, appendMessage, showSpinner, setInputEnabled,
          getChatMessagesEl } from './chat.js';
-import { initAuth, getProvider, getGitHubAuth, getApiKey } from './auth.js';
+import { initAuth, getProvider, getGitHubAuth, getApiKey, getOpenAIKey } from './auth.js';
 import { registerTools, listTools, syncToolsPanel, initToolsToggle } from './tools.js';
 import { runConversation } from './loop.js';
 import { dismissToast } from './ui.js';
@@ -92,12 +92,17 @@ export function mount(cfg) {
     const text = (fullPrompt ?? '').trim();
     if (!text) return;
 
-    if (getProvider() === 'github' && !getGitHubAuth()?.token) {
-      appendMessage('error', 'Connect your GitHub account in settings.');
-      return;
-    }
-    if (getProvider() !== 'github' && getProvider() !== 'local' && !getApiKey()) {
-      appendMessage('error', 'Enter your Anthropic API key in settings.');
+    // Each provider carries its own credential; a single Anthropic-key check
+    // here used to block every provider that doesn't use one.
+    const missing = {
+      github: () => !getGitHubAuth()?.token && 'Connect your GitHub account in settings.',
+      openai: () => !getOpenAIKey() && 'Enter your OpenAI API key in settings.',
+      anthropic: () => !getApiKey() && 'Enter your Anthropic API key in settings.',
+      local: () => false,
+    }[getProvider()];
+    const complaint = missing ? missing() : false;
+    if (complaint) {
+      appendMessage('error', complaint);
       return;
     }
 

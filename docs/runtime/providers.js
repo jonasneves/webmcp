@@ -11,6 +11,7 @@
 
 export const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/v1/messages';
 export const GITHUB_API_URL = 'https://models.github.ai/inference/chat/completions';
+export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 let aiBridgeAvailable = false;
 window.addEventListener('message', (e) => {
@@ -116,8 +117,12 @@ export async function streamClaudeAPI({ apiKey, model, messages, system, tools, 
   return res.body;
 }
 
-export async function streamGitHubModelsAPI({ token, model, messages, tools, signal }) {
-  const res = await fetch(GITHUB_API_URL, {
+/* GitHub Models and OpenAI speak the same chat-completions wire format, so one
+ * adapter serves both — only the URL, the token and the error label differ.
+ * api.openai.com allows browser calls (it echoes the page origin and permits an
+ * Authorization header), so a user's own key needs no proxy. */
+async function streamChatCompletions({ url, token, label, model, messages, tools, signal }) {
+  const res = await fetch(url, {
     method: 'POST',
     signal,
     headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
@@ -132,9 +137,18 @@ export async function streamGitHubModelsAPI({ token, model, messages, tools, sig
   });
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`GitHub API ${res.status}: ${errBody.slice(0, 200)}`);
+    throw new Error(`${label} ${res.status}: ${errBody.slice(0, 200)}`);
   }
   return res.body;
+}
+
+export function streamGitHubModelsAPI({ token, model, messages, tools, signal }) {
+  return streamChatCompletions({ url: GITHUB_API_URL, token, label: 'GitHub API', model, messages, tools, signal });
+}
+
+export function streamOpenAIAPI({ apiKey, model, messages, tools, signal }) {
+  if (!apiKey) throw new Error('Add an OpenAI API key in settings (sk-…).');
+  return streamChatCompletions({ url: OPENAI_API_URL, token: apiKey, label: 'OpenAI API', model, messages, tools, signal });
 }
 
 async function* readStreamLines(body) {

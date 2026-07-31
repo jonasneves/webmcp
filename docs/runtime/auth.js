@@ -17,6 +17,7 @@ const AUTH_MODULE_URL = 'https://auth.neves.cloud/lib.js';
 
 const STORAGE = {
   apiKey: 'webmcp-api-key',
+  openaiKey: 'webmcp-openai-key',
   ghAuth: 'webmcp-gh-auth',
   model: 'webmcp-model',
   ghNoticeDismissed: 'webmcp-github-notice-dismissed',
@@ -28,6 +29,7 @@ let listeners = { onProviderChange: () => {} };
 export function getProvider() { return state.currentProvider; }
 export function getGitHubAuth() { return state.githubAuth; }
 export function getApiKey() { return document.getElementById('api-key')?.value.trim() || ''; }
+export function getOpenAIKey() { return document.getElementById('openai-key')?.value.trim() || ''; }
 export function getSelectedModel() { return document.getElementById('model-select').value; }
 export function getSelectedModelName() {
   return getSelectedModel().split(':').slice(1).join(':');
@@ -48,6 +50,11 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
   // Restore API key from localStorage, then attempt config.json override
   // (only meaningful on localhost dev).
   apiKeyInput.value = localStorage.getItem(STORAGE.apiKey) || '';
+  const openaiKeyInput = document.getElementById('openai-key');
+  if (openaiKeyInput) {
+    openaiKeyInput.value = localStorage.getItem(STORAGE.openaiKey) || '';
+    openaiKeyInput.addEventListener('input', () => localStorage.setItem(STORAGE.openaiKey, openaiKeyInput.value));
+  }
   fetch('config.json')
     .then(r => r.ok ? r.json() : null)
     .then(cfg => {
@@ -89,9 +96,13 @@ export function initAuth({ onProviderChange, ghOAuthScope, defaultModel = 'anthr
 export function applyProviderUI() {
   const isLocal = state.currentProvider === 'local';
   const isGitHub = state.currentProvider === 'github';
+  const isOpenAI = state.currentProvider === 'openai';
 
   const claudeBar = document.getElementById('chat-claude-bar');
-  if (claudeBar) claudeBar.hidden = isLocal || isGitHub;
+  if (claudeBar) claudeBar.hidden = isLocal || isGitHub || isOpenAI;
+
+  const openaiBar = document.getElementById('chat-openai-bar');
+  if (openaiBar) openaiBar.hidden = !isOpenAI;
 
   updateGitHubAuthBar();
 
