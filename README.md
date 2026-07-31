@@ -60,9 +60,8 @@ npx serve docs
 |---|---|---|
 | Anthropic | Your API key | Direct browser fetch |
 | OpenAI | Your API key | Direct browser fetch — `api.openai.com` permits it |
-| GitHub Models | GitHub OAuth | Free tier, GPT-4.1 / GPT-5 |
 | Local proxy | none | Anthropic-shaped endpoint on `:7337`; an HTTPS page can't reach `http://127.0.0.1`, so this is localhost-only unless a browser extension bridges it |
-| termd | none | The agent loop runs on your machine and calls the page's tools back over HTTP. Same-origin only — see below |
+| termd | none | The agent loop runs on your machine and calls the page's tools back over HTTP. Needs the bridge extension, or same-origin — see below |
 
 Keys are held in `localStorage` per provider and sent straight to that provider. There is no server in this repo to send them to.
 
@@ -77,7 +76,7 @@ docs/
     index.js            mount() entry
     loop.js             agent loop (SSE, tool_use → tool_result)
     tools.js            modelContext polyfill + registry + tool panel
-    providers.js        Anthropic · GitHub Models · ai-bridge adapters
+    providers.js        Anthropic · OpenAI · termd · ai-bridge adapters
     auth.js chat.js ui.js theme.js
   countries/ earthquakes/ hospital-risk-explorer/
 ```
@@ -88,9 +87,10 @@ Every demo reads live public data — nothing here is invented. Demos may only u
 
 The termd provider is the inverse of the others: instead of the browser running
 the agent loop and calling out to a model, termd
-runs the loop locally and calls back into the page for every tool. It only works
-when these pages are served by the daemon itself — termd ships no CORS headers on
-purpose, because it has no authentication and anything that reaches its port gets
-a shell. The option stays hidden anywhere else, which is every deploy of this repo.
+runs the loop locally and calls back into the page for every tool. termd ships no CORS headers on purpose — it has no authentication, and anything
+that reaches its port gets a shell — so a page cannot call it directly. Two ways
+through: serve these pages from the daemon itself, or install the two-file bridge
+extension that ships with termd, which runs on its own origin and relays the
+stream. Without either, the probe fails and the option stays hidden.
 
 Nothing here is load-bearing on a remote module. `marked`, `dompurify` and `echarts` come from a CDN; the runtime itself is dependency-free. Deploys are gated on every one of those URLs still resolving, because a moved dependency is otherwise invisible until a user opens the page.

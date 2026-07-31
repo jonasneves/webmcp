@@ -1,4 +1,4 @@
-// Provider adapters: stream Claude (Anthropic) and GitHub Models, parse SSE.
+// Provider adapters: stream Claude (Anthropic) and OpenAI, parse SSE.
 //
 // Three transports for Claude:
 //   1. Direct fetch to api.anthropic.com (browser → user's API key)
@@ -10,7 +10,6 @@
 // we use it. Otherwise we fall through to the HTTP localhost proxy.
 
 export const LOCAL_PROXY_URL = 'http://127.0.0.1:7337/v1/messages';
-export const GITHUB_API_URL = 'https://models.inference.ai.azure.com/chat/completions';
 export const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 // termd runs the whole agent loop on the operator's own machine and hands tool
 // calls back to us.
@@ -140,12 +139,10 @@ export async function streamClaudeAPI({ apiKey, model, messages, system, tools, 
   return res.body;
 }
 
-/* GitHub Models and OpenAI speak the same chat-completions wire format, so one
- * adapter serves both — only the URL, the token and the error label differ.
- * api.openai.com allows browser calls (it echoes the page origin and permits an
+/* api.openai.com allows browser calls (it echoes the page origin and permits an
  * Authorization header), so a user's own key needs no proxy. */
-async function streamChatCompletions({ url, token, label, model, messages, tools, signal }) {
-  const res = await fetch(url, {
+async function streamChatCompletions({ token, model, messages, tools, signal }) {
+  const res = await fetch(OPENAI_API_URL, {
     method: 'POST',
     signal,
     headers: { 'content-type': 'application/json', 'authorization': `Bearer ${token}` },
@@ -160,16 +157,56 @@ async function streamChatCompletions({ url, token, label, model, messages, tools
   });
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`${label} ${res.status}: ${errBody.slice(0, 200)}`);
+    throw new Error(`OpenAI API ${res.status}: ${errBody.slice(0, 200)}`);
   }
   return res.body;
 }
 
-export function streamGitHubModelsAPI({ token, model, messages, tools, signal }) {
-  return streamChatCompletions({ url: GITHUB_API_URL, token, label: 'GitHub API', model, messages, tools, signal });
+// The bridge extension (termd/extension) runs on its own origin with
+// host_permissions, so it can reach 127.0.0.1 when this page cannot. Same shape
+// as the ai-bridge relay above, minus the DOM-event hop: externally_connectable
+// lets the page hold a port to the extension directly.
+export const TERMD_EXTENSION_ID = 'mgcgjhbjenjaboahijedcngmgigofkhh';
+
+let termdPort = null;
+function getTermdPort() {
+  if (termdPort) return termdPort;
+  if (typeof chrome === 'undefined' || !chrome.runtime?.connect) return null;
+  try {
+    termdPort = chrome.runtime.connect(TERMD_EXTENSION_ID);
+    termdPort.onDisconnect.addListener(() => { termdPort = null; });
+  } catch { termdPort = null; }
+  return termdPort;
+}
+
+const newId = () => Math.random().toString(36).slice(2);
+
+function bridgeSend(msg, { onChunk } = {}) {
+  return new Promise((resolve, reject) => {
+    const port = getTermdPort();
+    if (!port) return reject(new Error('no bridge'));
+    const id = newId();
+    const onMessage = (m) => {
+      if (m.id !== id) return;
+      if (m.type === 'chunk') return onChunk?.(m.text);
+      port.onMessage.removeListener(onMessage);
+      if (m.type === 'error') reject(new Error(m.status ? `termd ${m.status}: ${(m.body || '').slice(0, 200)}` : m.error));
+      else resolve(m);
+    };
+    port.onMessage.addListener(onMessage);
+    port.postMessage({ ...msg, id });
+  });
 }
 
 export async function checkTermd() {
+  // Bridge first: it is the only path that works from an https page.
+  try {
+    const pong = await Promise.race([
+      bridgeSend({ type: 'ping' }),
+      new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 600)),
+    ]);
+    if (pong?.type === 'pong') return true;
+  } catch { /* fall through to the direct probe */ }
   if (!localhostReachable()) return false;
   try {
     const res = await fetch(`${TERMD_URL}/health`, { signal: AbortSignal.timeout(800) });
@@ -181,25 +218,39 @@ export async function checkTermd() {
  * conversation, the history and the agent loop; we hand it a prompt plus the
  * page's tool definitions and answer the tool calls it streams back. */
 export async function streamTermdAgent({ prompt, tools, cwd, signal }) {
-  const res = await fetch(`${TERMD_URL}/agent/stream`, {
-    method: 'POST',
-    signal,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ prompt, tools, cwd, maxTurns: 24 }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`termd ${res.status}: ${body.slice(0, 200)}`);
+  const body = { prompt, tools, cwd, maxTurns: 24 };
+  if (getTermdPort()) {
+    // Re-expose the bridge's chunks as a ReadableStream so the SSE parser does
+    // not care which transport delivered them.
+    let controller = null;
+    const stream = new ReadableStream({ start(c) { controller = c; } });
+    const enc = new TextEncoder();
+    bridgeSend({ type: 'request', path: '/agent/stream', body },
+               { onChunk: (t) => controller?.enqueue(enc.encode(t)) })
+      .then(() => { try { controller?.close(); } catch {} })
+      .catch((e) => { try { controller?.error(e); } catch {} });
+    signal?.addEventListener('abort', () => { try { controller?.close(); } catch {} }, { once: true });
+    return stream;
   }
+  const res = await fetch(`${TERMD_URL}/agent/stream`, {
+    method: 'POST', signal,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`termd ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.body;
 }
 
 /* Answer a parked tool call. A 404 means the call already settled — it timed
  * out, or the turn ended — so the caller should stop rather than retry. */
 export async function answerTermdTool(token, result) {
-  const res = await fetch(`${TERMD_URL}/agent/tool/${encodeURIComponent(token)}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  const path = `/agent/tool/${encodeURIComponent(token)}`;
+  if (getTermdPort()) {
+    try { await bridgeSend({ type: 'request', path, body: result }); return true; }
+    catch { return false; }
+  }
+  const res = await fetch(`${TERMD_URL}${path}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify(result),
   });
   return res.ok;
@@ -207,7 +258,7 @@ export async function answerTermdTool(token, result) {
 
 export function streamOpenAIAPI({ apiKey, model, messages, tools, signal }) {
   if (!apiKey) throw new Error('Add an OpenAI API key in settings (sk-…).');
-  return streamChatCompletions({ url: OPENAI_API_URL, token: apiKey, label: 'OpenAI API', model, messages, tools, signal });
+  return streamChatCompletions({ token: apiKey, model, messages, tools, signal });
 }
 
 async function* readStreamLines(body) {

@@ -5,9 +5,9 @@
 // What lives where:
 //   ui.js        — toast, dialogs, markdown
 //   theme.js     — light/dark/system theme
-//   providers.js — Anthropic + GitHub Models adapters, ai-bridge transport
+//   providers.js — Anthropic + OpenAI adapters, ai-bridge transport
 //   chat.js      — message rendering, tool cards, spinner
-//   auth.js      — model picker, API key, GitHub OAuth UI
+//   auth.js      — model picker, API key UI, provider reachability
 //   tools.js     — navigator.modelContext polyfill, tools-panel sidebar
 //   loop.js      — agent loop, trust gating, tool dispatch
 //
@@ -19,7 +19,7 @@ import { initChatRefs, getChatInputEl, clearChatMessages,
          renderQuickActions, renderFollowupSuggestions, clearFollowupSuggestions,
          clearQuickActions, appendMessage, showSpinner, setInputEnabled,
          getChatMessagesEl } from './chat.js';
-import { initAuth, getProvider, getGitHubAuth, getApiKey, getOpenAIKey } from './auth.js';
+import { initAuth, getProvider, getApiKey, getOpenAIKey } from './auth.js';
 import { registerTools, listTools, syncToolsPanel, initToolsToggle } from './tools.js';
 import { runConversation } from './loop.js';
 import { dismissToast } from './ui.js';
@@ -36,7 +36,6 @@ import { dismissToast } from './ui.js';
  * @param {string[]} cfg.quickActions        Initial chip labels
  * @param {(label:string)=>string} [cfg.promptFor]  Expand a quick-action label to the full prompt
  * @param {()=>string[]} [cfg.getFollowupSuggestions]  Chips shown after a turn completes
- * @param {string} [cfg.ghOAuthScope='webmcp']  Identifier returned to GitHub during OAuth
  * @param {string} [cfg.defaultModel]        Override for default model select value
  */
 export function mount(cfg) {
@@ -95,7 +94,6 @@ export function mount(cfg) {
     // Each provider carries its own credential; a single Anthropic-key check
     // here used to block every provider that doesn't use one.
     const missing = {
-      github: () => !getGitHubAuth()?.token && 'Connect your GitHub account in settings.',
       openai: () => !getOpenAIKey() && 'Enter your OpenAI API key in settings.',
       anthropic: () => !getApiKey() && 'Enter your Anthropic API key in settings.',
       local: () => false,
@@ -155,7 +153,6 @@ export function mount(cfg) {
   document.getElementById('chat-reset')?.addEventListener('click', reset);
 
   initAuth({
-    ghOAuthScope: cfg.ghOAuthScope || 'webmcp',
     defaultModel: cfg.defaultModel,
     onProviderChange: () => reset(),
   });

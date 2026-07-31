@@ -1,8 +1,10 @@
 // Agent loop: stream model → parse tool_use → gate on trust → execute →
-// inject result → continue. One implementation, two providers via adapter.
+// inject result → continue. One loop per wire format — Claude's content blocks,
+// OpenAI's chat-completions deltas, and termd, which owns the loop itself and
+// only calls our tools back.
 
 import {
-  streamClaudeAPI, streamGitHubModelsAPI, streamOpenAIAPI,
+  streamClaudeAPI, streamOpenAIAPI,
   streamTermdAgent, answerTermdTool,
   parseSSEStream, parseOpenAIStream,
 } from './providers.js';
@@ -13,7 +15,7 @@ import {
 } from './chat.js';
 import { showConfirmDialog, scrollDisplayIntoView, renderMarkdown } from './ui.js';
 import { toAnthropicTools, toOpenAITools, listTools } from './tools.js';
-import { getProvider, getGitHubAuth, getApiKey, getOpenAIKey, getSelectedModelName } from './auth.js';
+import { getProvider, getApiKey, getOpenAIKey, getSelectedModelName } from './auth.js';
 
 // Trust gate: prompt the user only for tools annotated as actually
 // destructive. The previous gate fired on the absence of `readOnlyHint`,
@@ -201,20 +203,20 @@ async function runConversationClaude(messages, { signal, getSystemPrompt, getDiv
   }
 }
 
-// GitHub Models / OpenAI-shape loop ─────────────────────────────────────
+// OpenAI-shape loop ─────────────────────────────────────────────────────
 //
-// Both providers use the chat-completions wire format, so one loop drives
-// them; `stream` decides whether the request carries a GitHub OAuth token or
-// the user's own OpenAI key.
+// Kept separate from the Claude loop because the wire format differs: a system
+// prompt is a message rather than a top-level field, and tool calls arrive as
+// indexed deltas to assemble rather than named content blocks.
 
-async function runConversationOpenAIShape(messages, { signal, getSystemPrompt, getDividerContext, onComplete }, stream) {
+async function runConversationOpenAIShape(messages, { signal, getSystemPrompt, getDividerContext, onComplete }) {
   const model = getSelectedModelName();
 
   while (true) {
     let body;
     try {
-      body = await stream({
-        model, signal,
+      body = await streamOpenAIAPI({
+        model, signal, apiKey: getOpenAIKey(),
         messages: [{ role: 'system', content: getSystemPrompt() }, ...messages],
         tools: toOpenAITools(listTools()),
       });
@@ -363,14 +365,7 @@ async function runConversationTermd(messages, { signal, getSystemPrompt, getDivi
 
 export async function runConversation(messages, opts) {
   const provider = getProvider();
-  if (provider === 'github') {
-    return runConversationOpenAIShape(messages, opts,
-      (args) => streamGitHubModelsAPI({ ...args, token: getGitHubAuth()?.token }));
-  }
   if (provider === 'termd') return runConversationTermd(messages, opts);
-  if (provider === 'openai') {
-    return runConversationOpenAIShape(messages, opts,
-      (args) => streamOpenAIAPI({ ...args, apiKey: getOpenAIKey() }));
-  }
+  if (provider === 'openai') return runConversationOpenAIShape(messages, opts);
   return runConversationClaude(messages, opts);
 }
