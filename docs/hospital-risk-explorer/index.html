@@ -63,12 +63,19 @@
 
           <div class="settings-section">
             <div class="settings-section-label">AI Model</div>
+            <div class="theme-toggle transport-toggle" role="group" aria-label="Where the model runs">
+              <button class="theme-opt transport-opt active" data-transport="api">API</button>
+              <button class="theme-opt transport-opt" data-transport="termd" hidden>Local agent</button>
+            </div>
             <select class="chat-model-select" id="model-select" aria-label="Model">
               <option value="anthropic:claude-haiku-4-5">Claude Haiku 4.5</option>
               <option value="anthropic:claude-sonnet-5">Claude Sonnet 5</option>
               <option value="anthropic:claude-opus-5">Claude Opus 5</option>
               <option value="local:claude" hidden>Claude &middot; Personal account</option>
-              <option value="termd:agent" hidden>termd &middot; local agent</option>
+              <option value="termd:default" hidden>Local agent &middot; daemon default</option>
+              <option value="termd:sonnet" hidden>Local agent &middot; Sonnet</option>
+              <option value="termd:opus" hidden>Local agent &middot; Opus</option>
+              <option value="termd:haiku" hidden>Local agent &middot; Haiku</option>
               <option value="openai:gpt-4.1">OpenAI &middot; GPT-4.1</option>
               <option value="openai:gpt-4.1-mini">OpenAI &middot; GPT-4.1 mini</option>
               <option value="openai:gpt-5">OpenAI &middot; GPT-5</option>

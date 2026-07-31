@@ -317,6 +317,7 @@ async function runConversationTermd(messages, { signal, getSystemPrompt, getDivi
   let body;
   try {
     body = await streamTermdAgent({
+      model: getSelectedModelName(),
       prompt: `${getSystemPrompt()}\n\n---\n\n${prompt}`,
       // `schema` is the field on a tool def; `parameters` is the OpenAI wire
       // name and does not exist here. A tool with no arguments still needs an

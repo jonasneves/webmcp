@@ -580,3 +580,7 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* The transport toggle sits above the model list and decides which family of
+ * models that list shows — hosted APIs, or the local agent. */
+.transport-toggle { margin-bottom: var(--space-sm); }
