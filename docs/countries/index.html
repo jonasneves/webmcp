@@ -5,31 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#e8ebf2">
-  <title>WebMCP PoC — World Countries</title>
-  <style>
-    .size-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      font-size: var(--text-xs);
-      font-weight: 600;
-      border-radius: 100px;
-      letter-spacing: 0.04em;
-    }
-
-    .size-badge.small { background: var(--badge-green-bg); color: var(--size-small); }
-
-    .size-badge.medium { background: var(--badge-amber-bg); color: var(--size-med); }
-
-    .size-badge.large { background: var(--badge-red-bg); color: var(--size-large); }
-
-    .detail-cell-value-text {
-      font-size: var(--text-sm);
-      font-weight: 500;
-      line-height: 1.4;
-      word-break: break-word;
-      white-space: normal;
-    }
-  </style>
+  <title>WebMCP PoC — World Development</title>
   <link rel="stylesheet" href="../app.css">
   <link rel="stylesheet" href="../chat.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
@@ -44,7 +20,7 @@
     <header>
       <div class="header-left">
         <h1><a class="home-link" href="../">WebMCP PoC</a></h1>
-        <button class="tools-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel">&#9660; 7 tools</button>
+        <button class="tools-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel">&#9660; 10 tools</button>
       </div>
       <div class="settings-wrap">
         <button class="settings-btn" id="settings-btn" aria-label="Settings" aria-expanded="false" aria-controls="settings-popover" title="Settings">
@@ -104,13 +80,15 @@
     <main>
       <nav class="controls" aria-label="Views and filters">
         <button class="chip" aria-pressed="true" data-filter="all">All</button>
-        <button class="chip" aria-pressed="false" data-filter="Americas">Americas</button>
-        <button class="chip" aria-pressed="false" data-filter="Europe">Europe</button>
-        <button class="chip" aria-pressed="false" data-filter="Asia">Asia</button>
-        <button class="chip" aria-pressed="false" data-filter="Africa">Africa</button>
-        <button class="chip" aria-pressed="false" data-filter="Oceania">Oceania</button>
-        <button class="chip" aria-pressed="false" data-view="chart">Population Chart</button>
-        <button class="chip" aria-pressed="false" data-filter="large">Large Countries Only</button>
+        <button class="chip" aria-pressed="false" data-filter="Sub-Saharan Africa">Sub-Saharan Africa</button>
+        <button class="chip" aria-pressed="false" data-filter="Europe &amp; Central Asia">Europe &amp; C. Asia</button>
+        <button class="chip" aria-pressed="false" data-filter="East Asia &amp; Pacific">East Asia &amp; Pacific</button>
+        <button class="chip" aria-pressed="false" data-filter="Latin America &amp; Caribbean">Latin America</button>
+        <button class="chip" aria-pressed="false" data-filter="Middle East, North Africa, Afghanistan &amp; Pakistan">Middle East &amp; N. Africa</button>
+        <button class="chip" aria-pressed="false" data-filter="South Asia">South Asia</button>
+        <button class="chip" aria-pressed="false" data-filter="North America">North America</button>
+        <button class="chip" aria-pressed="false" data-income="High income">High income</button>
+        <button class="chip" aria-pressed="false" data-view="scatter">Development scatter</button>
       </nav>
 
       <div id="display"></div>
@@ -126,7 +104,7 @@
     <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
     <div class="chat-input-area">
       <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chat-input" placeholder="Ask about countries&#8230;" rows="1" aria-label="Chat message"></textarea>
+        <textarea class="chat-input" id="chat-input" placeholder="Ask about world development&#8230;" rows="1" aria-label="Chat message"></textarea>
         <button class="chat-send-btn" id="chat-send" aria-label="Send message" title="Send">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -192,10 +170,56 @@
     const sizeTier = (p) => p >= 50_000_000 ? 'large' : p >= 10_000_000 ? 'medium' : 'small';
     const matchName = (c, q) => c.name.toLowerCase().includes(q.toLowerCase());
 
-    const filterData = ({ region, subregion, size, search } = {}) =>
+    const CO2_INDICATOR = 'EN.GHG.CO2.PC.CE.AR5';
+
+    /* Every metric the page can table, chart, rank or plot over time. Adding a
+     * row here is enough to make it reachable from all of them, and from the
+     * tools the model calls — the enum below is generated from these keys. */
+    const INDICATORS = {
+      population:     { id: 'SP.POP.TOTL',    label: 'Population',               fmt: v => Math.round(v).toLocaleString() },
+      gdpPerCapita:   { id: 'NY.GDP.PCAP.CD', label: 'GDP per capita (US$)',     fmt: v => '$' + Math.round(v).toLocaleString() },
+      lifeExpectancy: { id: 'SP.DYN.LE00.IN', label: 'Life expectancy (years)',  fmt: v => v.toFixed(1) },
+      fertility:      { id: 'SP.DYN.TFRT.IN', label: 'Fertility (births/woman)', fmt: v => v.toFixed(2) },
+      internet:       { id: 'IT.NET.USER.ZS', label: 'Internet users (%)',       fmt: v => v.toFixed(1) + '%' },
+      co2PerCapita:   { id: CO2_INDICATOR,    label: 'CO₂ per capita (tonnes)',  fmt: v => v.toFixed(2) },
+    };
+    const METRIC_KEYS = Object.keys(INDICATORS);
+
+    /* World Bank's own groupings, spelled exactly as the API returns them —
+     * these strings are the filter values, so a paraphrase silently matches
+     * nothing. Both are offered to the model as enums. */
+    const REGIONS = [
+      'East Asia & Pacific', 'Europe & Central Asia', 'Latin America & Caribbean',
+      'Middle East, North Africa, Afghanistan & Pakistan', 'North America',
+      'South Asia', 'Sub-Saharan Africa',
+    ];
+    const INCOME_LEVELS = ['High income', 'Upper middle income', 'Lower middle income', 'Low income'];
+
+    /* Display-only shortening. The full strings above stay the filter values —
+     * "Middle East, North Africa, Afghanistan & Pakistan" in a table cell forces
+     * the row wide enough to push the last column off the edge. */
+    const SHORT_REGION = {
+      'Middle East, North Africa, Afghanistan & Pakistan': 'Middle East & N. Africa',
+      'Latin America & Caribbean': 'Latin America',
+      'Europe & Central Asia': 'Europe & C. Asia',
+    };
+    const shortRegion = (r) => SHORT_REGION[r] || r;
+
+    /* World Bank answers [meta, rows], sometimes with a leading UTF-8 BOM that
+     * JSON.parse rejects, and reports errors as [{message:[{value}]}] under a
+     * 200. Normalise all three here so callers only ever see rows. */
+    async function wbFetch(url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = JSON.parse((await res.text()).replace(/^\uFEFF/, ''));
+      if (body?.[0]?.message) throw new Error(body[0].message[0]?.value || 'World Bank error');
+      return body[1] || [];
+    }
+
+    const filterData = ({ region, income, size, search } = {}) =>
       COUNTRIES.filter(c => {
         if (region && c.region !== region) return false;
-        if (subregion && c.subregion !== subregion) return false;
+        if (income && c.income !== income) return false;
         if (size && sizeTier(c.population) !== size) return false;
         if (search && !matchName(c, search)) return false;
         return true;
@@ -259,17 +283,19 @@
         <div class="table-scroll">
         <table class="data-table">
           <thead>
-            <tr><th>Country</th><th>Region</th><th>Population</th><th>Area (km&sup2;)</th><th>Capital</th></tr>
+            <tr><th>Country</th><th>Region</th><th>Income group</th><th>Population</th><th>GDP per capita</th><th>Life expectancy</th></tr>
           </thead>
           <tbody>
             ${countries.map(c => {
               const isFlagged = flaggedCountries.has(c.name);
+              const cell = (k) => c[k] == null ? '<span class="detail-suffix">—</span>' : INDICATORS[k].fmt(c[k]);
               return `<tr tabindex="0" data-name="${c.name}">
-                <td><span class="name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${c.flag} ${c.name}</span></td>
-                <td>${c.region}</td>
-                <td>${c.population.toLocaleString()}</td>
-                <td>${c.area.toLocaleString()}</td>
-                <td>${c.capital}</td>
+                <td><span class="name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${c.name}</span></td>
+                <td>${shortRegion(c.region)}</td>
+                <td>${c.income}</td>
+                <td>${cell('population')}</td>
+                <td>${cell('gdpPerCapita')}</td>
+                <td>${cell('lifeExpectancy')}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -277,6 +303,49 @@
         </div>
       `;
       encodeViewToHash(); runtime?.refresh();
+    }
+
+    const REGION_COLORS = {
+      'Sub-Saharan Africa': '#fb923c',
+      'Europe & Central Asia': '#a78bfa',
+      'East Asia & Pacific': '#f59e0b',
+      'Latin America & Caribbean': '#38bdf8',
+      'Middle East, North Africa, Afghanistan & Pakistan': '#f472b6',
+      'South Asia': '#22c55e',
+      'North America': '#2dd4bf',
+    };
+
+    /* Wealth against lifespan, one bubble per country, sized by population and
+     * coloured by region — the shape Hans Rosling made famous. GDP spans four
+     * orders of magnitude, so the x axis is logarithmic; on a linear axis every
+     * country below ~$20k collapses into the left margin. */
+    function renderScatter(countries = COUNTRIES, label) {
+      const pts = countries.filter(c => c.gdpPerCapita && c.lifeExpectancy && c.population);
+      const maxPop = Math.max(...pts.map(c => c.population));
+      renderEChart({
+        grid: { left: 60, right: 56, top: 24, bottom: 56 },  /* room for the "1,000,000" tick */
+        tooltip: {
+          trigger: 'item',
+          formatter: (p) => {
+            const c = p.data.country;
+            return `<strong>${c.name}</strong><br>${c.region}<br>`
+              + `GDP/capita: ${INDICATORS.gdpPerCapita.fmt(c.gdpPerCapita)}<br>`
+              + `Life expectancy: ${INDICATORS.lifeExpectancy.fmt(c.lifeExpectancy)}<br>`
+              + `Population: ${INDICATORS.population.fmt(c.population)}`;
+          },
+        },
+        xAxis: { type: 'log', name: 'GDP per capita (US$)', nameLocation: 'middle', nameGap: 32 },
+        yAxis: { type: 'value', name: 'Life expectancy (years)', nameLocation: 'middle', nameGap: 40, min: 40 },
+        series: [{
+          type: 'scatter',
+          data: pts.map(c => ({
+            value: [c.gdpPerCapita, c.lifeExpectancy],
+            country: c,
+            symbolSize: Math.max(6, Math.sqrt(c.population / maxPop) * 60),
+            itemStyle: { color: REGION_COLORS[c.region] || '#94a3b8', opacity: 0.75 },
+          })),
+        }],
+      }, label || `Wealth vs lifespan — ${pts.length} countries, bubble size is population`);
     }
 
     function renderEChart(option, label) {
@@ -298,17 +367,18 @@
         <button class="back-btn">&#8592; Back to list</button>
         <div class="detail-card">
           <div class="detail-header">
-            <h2>${flag ? '<span class="flag-dot"></span>' : ''}${c.flag} ${c.name}</h2>
-            <p class="detail-meta">${c.region} &middot; ${c.subregion} &middot; ${c.capital}</p>
+            <h2>${flag ? '<span class="flag-dot"></span>' : ''}${c.name}</h2>
+            <p class="detail-meta">${c.region} &middot; ${c.income} &middot; ${c.capital}</p>
           </div>
           ${flag ? `<p class="flag-note">${escape(flag.note)}</p>` : ''}
           <div class="detail-grid">
-            <div class="detail-cell"><div class="detail-cell-label">Population</div><div class="detail-cell-value">${c.population.toLocaleString()}</div></div>
-            <div class="detail-cell"><div class="detail-cell-label">Area</div><div class="detail-cell-value">${c.area.toLocaleString()}<span class="detail-suffix"> km&sup2;</span></div></div>
-            <div class="detail-cell"><div class="detail-cell-label">Population Density</div><div class="detail-cell-value">${c.populationDensity.toLocaleString()}<span class="detail-suffix"> /km&sup2;</span></div></div>
-            <div class="detail-cell"><div class="detail-cell-label">Languages</div><div class="detail-cell-value detail-cell-value-text">${c.languages}</div></div>
-            <div class="detail-cell"><div class="detail-cell-label">Currencies</div><div class="detail-cell-value detail-cell-value-text">${c.currencies}</div></div>
-            <div class="detail-cell"><div class="detail-cell-label">Independent</div><div class="detail-cell-value">${c.independent ? 'Yes' : 'No'}</div></div>
+            ${METRIC_KEYS.map(k => {
+              const v = c[k], yr = c[`${k}Year`];
+              return `<div class="detail-cell">
+                <div class="detail-cell-label">${INDICATORS[k].label}</div>
+                <div class="detail-cell-value">${v == null ? '—' : INDICATORS[k].fmt(v)}${yr ? `<span class="detail-suffix"> (${yr})</span>` : ''}</div>
+              </div>`;
+            }).join('')}
           </div>
         </div>
       `;
@@ -317,19 +387,15 @@
 
     function renderComparison(c1, c2) {
       currentView = { type: 'comparison', data: [c1, c2], label: null, filters: null };
-      const metrics = [
-        { label: 'Population', key: 'population', format: v => v.toLocaleString() },
-        { label: 'Area (km\u00B2)', key: 'area', format: v => v.toLocaleString() },
-        { label: 'Population Density', key: 'populationDensity', format: v => v.toLocaleString() + ' /km\u00B2' },
-        { label: 'Languages', key: 'languages', format: v => v },
-        { label: 'Currencies', key: 'currencies', format: v => v },
-        { label: 'Independent', key: 'independent', format: v => v ? 'Yes' : 'No' },
-      ];
+      const metrics = METRIC_KEYS.map(k => ({
+        label: INDICATORS[k].label, key: k,
+        format: v => v == null ? '—' : INDICATORS[k].fmt(v),
+      }));
       display.innerHTML = `
         <button class="back-btn">&#8592; Back to list</button>
         <p class="view-label">Comparing two countries</p>
         <table class="compare-table">
-          <thead><tr><th>Metric</th><th>${c1.flag} ${c1.name}</th><th>${c2.flag} ${c2.name}</th></tr></thead>
+          <thead><tr><th>Metric</th><th>${c1.name}</th><th>${c2.name}</th></tr></thead>
           <tbody>
             ${metrics.map(m => `<tr>
               <td class="compare-metric">${m.label}</td>
@@ -411,14 +477,21 @@
 
     /* ── Chips ── */
 
+    /* Exactly one chip is selected at a time, and the selection has to be
+     * readable by assistive tech, not just styled — so aria-pressed moves with
+     * the class. One helper keeps the three handlers from drifting apart. */
+    function setPressed(btn) {
+      document.querySelectorAll('.chip').forEach(c => {
+        c.classList.remove('active');
+        c.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+    }
+
     document.querySelectorAll('.chip[data-filter]').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.chip').forEach(c => {
-          c.classList.remove('active');
-          c.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
+        setPressed(btn);
         const filter = btn.dataset.filter;
         if (filter === 'all') renderTable(COUNTRIES);
         else if (filter === 'large') renderTable(filterData({ size: 'large' }), 'large countries (50M+ population)', { size: 'large' });
@@ -426,26 +499,18 @@
       });
     });
 
+    document.querySelectorAll('.chip[data-income]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setPressed(btn);
+        const income = btn.dataset.income;
+        renderTable(filterData({ income }), `${income} countries`, { income });
+      });
+    });
+
     document.querySelectorAll('.chip[data-view]').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.chip').forEach(c => {
-          c.classList.remove('active');
-          c.setAttribute('aria-pressed', 'false');
-        });
-        btn.classList.add('active');
-        btn.setAttribute('aria-pressed', 'true');
-        if (btn.dataset.view === 'chart') {
-          const regions = {};
-          COUNTRIES.forEach(c => { regions[c.region] = (regions[c.region] || 0) + 1; });
-          const regionColors = { 'Asia': '#f59e0b', 'Africa': '#fb923c', 'Europe': '#a78bfa', 'Americas': '#38bdf8', 'Oceania': '#22c55e', 'Antarctic': '#94a3b8' };
-          const sorted = ['Asia', 'Africa', 'Europe', 'Americas', 'Oceania', 'Antarctic'].filter(r => regions[r]);
-          renderEChart({
-            tooltip: { trigger: 'axis' },
-            xAxis: { type: 'category', data: sorted },
-            yAxis: { type: 'value' },
-            series: [{ type: 'bar', data: sorted.map(r => ({ value: regions[r], itemStyle: { color: regionColors[r] } })) }]
-          }, 'Countries by region');
-        }
+        setPressed(btn);
+        if (btn.dataset.view === 'scatter') renderScatter();
       });
     });
 
@@ -455,13 +520,13 @@
       {
         name: 'filter_countries',
         title: 'Filter Countries',
-        description: 'Filter and display world countries on the page. Renders a table showing matching countries with region, population, area, and capital. The user can then click any row to see full details.',
+        description: 'Filter and display countries on the page. Renders a table of region, income group, population, GDP per capita and life expectancy. The user can then click any row for the full indicator profile.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
-            region: { type: 'string', enum: ['Americas', 'Europe', 'Asia', 'Africa', 'Oceania', 'Antarctic'], description: 'Filter by region' },
-            subregion: { type: 'string', description: 'Filter by subregion (e.g. "Western Europe", "South America")' },
+            region: { type: 'string', enum: REGIONS, description: 'Filter by region' },
+            income: { type: 'string', enum: INCOME_LEVELS, description: 'Filter by World Bank income group' },
             search: { type: 'string', description: 'Search country name (partial match)' }
           }
         },
@@ -469,30 +534,30 @@
           const filtered = filterData(input);
           const parts = [];
           if (input.region) parts.push(`in ${input.region}`);
-          if (input.subregion) parts.push(`in ${input.subregion}`);
+          if (input.income) parts.push(`${input.income}`);
           if (input.search) parts.push(`matching "${input.search}"`);
           const label = parts.length ? parts.join(', ') : 'all countries';
-          renderTable(filtered, label, { region: input.region });
+          renderTable(filtered, label, { region: input.region, income: input.income });
           return { displayed: true, count: filtered.length, summary: `Rendered ${filtered.length} countries (${label}). User can now see the table and click any row for details.` };
         }
       },
       {
         name: 'show_country_detail',
         title: 'Country Detail',
-        description: 'Display a detailed profile card for a specific country, showing population, area, density, languages, currencies, and independence status. Renders visually on the page.',
+        description: 'Display a profile card for one country with every development indicator and the year each was measured. Renders visually on the page.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: { type: 'object', properties: { name: { type: 'string', description: 'Country name (partial match supported)' } }, required: ['name'] },
         exec: async (input) => {
           const c = COUNTRIES.find(x => matchName(x, input.name));
           if (!c) return { displayed: false, summary: `No country found matching "${input.name}".` };
           renderDetail(c);
-          return { displayed: true, summary: `Showing ${c.name} (${c.region}) -- population ${c.population.toLocaleString()}, area ${c.area.toLocaleString()} km\u00B2.` };
+          return { displayed: true, summary: `Showing ${c.name} (${c.region}) -- population ${c.population.toLocaleString()}, GDP/capita ${c.gdpPerCapita == null ? 'n/a' : INDICATORS.gdpPerCapita.fmt(c.gdpPerCapita)}.` };
         }
       },
       {
         name: 'compare_countries',
         title: 'Compare Countries',
-        description: 'Display a side-by-side comparison table of two countries across key metrics: population, area, population density, languages, currencies, and independence status.',
+        description: 'Display a side-by-side comparison table of two countries across every development indicator: population, GDP per capita, life expectancy, fertility, internet use and CO₂ per capita.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
@@ -508,7 +573,11 @@
           if (!c1) return { displayed: false, summary: `No country found matching "${input.country1}".` };
           if (!c2) return { displayed: false, summary: `No country found matching "${input.country2}".` };
           renderComparison(c1, c2);
-          return { displayed: true, summary: `Comparing ${c1.name} vs ${c2.name}. Population ${c1.population.toLocaleString()} vs ${c2.population.toLocaleString()}, area ${c1.area.toLocaleString()} vs ${c2.area.toLocaleString()} km\u00B2.` };
+          const side = (c) => METRIC_KEYS
+            .filter(k => c[k] != null)
+            .map(k => `${INDICATORS[k].label} ${INDICATORS[k].fmt(c[k])}`)
+            .join(', ');
+          return { displayed: true, summary: `Comparing ${c1.name} vs ${c2.name}. ${c1.name}: ${side(c1)}. ${c2.name}: ${side(c2)}.` };
         }
       },
       {
@@ -527,30 +596,170 @@
         exec: async (input) => { renderEChart(input.option, input.label); return { displayed: true, summary: `Chart rendered: ${input.label}` }; }
       },
       {
-        name: 'summarize_data',
-        title: 'Summarize Data',
-        description: 'Compute aggregate statistics for the country dataset. Returns numerical summaries (count, total population, average density, largest, smallest) without rendering any visualization.',
+        name: 'rank_countries',
+        title: 'Rank Countries',
+        description: 'Rank countries by any development indicator and render the result as a bar chart. Use for "top 10 by GDP per capita", "lowest life expectancy in Africa", etc. Countries missing that indicator are excluded rather than treated as zero.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
-          properties: { region: { type: 'string', enum: ['Americas', 'Europe', 'Asia', 'Africa', 'Oceania', 'Antarctic'], description: 'Limit summary to a specific region' } }
+          properties: {
+            metric: { type: 'string', enum: METRIC_KEYS, description: 'Indicator to rank by' },
+            order: { type: 'string', enum: ['top', 'bottom'], description: 'Highest or lowest first (default top)' },
+            limit: { type: 'number', description: 'How many countries to show (default 10, max 40)' },
+            region: { type: 'string', enum: REGIONS, description: 'Restrict to one region' },
+            income: { type: 'string', enum: INCOME_LEVELS, description: 'Restrict to one income group' },
+          },
+          required: ['metric'],
+        },
+        exec: async (input) => {
+          const meta = INDICATORS[input.metric];
+          if (!meta) return { error: `Unknown metric "${input.metric}".` };
+          const limit = Math.min(Math.max(input.limit || 10, 1), 40);
+          const pool = filterData({ region: input.region, income: input.income })
+            .filter(c => c[input.metric] != null);
+          if (!pool.length) return { error: 'No countries have that indicator for the chosen filters.' };
+          const desc = (input.order || 'top') === 'top';
+          const rows = [...pool].sort((a, b) => desc ? b[input.metric] - a[input.metric] : a[input.metric] - b[input.metric]).slice(0, limit);
+          const scope = [input.region, input.income].filter(Boolean).join(', ') || 'all countries';
+          renderEChart({
+            grid: { left: 150, right: 40, top: 16, bottom: 40 },
+            tooltip: { trigger: 'axis', valueFormatter: v => meta.fmt(v) },
+            xAxis: { type: 'value' },
+            // reversed so the largest bar sits at the top of a horizontal chart
+            yAxis: { type: 'category', data: rows.map(c => c.name).reverse() },
+            series: [{ type: 'bar', data: rows.map(c => ({ value: c[input.metric], itemStyle: { color: REGION_COLORS[c.region] || '#38bdf8' } })).reverse() }],
+          }, `${desc ? 'Top' : 'Bottom'} ${rows.length} by ${meta.label} — ${scope}`);
+          return {
+            displayed: true, metric: meta.label, scope,
+            ranking: rows.map((c, i) => ({ rank: i + 1, country: c.name, value: c[input.metric], year: c[`${input.metric}Year`] })),
+            summary: `Charted the ${desc ? 'top' : 'bottom'} ${rows.length} of ${pool.length} countries by ${meta.label} (${scope}). ${desc ? 'Highest' : 'Lowest'}: ${rows[0].name} at ${meta.fmt(rows[0][input.metric])}.`,
+          };
+        }
+      },
+      {
+        name: 'plot_development_scatter',
+        title: 'Plot Development Scatter',
+        description: 'Render the wealth-versus-lifespan scatter: GDP per capita on a log x-axis, life expectancy on y, bubble size by population, colour by region. Optionally restrict to one region or income group.',
+        readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: {
+            region: { type: 'string', enum: REGIONS, description: 'Restrict to one region' },
+            income: { type: 'string', enum: INCOME_LEVELS, description: 'Restrict to one income group' },
+          },
+        },
+        exec: async (input) => {
+          const rows = filterData({ region: input.region, income: input.income });
+          const scope = [input.region, input.income].filter(Boolean).join(', ') || 'all countries';
+          const plotted = rows.filter(c => c.gdpPerCapita && c.lifeExpectancy && c.population);
+          if (!plotted.length) return { error: 'No countries have both GDP per capita and life expectancy for those filters.' };
+          renderScatter(rows, `Wealth vs lifespan — ${scope} (${plotted.length} countries, bubble size is population)`);
+          return {
+            displayed: true, plotted: plotted.length, scope,
+            summary: `Plotted ${plotted.length} countries (${scope}) as GDP per capita against life expectancy.`
+              + (rows.length - plotted.length
+                  ? ` ${rows.length - plotted.length} ${rows.length - plotted.length === 1 ? 'was' : 'were'} dropped for missing one of the two indicators.`
+                  : ''),
+          };
+        }
+      },
+      {
+        name: 'show_country_trend',
+        title: 'Show Country Trend',
+        description: 'Chart how one indicator changed over time for one or more countries, back to 1960. This is the only tool that fetches beyond the loaded snapshot, so use it for questions about change, trajectory, or "when did X overtake Y".',
+        readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: true,
+        schema: {
+          type: 'object',
+          properties: {
+            countries: { type: 'array', items: { type: 'string' }, description: 'Country names, e.g. ["Brazil","Portugal"]. Max 4.' },
+            metric: { type: 'string', enum: METRIC_KEYS, description: 'Indicator to chart over time' },
+            from: { type: 'number', description: 'First year (default 1960)' },
+            to: { type: 'number', description: 'Last year (default latest available)' },
+          },
+          required: ['countries', 'metric'],
+        },
+        exec: async (input) => {
+          const meta = INDICATORS[input.metric];
+          if (!meta) return { error: `Unknown metric "${input.metric}".` };
+          const picked = (input.countries || []).slice(0, 4)
+            .map(q => COUNTRIES.find(c => matchName(c, q)))
+            .filter(Boolean);
+          if (!picked.length) return { error: `No countries matched ${JSON.stringify(input.countries)}.` };
+
+          const from = input.from || 1960, to = input.to || new Date().getFullYear();
+          const series = await Promise.all(picked.map(async (c) => {
+            const rows = await wbFetch(`https://api.worldbank.org/v2/country/${c.iso3}/indicator/${meta.id}?format=json&per_page=400&date=${from}:${to}`);
+            const pts = rows.filter(r => r.value != null).map(r => [r.date, r.value]).sort((a, b) => a[0].localeCompare(b[0]));
+            return { name: c.name, points: pts };
+          }));
+          const withData = series.filter(s => s.points.length);
+          if (!withData.length) return { error: `No ${meta.label} data for those countries between ${from} and ${to}.` };
+
+          const years = [...new Set(withData.flatMap(s => s.points.map(p => p[0])))].sort();
+          renderEChart({
+            grid: { left: 70, right: 30, top: 30, bottom: 50 },
+            tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '—' : meta.fmt(v) },
+            legend: { top: 0, data: withData.map(s => s.name) },
+            xAxis: { type: 'category', data: years },
+            yAxis: { type: 'value', name: meta.label, nameLocation: 'middle', nameGap: 50 },
+            series: withData.map(s => {
+              const byYear = Object.fromEntries(s.points);
+              return { name: s.name, type: 'line', smooth: true, showSymbol: false,
+                       connectNulls: true, data: years.map(y => byYear[y] ?? null) };
+            }),
+          }, `${meta.label}, ${years[0]}–${years[years.length - 1]}`);
+
+          return {
+            displayed: true, metric: meta.label,
+            series: withData.map(s => ({
+              country: s.name, points: s.points.length,
+              first: s.points[0], last: s.points[s.points.length - 1],
+            })),
+            summary: withData.map(s => {
+              const [y0, v0] = s.points[0], [y1, v1] = s.points[s.points.length - 1];
+              return `${s.name}: ${meta.fmt(v0)} in ${y0} → ${meta.fmt(v1)} in ${y1}`;
+            }).join('; '),
+          };
+        }
+      },
+      {
+        name: 'summarize_data',
+        title: 'Summarize Data',
+        description: 'Compute aggregates over the country set: count, total population, and population-weighted GDP per capita and life expectancy, plus largest and smallest. Returns numbers only, renders nothing.',
+        readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
+        schema: {
+          type: 'object',
+          properties: { region: { type: 'string', enum: REGIONS, description: 'Limit summary to a specific region' } }
         },
         exec: async (input) => {
           const data = input.region ? filterData({ region: input.region }) : COUNTRIES;
           if (data.length === 0) return { summary: `No countries found for region "${input.region}".` };
           const totalPop = data.reduce((s, c) => s + c.population, 0);
-          const totalArea = data.reduce((s, c) => s + c.area, 0);
-          const avgDensity = Math.round(data.reduce((s, c) => s + c.populationDensity, 0) / data.length);
+          // Averaging a per-capita indicator across countries un-weighted would
+          // let Tuvalu count as much as India, so weight each by population.
+          const weighted = (key) => {
+            const rows = data.filter(c => c[key] != null);
+            if (!rows.length) return null;
+            const pop = rows.reduce((s, c) => s + c.population, 0);
+            return rows.reduce((s, c) => s + c[key] * c.population, 0) / pop;
+          };
+          const gdp = weighted('gdpPerCapita');
+          const life = weighted('lifeExpectancy');
           const byPop = [...data].sort((a, b) => b.population - a.population);
           const largest = byPop[0];
           const smallest = byPop[byPop.length - 1];
           const scope = input.region || 'all regions';
           return {
             scope, count: data.length,
-            totalPopulation: totalPop, totalArea, avgDensity,
+            totalPopulation: totalPop,
+            populationWeightedGdpPerCapita: gdp,
+            populationWeightedLifeExpectancy: life,
             largest: { name: largest.name, population: largest.population },
             smallest: { name: smallest.name, population: smallest.population },
-            summary: `${data.length} countries (${scope}): total population ${totalPop.toLocaleString()}, avg density ${avgDensity}/km\u00B2. Largest: ${largest.name} (${largest.population.toLocaleString()}), smallest: ${smallest.name} (${smallest.population.toLocaleString()}).`
+            summary: `${data.length} countries (${scope}): total population ${totalPop.toLocaleString()}`
+              + (gdp ? `, population-weighted GDP/capita ${INDICATORS.gdpPerCapita.fmt(gdp)}` : '')
+              + (life ? `, life expectancy ${INDICATORS.lifeExpectancy.fmt(life)}` : '')
+              + `. Largest: ${largest.name} (${largest.population.toLocaleString()}), smallest: ${smallest.name} (${smallest.population.toLocaleString()}).`
           };
         }
       },
@@ -610,7 +819,7 @@
           const headers = ['Name', 'Region', 'Population', 'Area', 'Density', 'Flag Note', 'Flagged At'];
           const rows = [...flaggedCountries.entries()].map(([name, flag]) => {
             const c = COUNTRIES.find(x => x.name === name);
-            return [name, c.region, c.population, c.area, c.populationDensity, flag.note, new Date(flag.timestamp).toISOString()];
+            return [name, c.region, c.income, c.population, c.gdpPerCapita ?? '', c.lifeExpectancy ?? '', flag.note, new Date(flag.timestamp).toISOString()];
           });
           const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
           const blob = new Blob([csv], { type: 'text/csv' });
@@ -653,7 +862,7 @@ Rules:
         case 'detail':
           if (currentView.data) {
             const c = currentView.data;
-            lines.push(`- Viewing: detail card for ${c.name} (${c.region}, population: ${c.population.toLocaleString()}, area: ${c.area.toLocaleString()} km\u00B2)`);
+            lines.push(`- Viewing: detail card for ${c.name} (${c.region}, population: ${c.population.toLocaleString()}, income group: ${c.income})`);
           }
           break;
         case 'chart': lines.push('- Viewing: region distribution chart'); break;
@@ -763,19 +972,20 @@ Rules:
     }
 
     const SCENARIO_PROMPTS = {
-      'Run global analysis': `Analyze global country data \u2014 chain all steps without pausing:
-1. Call summarize_data for global statistics and regional breakdown
-2. Render a bar chart of the top 10 most populous countries using render_chart
-3. Compare the two largest countries by area using compare_countries
-4. Write 2-3 sentences: the most striking population vs area imbalances and what they reveal about global distribution`
+      'Run global development analysis': `Analyse world development data \u2014 chain all steps without pausing:
+1. Call summarize_data for global totals and the population-weighted averages
+2. Call plot_development_scatter to show wealth against lifespan across all countries
+3. Call rank_countries for the bottom 10 by life expectancy
+4. Call show_country_trend for life expectancy in the two lowest-ranked countries since 1960
+5. Write 2-3 sentences on where the gap is closing and where it is not\u2014 cite the numbers you saw`
     };
 
     const QUICK_ACTIONS = [
-      'Run global analysis',
-      'Show European countries',
-      'Compare USA and China',
-      'Population by region as a pie chart',
-      'Plot population vs area as scatter'
+      'Run global development analysis',
+      'Wealth vs lifespan, all countries',
+      'Top 10 by GDP per capita',
+      'Life expectancy in Brazil vs Portugal since 1960',
+      'Which income group has the fastest internet adoption?'
     ];
 
     /* ── Mount ── */
@@ -797,25 +1007,53 @@ Rules:
     async function init() {
       renderSkeleton();
       try {
-        const res = await fetch('https://restcountries.com/v3.1/all?fields=name,population,area,region,subregion,capital,languages,currencies,flag,independent');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const raw = await res.json();
-        COUNTRIES = raw.map(country => ({
-          name: country.name.common,
-          official: country.name.official,
-          region: country.region,
-          subregion: country.subregion || 'N/A',
-          population: country.population,
-          area: country.area || 0,
-          capital: (country.capital || [])[0] || 'N/A',
-          languages: Object.values(country.languages || {}).join(', ') || 'N/A',
-          currencies: Object.values(country.currencies || {}).map(c => c.name).join(', ') || 'N/A',
-          flag: country.flag || '',
-          independent: country.independent,
-          populationDensity: country.area ? Math.round(country.population / country.area) : 0
-        })).sort((a, b) => b.population - a.population);
+        // Three parallel calls. The five WDI indicators batch into one request
+        // (source=2); CO2 sits in a different source and cannot join that batch.
+        // mrnev=1 asks for each country's most recent non-empty value, so a
+        // country reporting late still contributes rather than showing blank.
+        const WDI = ['SP.POP.TOTL', 'NY.GDP.PCAP.CD', 'SP.DYN.LE00.IN', 'SP.DYN.TFRT.IN', 'IT.NET.USER.ZS'];
+        const [meta, wdi, co2] = await Promise.all([
+          wbFetch('https://api.worldbank.org/v2/country?format=json&per_page=400'),
+          wbFetch(`https://api.worldbank.org/v2/country/all/indicator/${WDI.join(';')}?format=json&source=2&per_page=20000&mrnev=1`),
+          wbFetch(`https://api.worldbank.org/v2/country/all/indicator/${CO2_INDICATOR}?format=json&per_page=400&mrnev=1`)
+            .catch(() => []),   // emissions are a bonus axis, not load-bearing
+        ]);
+
+        // region.id === 'NA' marks an aggregate ("Sub-Saharan Africa", "World"),
+        // not a country. Mixing them in silently double-counts every total.
+        const byIso = new Map();
+        for (const c of meta) {
+          if (c.region?.id === 'NA') continue;
+          byIso.set(c.id, {
+            name: c.name,
+            iso3: c.id,
+            region: (c.region?.value || '').trim(),
+            income: (c.incomeLevel?.value || 'Not classified').trim(),
+            capital: c.capitalCity || 'N/A',
+            lat: parseFloat(c.latitude) || null,
+            lon: parseFloat(c.longitude) || null,
+          });
+        }
+
+        const FIELD = {
+          'SP.POP.TOTL': 'population', 'NY.GDP.PCAP.CD': 'gdpPerCapita',
+          'SP.DYN.LE00.IN': 'lifeExpectancy', 'SP.DYN.TFRT.IN': 'fertility',
+          'IT.NET.USER.ZS': 'internet', [CO2_INDICATOR]: 'co2PerCapita',
+        };
+        for (const row of [...wdi, ...co2]) {
+          const country = byIso.get(row.countryiso3code);
+          const field = FIELD[row.indicator?.id];
+          if (!country || !field || row.value == null) continue;
+          country[field] = row.value;
+          country[`${field}Year`] = row.date;
+        }
+
+        COUNTRIES = [...byIso.values()]
+          .filter(c => c.population)          // no population = no usable row
+          .sort((a, b) => b.population - a.population);
+        if (!COUNTRIES.length) throw new Error('no country rows returned');
       } catch (err) {
-        display.innerHTML = `<p class="msg-error">Failed to load country data: ${err.message}</p>`;
+        display.innerHTML = `<p class="msg-error">Failed to load World Bank data: ${err.message}</p>`;
         return;
       }
       loadFlags();
