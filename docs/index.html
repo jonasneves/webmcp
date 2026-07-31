@@ -236,7 +236,7 @@
   </div>
   <script>
     (function () {
-      const stored = localStorage.getItem('webmcp-theme') || 'light';
+      const stored = localStorage.getItem('webmcp-theme') || 'system';
       const resolved = stored === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : stored;
@@ -257,7 +257,7 @@
     }
 
     themeToggleBtn.addEventListener('click', () => {
-      const cur = localStorage.getItem('webmcp-theme') || 'light';
+      const cur = localStorage.getItem('webmcp-theme') || 'system';
       applyTheme(cur === 'dark' ? 'light' : cur === 'light' ? 'system' : 'dark');
     });
 
@@ -265,7 +265,7 @@
       if (localStorage.getItem('webmcp-theme') === 'system') applyTheme('system');
     });
 
-    applyTheme(localStorage.getItem('webmcp-theme') || 'light');
+    applyTheme(localStorage.getItem('webmcp-theme') || 'system');
   </script>
 </body>
 </html>

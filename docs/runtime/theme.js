@@ -24,7 +24,7 @@ export function applyTheme(pref) {
 // Pre-paint hook: called from inline <script> in <head> to avoid theme flash.
 // Returns the resolved theme name; caller sets data-theme.
 export function readInitialTheme() {
-  const stored = localStorage.getItem(STORAGE_KEY) || 'light';
+  const stored = localStorage.getItem(STORAGE_KEY) || 'system';
   return resolveTheme(stored);
 }
 
@@ -35,5 +35,5 @@ export function initTheme() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (localStorage.getItem(STORAGE_KEY) === 'system') applyTheme('system');
   });
-  applyTheme(localStorage.getItem(STORAGE_KEY) || 'light');
+  applyTheme(localStorage.getItem(STORAGE_KEY) || 'system');
 }

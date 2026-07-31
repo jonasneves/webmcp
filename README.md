@@ -56,9 +56,11 @@ Each demo's `index.html` is data plus tool definitions. The runtime and both sty
 npx serve docs
 ```
 
-The model runs on your machine. Install the daemon and its bridge extension —
-[jonasneves.com/termd](https://jonasneves.com/termd/) — then reload; the demos
-detect it and the model picker offers whatever it can run.
+The model runs on your machine. These demos drive it through **termd** — a
+daemon that runs a coding agent locally and lends it out over HTTP, so the agent
+uses your own machine and your own subscription. Install it and its bridge
+extension — [jonasneves.com/termd](https://jonasneves.com/termd/) — then reload;
+the demos detect it and the model picker offers whatever it can run.
 
 There is no API key anywhere in this repo. No key is typed into a page, none is
 stored, and no page holds a credential — the daemon owns whatever auth the model

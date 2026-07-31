@@ -135,7 +135,7 @@
 
   <script>
     (function () {
-      const stored = localStorage.getItem('webmcp-theme') || 'light';
+      const stored = localStorage.getItem('webmcp-theme') || 'system';
       const resolved = stored === 'system'
         ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
         : stored;
