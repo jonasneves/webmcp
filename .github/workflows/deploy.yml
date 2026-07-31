@@ -1,0 +1,77 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # Gate the deploy. These pages are unbundled and served as-is, so nothing else
+  # parses them before a browser does — a syntax error or a moved dependency
+  # reaches production as a page that renders and does nothing.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Parse every script
+        run: |
+          find docs -name '*.js' | sort | while IFS= read -r f; do
+            node --check "$f" || exit 1
+            echo "ok    $f"
+          done
+
+      # A static `import ... from "https://…"` in a type="module" script couples
+      # every feature in that file to a remote host: ES modules resolve the whole
+      # import graph before executing any of it, so one 404 means nothing runs.
+      # auth.neevs.io went NXDOMAIN exactly that way. Dynamic `await import(URL)`
+      # is a call expression and is deliberately not matched.
+      - name: No static remote imports
+        run: |
+          if grep -rnE "^[[:space:]]*import[[:space:]][^;]*from[[:space:]]*['\"]https?://" docs/; then
+            echo "Load remote modules lazily at the call site instead."
+            exit 1
+          fi
+          echo "ok    no static remote imports"
+
+      # The lazily-loaded and CDN URLs that remain must still resolve. They fail
+      # silently by design, so a dead host can sit here for months looking healthy.
+      - name: Remote dependencies resolve
+        run: |
+          grep -rhoE "https://[^\"')[:space:]]+\.(js|css)" docs/ | sort -u > /tmp/deps.txt
+          fail=0
+          while IFS= read -r u; do
+            [ -n "$u" ] || continue
+            code=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 20 "$u") || code=000
+            printf '%s  %s\n' "$code" "$u"
+            [ "$code" = 200 ] || fail=1
+          done < /tmp/deps.txt
+          exit $fail
+
+  deploy:
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deploy
+        uses: actions/deploy-pages@v4
