@@ -51,7 +51,7 @@ jobs:
       # silently by design, so a dead host can sit here for months looking healthy.
       - name: Remote dependencies resolve
         run: |
-          grep -rhoE "https://[^\"')[:space:]]+\.(js|css)" docs/ | sort -u > /tmp/deps.txt
+          grep -rhoE "https://[^\"')[:space:]]+\.(js|css)([^a-zA-Z0-9]|$)" docs/ | sed 's/[^a-zA-Z0-9]$//' | sort -u > /tmp/deps.txt
           fail=0
           while IFS= read -r u; do
             [ -n "$u" ] || continue

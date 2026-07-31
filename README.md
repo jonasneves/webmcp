@@ -46,7 +46,7 @@ mount({ tools: TOOL_DEFS, getSystemPrompt, quickActions });
 |---|---|---|
 | [World Development](https://jonasneves.com/webmcp/countries/) | [World Bank](https://data.worldbank.org) · 217 countries | Ranking, log-scale scatter, and time series fetched **beyond** the loaded snapshot — back to 1960 |
 | [Earthquake Monitor](https://jonasneves.com/webmcp/earthquakes/) | [USGS live feed](https://earthquake.usgs.gov) | 30 days of global seismic activity against data that changes under you |
-| [Hospital Risk Explorer](https://jonasneves.com/webmcp/hospital-risk-explorer/) | Local JSON (sample data) | Flagging, CSV export, and `destructiveHint` confirmation gating |
+| [US Hospital Capacity](https://jonasneves.com/webmcp/hospital-risk-explorer/) | [HealthData.gov](https://healthdata.gov) · 1,265 facilities | Suppressed values and partial reporting handled in the open; flagging, CSV export, `destructiveHint` gating |
 
 Each demo's `index.html` is data plus tool definitions. The runtime and both stylesheets are shared.
 
@@ -84,7 +84,7 @@ docs/
 
 ## Constraints worth knowing
 
-Demos may only use APIs that send `access-control-allow-origin` — there is no backend to proxy through. That rules out otherwise-obvious sources: OpenSky echoes its own origin, and REST Countries now redirects to a CDN with no CORS headers, which is why the countries demo moved to the World Bank.
+Every demo reads live public data — nothing here is invented. Demos may only use APIs that send `access-control-allow-origin` — there is no backend to proxy through. That rules out otherwise-obvious sources: OpenSky echoes its own origin, and REST Countries now redirects to a CDN with no CORS headers, which is why the countries demo moved to the World Bank.
 
 The termd provider is the inverse of the others: instead of the browser running
 the agent loop and calling out to a model, termd
