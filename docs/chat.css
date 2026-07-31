@@ -3,20 +3,21 @@
 [hidden] { display: none !important; }
 
 /* ── App shell (overrides each demo's body flex) ──────────────────
- * Page does not scroll. Chat owns the left column; the working area
- * (tools panel, controls, display) owns the right. Both columns
- * scroll independently. `display: contents` flattens .main-column
- * so its children (header, tools-panel, main) participate directly
- * in the body grid without any HTML change. */
+ * Page does not scroll. The working area (tools panel, controls,
+ * display) owns the left column and reads first; chat is the side
+ * channel on the right. Both columns scroll independently.
+ * `display: contents` flattens .main-column so its children (header,
+ * tools-panel, main) participate directly in the body grid without
+ * any HTML change. */
 
 body {
   display: grid !important;
-  grid-template-columns: minmax(360px, 420px) 1fr;
+  grid-template-columns: 1fr minmax(360px, 420px);
   grid-template-rows: auto auto 1fr;
   grid-template-areas:
     "header header"
     "tools  tools"
-    "chat   work";
+    "work   chat";
   column-gap: 0;
 }
 
@@ -42,14 +43,14 @@ main          { grid-area: work; min-width: 0; }
 }
 
 /* ── Chat panel (the conversation surface) ────────────────────────
- * Sits in its own warmer card on the left. Three rows: head (fixed),
+ * Sits in its own warmer card on the right. Three rows: head (fixed),
  * body (scrolls), input (fixed). Lifted directly from the sungate
  * "chat-shell" pattern so the demos feel like a conversation rather
  * than a sidebar grafted onto a dashboard. */
 
 .chat-panel {
   margin: var(--space-md);
-  margin-right: 0;
+  margin-left: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -177,8 +178,11 @@ main          { grid-area: work; min-width: 0; }
 
 /* Quick actions are the empty-state CTA stack — give them breathing room
  * when nothing else has been said. */
+/* Bottom-anchored, not centred: `margin: auto 0` floated the stack in
+ * the middle of an empty panel with dead space above and below. These
+ * are prompts to act on, so they belong next to the input. */
 .chat-messages > .chat-quick-actions:only-child {
-  margin: auto 0;
+  margin-top: auto;
   align-self: stretch;
   flex-direction: column;
   gap: var(--space-xs);
