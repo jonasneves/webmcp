@@ -498,8 +498,11 @@
               { value: tiers.high, itemStyle: { color: '#ef4444' } }
             ] }]
           }, 'Risk distribution across all hospitals');
-        } else if (view === 'trends') TOOL_DEFS.find(t => t.name === 'show_county_trends').exec();
-        else if (view === 'statewide') TOOL_DEFS.find(t => t.name === 'show_statewide_summary').exec();
+        } else if (view === 'trends' || view === 'statewide') {
+          // Views removed with the invented metrics they aggregated. An old
+          // bookmark lands on the table rather than calling a tool that is gone.
+          renderTable(HOSPITALS);
+        }
       });
     });
 
@@ -509,13 +512,13 @@
       {
         name: 'filter_hospitals',
         title: 'Filter Hospitals',
-        description: 'Filter and display California hospitals on the page. Renders a table showing matching hospitals with risk tier, Medi-Cal share, equity burden score, and operating margin. The user can then click any row to see full details.',
+        description: 'Filter and display hospitals on the page. Renders a table of city, state, inpatient beds, beds occupied and occupancy for the reporting week. The user can then click any row for the full record.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
           properties: {
-            county: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Filter by county' },
-            risk: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Filter by ML-predicted risk tier' },
+            state: { type: 'string', description: 'Two-letter state code, e.g. CA' },
+            occupancy: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Occupancy band: high is 85%+, medium 60-85%, low below 60%' },
             search: { type: 'string', description: 'Search hospital name (partial match)' }
           }
         },
@@ -608,7 +611,7 @@
       {
         name: 'compare_hospitals',
         title: 'Compare Hospitals',
-        description: 'Display a side-by-side comparison table of two hospitals across key metrics: risk probability, equity burden, operating margin, Medi-Cal share, occupancy rate, and licensed beds. Better values are highlighted in green.',
+        description: 'Display a side-by-side comparison of two hospitals: inpatient beds, beds occupied, occupancy, and the same three for ICU.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
@@ -634,7 +637,7 @@
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
-          properties: { state: { type: 'string', enum: ['Los Angeles', 'San Francisco', 'Sacramento', 'San Diego'], description: 'Limit summary to a specific county' } }
+          properties: { state: { type: 'string', description: 'Two-letter state code, e.g. CA. Omit for the national picture.' } }
         },
         exec: async (input) => {
           const data = input.state ? filterData({ state: input.state }) : HOSPITALS;
@@ -693,15 +696,14 @@
 Rules:
 - Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
 - For analysis or "how is X doing" requests: call summarize_data first for raw numbers, then filter or chart as needed.
-- For "what's notable / what stands out" questions: summarize_data → filter high-risk → render a chart showing the pattern.
-- Infer intent from context. Viewing a detail card + "flag it" → flag that hospital. Viewing a filtered table + "compare the top two" → compare the two highest-risk hospitals visible.
+- For "what's notable / what stands out" questions: summarize_data → filter to the high occupancy band → render a chart showing the pattern.
+- Infer intent from context. Viewing a detail card + "flag it" → flag that hospital. Viewing a filtered table + "compare the top two" → compare the two most-occupied hospitals visible.
 - Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain — add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
 - No markdown formatting — plain text only. No greetings, filler, or preamble.
-- Flag suspicious hospitals proactively. Use flag_hospital for high-risk, negative-margin, or otherwise concerning cases — don't wait to be asked.
+- Flag notable hospitals proactively — those at or above capacity, or reporting inconsistently — don't wait to be asked.
 - All tools run immediately — do not ask permission before calling them. Only flag_hospital may request a user note via interaction.
 - Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
 - Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
-- Use show_county_trends for a county-level comparison table. Use show_statewide_summary for statewide overview cards.
 - Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available.`;
 
     function getSystemPrompt() {
@@ -850,23 +852,22 @@ Rules:
 
     const SCENARIO_PROMPTS = {
       'What stands out in the data?': `Find the most notable patterns — chain without pausing:
-1. Call summarize_data for a full statistical overview
-2. Filter to high-risk hospitals to surface the worst cases
-3. Render a scatter chart of risk probability vs operating margin using render_chart
-4. Write 2-3 sentences: the top pattern, the biggest outlier, and what to watch`,
-      'Show county-level patterns': `Analyze California hospital risk by county — chain without pausing:
-1. Call summarize_data to get the full picture
-2. Call show_county_trends to display aggregate county metrics
-3. Render a bar chart of county-level risk concentration using render_chart
-4. Write 1-2 sentences: which county has the highest concentration of at-risk hospitals and why it matters`
+1. Call summarize_data for the national picture
+2. Filter to the high occupancy band to surface the fullest hospitals
+3. Render a chart of the occupancy distribution using render_chart
+4. Write 2-3 sentences: the top pattern, the biggest outlier, and one caveat about the data`,
+      'Compare California and Texas': `Compare two states — chain without pausing:
+1. Call summarize_data with state CA, then again with state TX
+2. Render a chart contrasting their bed counts and overall occupancy
+3. Write 2-3 sentences on how they differ and what that does not tell us`,
     };
 
     const QUICK_ACTIONS = [
-      'Run triage analysis',
       'What stands out in the data?',
-      'Show county-level patterns',
-      'Plot risk vs operating margin',
-      'Payer mix breakdown as a pie chart'
+      'Compare California and Texas',
+      'Which hospitals are at or over capacity?',
+      'Show ICU occupancy against total beds',
+      'Summarise hospital capacity in California',
     ];
 
     /* ── Mount runtime ── */
