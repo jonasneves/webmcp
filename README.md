@@ -1,64 +1,85 @@
 # WebMCP
 
-A browser-side AI agent runtime built on [WebMCP](https://webmachinelearning.github.io/webmcp/) — the proposed `navigator.modelContext` API that lets a web page expose its UI as typed tools an AI model can discover and call. The spec covers tool *registration*; this repo is the *runtime* the spec leaves out: the agentic loop, a reactive tool surface, and an annotation-driven trust policy — all client-side, no backend.
+The [WebMCP spec](https://webmachinelearning.github.io/webmcp/) proposes `navigator.modelContext` — a browser API letting a page expose its own UI as typed tools a model can call. The spec covers **registration**. This repo is the **runtime** it leaves out: the agent loop, a tool surface that changes with app state, and a trust policy driven by tool annotations. Client-side, no backend, no build step.
 
-[Live demos →](https://neevs.io/webmcp/)
+**[Live demos →](https://jonasneves.com/webmcp/)**
+
+## A page declares a tool
+
+```js
+{
+  name: 'plot_development_scatter',
+  description: 'GDP per capita against life expectancy, log x, bubbles by population.',
+  readOnlyHint: true, idempotentHint: true, destructiveHint: false,
+  schema: {
+    type: 'object',
+    properties: {
+      region: { type: 'string', enum: REGIONS },        // ← live values, not a guess
+      income: { type: 'string', enum: INCOME_LEVELS },
+    },
+  },
+  exec: async ({ region, income }) => {
+    renderScatter(filterData({ region, income }));       // ← mutates the page you're looking at
+    return { displayed: true, plotted: 214 };            // ← and answers the model
+  },
+}
+```
+
+Hand a list of those to `mount()` and the page is agent-operable:
+
+```js
+import { mount } from '../runtime/index.js';
+mount({ tools: TOOL_DEFS, getSystemPrompt, quickActions });
+```
+
+## Three ideas in the runtime
+
+**1. The loop runs in the browser** — SSE stream → parse `tool_use` → execute against local handlers → inject `tool_result` → continue, until the model stops calling tools. No server in the path. (`runtime/loop.js`)
+
+**2. The tool surface is a function of state** — tools appear and vanish as the app changes, and schema enums are rewritten from live data. A model cannot select a region that isn't in the dataset, because the enum *is* the dataset. (`runtime/tools.js`, plus each demo's `adjustTool` / `getDynamicTools`)
+
+**3. Annotations are execution policy, not metadata** — `readOnlyHint` runs immediately; `destructiveHint` stops for human confirmation. The annotation is the gate between model capability and human authority.
 
 ## Demos
 
-| Demo | Data source | What it shows |
-|------|-------------|---------------|
-| [Hospital Risk Explorer](https://neevs.io/webmcp/hospital-risk-explorer/) | Local JSON | 15 California hospitals — filter, compare, flag, analyze financial/risk metrics |
-| [World Countries](https://neevs.io/webmcp/countries/) | [REST Countries API](https://restcountries.com) | Every country — filter by region, compare metrics, explore profiles |
-| [Earthquake Monitor](https://neevs.io/webmcp/earthquakes/) | [USGS live feed](https://earthquake.usgs.gov) | 30 days of global seismic activity — magnitude, depth, significance, tsunami flags |
+| Demo | Data | What it exercises |
+|---|---|---|
+| [World Development](https://jonasneves.com/webmcp/countries/) | [World Bank](https://data.worldbank.org) · 217 countries | Ranking, log-scale scatter, and time series fetched **beyond** the loaded snapshot — back to 1960 |
+| [Earthquake Monitor](https://jonasneves.com/webmcp/earthquakes/) | [USGS live feed](https://earthquake.usgs.gov) | 30 days of global seismic activity against data that changes under you |
+| [Hospital Risk Explorer](https://jonasneves.com/webmcp/hospital-risk-explorer/) | Local JSON (sample data) | Flagging, CSV export, and `destructiveHint` confirmation gating |
 
-All three import the same runtime; the per-demo `index.html` is just data + tool definitions.
+Each demo's `index.html` is data plus tool definitions. The runtime and both stylesheets are shared.
 
-## The runtime
-
-`docs/runtime/` is the actual product — a shared ES module the demos `mount()`. The spec's `navigator.modelContext` (registration only) is filled by a tiny polyfill (`tools.js`) until browsers ship it natively. On top of registration:
-
-**1. Agentic tool loop** — SSE stream → parse `tool_use` blocks → execute against local handlers → inject `tool_result` → continue. A full agent loop in the browser (`loop.js`).
-
-**2. Reactive tool surface** — The tool set is a function of app state, not a static declaration. Tools materialize and vanish as state changes; schema enums rewrite from live UI data, so the model can't reference an option that isn't on screen (`tools.js`, demo `getDynamicTools`/`adjustTool` hooks).
-
-**3. Annotation-driven trust policy** — `readOnlyHint` / `destructiveHint` / `idempotentHint` are runtime execution policy, not metadata. Read-only tools run immediately; destructive tools pause for human confirmation.
-
-Also demonstrated: non-rendering tools (data for reasoning, no UI change), multi-step orchestration (one prompt → 4+ chained calls), bidirectional context (UI interactions inject into the conversation), streaming with abort, and tool-generated artifacts (CSV export).
-
-## Run locally
+## Run it
 
 ```bash
 npx serve docs
 ```
 
-Open the printed URL, pick a demo, choose a provider in settings.
-
-| Provider | Models | Auth |
-|----------|--------|------|
-| Anthropic | Claude Haiku 4.5, Claude Sonnet 4.6 | API key (direct browser fetch) |
-| GitHub Models | GPT-4.1, GPT-4.1 mini, GPT-5, GPT-5 mini | GitHub OAuth (free) |
-| Local proxy | Claude via OAuth | [ai-bridge](https://github.com/jonasneves/ai-bridge) — localhost `:7337`, or Chrome extension on hosted pages |
-
-## Dependencies
-
-No framework, no build step. Demos load `marked`, `dompurify`, and `echarts` from CDN; the runtime itself is dependency-free vanilla JS.
+| Provider | Auth |
+|---|---|
+| Anthropic | API key, direct browser fetch |
+| GitHub Models | GitHub OAuth (free) |
+| Local proxy | An OpenAI/Anthropic-shaped endpoint on `:7337` — use your own |
 
 ## Layout
 
 ```
 docs/
-  index.html                 # Landing page → the three demos
-  runtime/                   # The runtime (shared by every demo)
-    index.js                 #   mount() entry + re-exports
-    loop.js                  #   agentic tool loop (SSE, tool_use/tool_result)
-    tools.js                 #   modelContext polyfill + tool registry/panel
-    providers.js             #   Anthropic / GitHub Models / ai-bridge adapters
-    auth.js  chat.js  ui.js  theme.js
-  hospital-risk-explorer/    # demo: data (hospitals.json) + tool defs
-  countries/                 # demo: fetches restcountries.com at load
-  earthquakes/               # demo: fetches USGS live feed at load
-  chat.css                   # shared chat-panel styles
+  index.html          landing page
+  app.css             page shell — tokens, header, controls, data table
+  chat.css            chat surface + the two-column grid
+  runtime/            ← the product; every demo mounts this
+    index.js            mount() entry
+    loop.js             agent loop (SSE, tool_use → tool_result)
+    tools.js            modelContext polyfill + registry + tool panel
+    providers.js        Anthropic · GitHub Models · ai-bridge adapters
+    auth.js chat.js ui.js theme.js
+  countries/ earthquakes/ hospital-risk-explorer/
 ```
 
-`VISION.md` — what this builds toward (target API, OSS strategy). `ROADMAP.md` — phased extraction plan.
+## Constraints worth knowing
+
+Demos may only use APIs that send `access-control-allow-origin` — there is no backend to proxy through. That rules out otherwise-obvious sources: OpenSky echoes its own origin, and REST Countries now redirects to a CDN with no CORS headers, which is why the countries demo moved to the World Bank.
+
+Nothing here is load-bearing on a remote module. `marked`, `dompurify` and `echarts` come from a CDN; the runtime itself is dependency-free. Deploys are gated on every one of those URLs still resolving, because a moved dependency is otherwise invisible until a user opens the page.
