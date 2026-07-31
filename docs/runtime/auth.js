@@ -1,11 +1,19 @@
 // Provider/auth UI: model picker, API key form, GitHub OAuth connect button,
 // local-Claude availability detection.
 
-// Direct subdomain — the apex (neevs.io) redirects through neves.cloud and
-// the intermediate hops strip the Access-Control-Allow-Origin header, so
-// any page that imports from /auth/ fails CORS preflight. Pin the final URL.
-import { connectGitHub } from 'https://auth.neevs.io/connect.js';
 import { checkLocalClaudeReachable } from './providers.js';
+
+// Pin the direct subdomain: the apex redirects and the intermediate hops strip
+// Access-Control-Allow-Origin, so importing via a redirect fails CORS preflight.
+// auth.neevs.io went NXDOMAIN when the host moved to neves.cloud; lib.js is the
+// canonical module (connect.js is a back-compat shim).
+//
+// Loaded on demand, never as a top-level import. A static `import` from a remote
+// URL couples this whole module to that host: the ES module graph resolves before
+// any of it executes, so one dead URL means the page paints and registers nothing.
+// That is exactly what NXDOMAIN did here — this demo shipped with zero tools
+// registered while every build stayed green.
+const AUTH_MODULE_URL = 'https://auth.neves.cloud/lib.js';
 
 const STORAGE = {
   apiKey: 'webmcp-api-key',
@@ -128,6 +136,12 @@ function updateGitHubAuthBar() {
       connect.textContent = 'Connecting\u2026';
       connect.disabled = true;
       try {
+        let connectGitHub;
+        try {
+          ({ connectGitHub } = await import(AUTH_MODULE_URL));
+        } catch {
+          throw new Error(`GitHub sign-in unavailable (${AUTH_MODULE_URL} unreachable).`);
+        }
         state.githubAuth = await connectGitHub('read:user', state.ghOAuthScope);
         localStorage.setItem(STORAGE.ghAuth, JSON.stringify(state.githubAuth));
         updateGitHubAuthBar();
