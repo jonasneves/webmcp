@@ -160,6 +160,7 @@
     const matchName = (c, q) => c.name.toLowerCase().includes(q.toLowerCase());
 
     const CO2_INDICATOR = 'EN.GHG.CO2.PC.CE.AR5';
+    const MEASLES_INDICATOR = 'SH.IMM.MEAS';
 
     /* Every metric the page can table, chart, rank or plot over time. Adding a
      * row here is enough to make it reachable from all of them, and from the
@@ -170,6 +171,7 @@
       lifeExpectancy: { id: 'SP.DYN.LE00.IN', label: 'Life expectancy (years)',  fmt: v => v.toFixed(1) },
       fertility:      { id: 'SP.DYN.TFRT.IN', label: 'Fertility (births/woman)', fmt: v => v.toFixed(2) },
       internet:       { id: 'IT.NET.USER.ZS', label: 'Internet users (%)',       fmt: v => v.toFixed(1) + '%' },
+      measlesImmunization: { id: MEASLES_INDICATOR, label: 'Measles immunization (%)', fmt: v => v.toFixed(1) + '%' },
       co2PerCapita:   { id: CO2_INDICATOR,    label: 'CO₂ per capita (tonnes)',  fmt: v => v.toFixed(2) },
     };
     const METRIC_KEYS = Object.keys(INDICATORS);
@@ -546,7 +548,7 @@
       {
         name: 'compare_countries',
         title: 'Compare Countries',
-        description: 'Display a side-by-side comparison table of two countries across every development indicator: population, GDP per capita, life expectancy, fertility, internet use and CO₂ per capita.',
+        description: 'Display a side-by-side comparison table of two countries across every development indicator: population, GDP per capita, life expectancy, fertility, internet use, measles immunization and CO₂ per capita.',
         readOnlyHint: true, idempotentHint: true, destructiveHint: false, openWorldHint: false,
         schema: {
           type: 'object',
@@ -1001,16 +1003,25 @@ Rules:
     async function init() {
       renderSkeleton();
       try {
-        // Three parallel calls. The five WDI indicators batch into one request
-        // (source=2); CO2 sits in a different source and cannot join that batch.
-        // mrnev=1 asks for each country's most recent non-empty value, so a
-        // country reporting late still contributes rather than showing blank.
+        // Four parallel calls. The five WDI indicators batch into one request
+        // (source=2) using mrnev=1 — each country's most recent non-empty
+        // value, so a country reporting late still contributes rather than
+        // showing blank. CO2 sits in a different source and cannot join that
+        // batch. Measles immunization is source=2 like the WDI batch but
+        // mrnev=1 times out on it (verified: 50s+ before erroring, vs a few
+        // seconds for the same indicator with an explicit date range) — its
+        // coverage is sparser and survey-based, so "most recent non-empty"
+        // apparently forces a full history scan on their end. Fetched
+        // separately with a date range instead; the merge loop below picks
+        // the latest year itself.
         const WDI = ['SP.POP.TOTL', 'NY.GDP.PCAP.CD', 'SP.DYN.LE00.IN', 'SP.DYN.TFRT.IN', 'IT.NET.USER.ZS'];
-        const [meta, wdi, co2] = await Promise.all([
+        const [meta, wdi, co2, measles] = await Promise.all([
           wbFetch('https://api.worldbank.org/v2/country?format=json&per_page=400'),
           wbFetch(`https://api.worldbank.org/v2/country/all/indicator/${WDI.join(';')}?format=json&source=2&per_page=20000&mrnev=1`),
           wbFetch(`https://api.worldbank.org/v2/country/all/indicator/${CO2_INDICATOR}?format=json&per_page=400&mrnev=1`)
             .catch(() => []),   // emissions are a bonus axis, not load-bearing
+          wbFetch(`https://api.worldbank.org/v2/country/all/indicator/${MEASLES_INDICATOR}?format=json&source=2&per_page=5000&date=2010:2024`)
+            .catch(() => []),   // immunization coverage is a bonus axis too
         ]);
 
         // region.id === 'NA' marks an aggregate ("Sub-Saharan Africa", "World"),
@@ -1032,14 +1043,19 @@ Rules:
         const FIELD = {
           'SP.POP.TOTL': 'population', 'NY.GDP.PCAP.CD': 'gdpPerCapita',
           'SP.DYN.LE00.IN': 'lifeExpectancy', 'SP.DYN.TFRT.IN': 'fertility',
-          'IT.NET.USER.ZS': 'internet', [CO2_INDICATOR]: 'co2PerCapita',
+          'IT.NET.USER.ZS': 'internet', [CO2_INDICATOR]: 'co2PerCapita', [MEASLES_INDICATOR]: 'measlesImmunization',
         };
-        for (const row of [...wdi, ...co2]) {
+        // Every WDI/CO2 row is already a country's sole (mrnev-picked) value,
+        // so first-write-wins. Measles rows are a whole date range per
+        // country — the year guard keeps whichever row is actually latest.
+        for (const row of [...wdi, ...co2, ...measles]) {
           const country = byIso.get(row.countryiso3code);
           const field = FIELD[row.indicator?.id];
           if (!country || !field || row.value == null) continue;
+          const year = Number(row.date);
+          if (country[`${field}Year`] && year <= country[`${field}Year`]) continue;
           country[field] = row.value;
-          country[`${field}Year`] = row.date;
+          country[`${field}Year`] = year;
         }
 
         COUNTRIES = [...byIso.values()]
