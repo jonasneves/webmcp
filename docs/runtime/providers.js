@@ -82,9 +82,16 @@ export async function checkTermd() {
 /* Unlike a model API, termd owns the conversation, the history and the agent
  * loop; we hand it a prompt plus the page's tool definitions and answer the
  * tool calls it streams back. */
-export async function streamTermdAgent({ prompt, tools, cwd, model, signal }) {
+export async function streamTermdAgent({ prompt, tools, cwd, model, signal, settingSources }) {
   // 'default' lets the daemon's own TERMD_MODEL decide.
-  const body = { prompt, tools, cwd, maxTurns: 24, ...(model && model !== 'default' ? { model } : {}) };
+  // settingSources is omitted unless the caller named one — `[]` (SDK isolation: no
+  // ~/.claude/settings.json, no CLAUDE.md, no project/local settings) is a real,
+  // caller-named value and must reach termd as one, not collapse to "unset".
+  const body = {
+    prompt, tools, cwd, maxTurns: 24,
+    ...(model && model !== 'default' ? { model } : {}),
+    ...(settingSources !== undefined ? { settingSources } : {}),
+  };
   if (getTermdPort()) {
     // Re-expose the bridge's chunks as a ReadableStream so the SSE parser does
     // not care which transport delivered them.
@@ -119,6 +126,26 @@ export async function answerTermdTool(token, result) {
   const res = await fetch(`${TERMD_URL}${path}`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify(result),
+  });
+  return res.ok;
+}
+
+/* Answer a parked permission request — termd emits one of these when the
+ * embedded agent calls a tool that needs a human in the loop (AskUserQuestion
+ * being the one this runtime renders; anything else gets an automatic deny —
+ * see loop.js). Same dual bridge/fetch path as answerTermdTool, different
+ * endpoint: /fleet/blocked rather than /agent/tool. optionId is 'allow' or
+ * 'deny'; updatedInput carries the answers and is only sent on allow. */
+export async function answerTermdPermission(token, optionId, updatedInput) {
+  const path = `/fleet/blocked/${encodeURIComponent(token)}`;
+  const body = updatedInput !== undefined ? { optionId, updatedInput } : { optionId };
+  if (getTermdPort()) {
+    try { await bridgeSend({ path, body }); return true; }
+    catch { return false; }
+  }
+  const res = await fetch(`${TERMD_URL}${path}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
   });
   return res.ok;
 }
