@@ -75,13 +75,31 @@ export function syncToolsPanel(tools) {
   toolsInitialized = true;
 }
 
+// First sentence of a description. Split on a period that's actually a
+// sentence boundary (followed by whitespace or end-of-string) rather than
+// the first '.' anywhere — descriptions routinely carry ".ext" tokens
+// (".stl") that would otherwise truncate mid-sentence. No boundary found:
+// fall back to the whole string rather than guess.
+function firstSentence(text) {
+  const m = text.match(/\.(\s|$)/);
+  return m ? text.slice(0, m.index + 1) : text;
+}
+
+// Trigger label is two spans — caret + count — instead of one text node, so
+// the caret can be targeted by CSS (rotation on open) independent of the
+// count text. Shared across every write-site so they can't drift.
+function setToggleLabel(toggle, count) {
+  toggle.innerHTML =
+    `<span class="tools-toggle-caret">&#9660;</span>` +
+    `<span class="tools-toggle-count">${count} tools</span>`;
+}
+
 function renderToolsPanel(tools, newNames) {
   const inner = document.getElementById('tools-panel-inner');
   const toggle = document.getElementById('tools-toggle');
   const panel = document.getElementById('tools-panel');
   if (!inner || !toggle || !panel) return;
-  const collapsed = panel.dataset.collapsed === 'true';
-  toggle.innerHTML = `${collapsed ? '&#9660;' : '&#9650;'} ${tools.length} tools`;
+  setToggleLabel(toggle, tools.length);
 
   inner.innerHTML = tools.map(t => {
     const badges = [];
@@ -95,7 +113,7 @@ function renderToolsPanel(tools, newNames) {
     const paramsHtml = enumProp
       ? `<div class="tool-item-params">${enumProp[1].enum.length} options available</div>`
       : '';
-    const desc = (t.description || '').split('.')[0] + '.';
+    const desc = firstSentence(t.description || '');
 
     return `
       <div class="tool-item${isNew ? ' new' : ''}">
@@ -110,13 +128,23 @@ function renderToolsPanel(tools, newNames) {
 
 export function initToolsToggle() {
   const toggle = document.getElementById('tools-toggle');
-  if (!toggle) return;
-  toggle.addEventListener('click', () => {
-    const panel = document.getElementById('tools-panel');
+  const panel = document.getElementById('tools-panel');
+  if (!toggle || !panel) return;
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
     const collapsed = panel.dataset.collapsed === 'true';
     panel.dataset.collapsed = collapsed ? 'false' : 'true';
     toggle.setAttribute('aria-expanded', String(collapsed));
-    const tools = listTools();
-    toggle.innerHTML = `${collapsed ? '&#9650;' : '&#9660;'} ${tools.length} tools`;
+    setToggleLabel(toggle, listTools().length);
+  });
+  // Same dismiss-on-outside-click as the settings popover (index.js) — the
+  // toggle click above stops propagation, so this only ever sees clicks
+  // that land outside both the panel and its trigger.
+  document.addEventListener('click', (e) => {
+    if (panel.dataset.collapsed === 'false' && !panel.contains(e.target) && e.target !== toggle) {
+      panel.dataset.collapsed = 'true';
+      toggle.setAttribute('aria-expanded', 'false');
+      setToggleLabel(toggle, listTools().length);
+    }
   });
 }

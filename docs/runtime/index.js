@@ -24,7 +24,7 @@ import { initAuth, isAgentReachable } from './auth.js';
 import { registerTools, listTools, syncToolsPanel, initToolsToggle } from './tools.js';
 import { runConversation } from './loop.js';
 import { renderSourceBar, sourcePromptBlock } from './source.js';
-import { dismissToast } from './ui.js';
+import { dismissToast, showConfirm } from './ui.js';
 
 /**
  * Mount the runtime against the page's chat panel.
@@ -164,7 +164,9 @@ export function mount(cfg) {
     input.style.height = 'auto';
   });
   document.getElementById('chat-abort').addEventListener('click', () => abort?.abort());
-  document.getElementById('chat-reset')?.addEventListener('click', reset);
+  document.getElementById('chat-reset')?.addEventListener('click', async () => {
+    if (await showConfirm('Clear chat? This deletes the whole conversation.')) reset();
+  });
 
   initAuth({
     defaultModel: cfg.defaultModel,
@@ -221,5 +223,5 @@ function initSettingsPopover() {
 
 // Re-exports for demos that want individual primitives.
 export { readInitialTheme } from './theme.js';
-export { showToast, showConfirmDialog, showPromptDialog } from './ui.js';
+export { showToast, showConfirmDialog, showConfirm, showPromptDialog } from './ui.js';
 export { appendMessage, appendDivider } from './chat.js';

@@ -615,6 +615,17 @@ main          { grid-area: work; min-width: 0; }
   color: var(--text-muted);
 }
 
+/* ── Tools toggle caret ──────────────────────────────────────────── */
+/* Base .tools-toggle button lives in app.css; these two spans (written by
+   tools.js) let the caret rotate independent of the "N tools" text. */
+
+.tools-toggle-caret {
+  display: inline-block;
+  transition: transform var(--duration) var(--ease);
+}
+
+.tools-toggle[aria-expanded="true"] .tools-toggle-caret { transform: rotate(180deg); }
+
 /* ── Suggestion chips ────────────────────────────────────────────── */
 
 .followup-suggestions,
