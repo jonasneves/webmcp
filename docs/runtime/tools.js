@@ -87,6 +87,12 @@ function mirrorToNative(def) {
   // suspended MV3 service worker can take far longer to wake), so this is a
   // heuristic delay, not a proven bound — treat a resurfacing of the same
   // symptom as this guess being wrong before assuming a regression.
+  //
+  // Update: the identical UnknownError: Failed to parse input arguments also
+  // reproduces calling document.modelContext.executeTool() directly, with no
+  // extension anywhere in the path — so the handshake race above can't be
+  // the whole story, and may not be a cause at all. Treat it as one
+  // candidate, not the explanation.
   setTimeout(() => {
     document.modelContext.registerTool(spec, { signal: controller.signal })
       .catch(err => {
