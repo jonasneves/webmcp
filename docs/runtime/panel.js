@@ -39,7 +39,7 @@ function renderActivity(el) {
     return `
       <div class="discovery-activity-item${entry.error ? ' error' : ''}">
         <div class="discovery-activity-head">
-          <span class="discovery-activity-name">${entry.name}</span>
+          <span class="discovery-activity-name">${escapeHtml(entry.name)}</span>
           <span class="discovery-activity-time">${time}</span>
         </div>
         ${summary ? `<div class="discovery-activity-summary">${escapeHtml(summary)}</div>` : ''}
