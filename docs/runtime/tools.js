@@ -1,57 +1,90 @@
-// Tool registry + navigator.modelContext polyfill + tools panel renderer.
+// Tool registry, native WebMCP mirror, and tools panel renderer.
 //
 // We keep an internal registry of the full tool definitions (with `exec`,
-// `schema`, trust hints, etc.) — the runtime reads from it directly. If the
-// browser ships native WebMCP we *also* register a spec-adapted view so
-// browser AI agents can discover the same tools through the standard API.
+// `schema`, trust hints for the panel, etc.) — the page's own UI reads from
+// it directly via listTools(). Whatever WebMCP-aware agent is sharing the
+// tab never sees this registry; it only sees what we mirror through
+// document.modelContext.registerTool(), so that mirror is kept to the
+// actual spec shape (inputSchema/execute/annotations.readOnlyHint), not
+// our richer internal one.
+//
+// No polyfill is installed here. If nothing on the page already provides
+// document.modelContext (native support, an origin-trial token, or an
+// extension that injects one before this script runs), mirroring is a
+// silent no-op — the feature-detect the spec itself recommends.
 //
 // Spec: https://webmachinelearning.github.io/webmcp/
 
-const registry = new Map();  // name -> full tool def (internal shape)
+const registry = new Map();          // name -> internal tool def (schema/exec/panel hints)
+const nativeControllers = new Map(); // name -> AbortController backing its native registration
+const nativeShapes = new Map();      // name -> last-mirrored shape fingerprint, to skip no-op re-registers
+const dynamicNames = new Set();      // names mirrored natively that aren't in `registry` (state-only tools)
 
-// Polyfill: install only if the browser doesn't already have a native
-// implementation. The polyfill mirrors what we'd want browsers to expose.
-export const mcHost = ('modelContext' in document) ? document
-  : ('modelContext' in navigator) ? navigator
-  : document;
-
-if (!mcHost.modelContext) {
-  mcHost.modelContext = {
-    registerTool(def) { /* spec view, no-op storage */ },
-    unregisterTool(_name) {},
-    clearContext() {},
-    provideContext(_ctx) {},
-    get tools() { return [...registry.values()].map(toSpecShape); },
-  };
-}
-
-// Translate our internal tool shape into what native WebMCP expects.
-// Spec uses `inputSchema` + `execute`; we carry `schema` + `exec` plus
-// presentation hints the spec doesn't define.
+// registerTool() throws InvalidStateError on a name that's already
+// registered, and the only way to replace one is to abort the
+// AbortController passed at registration time — there is no public
+// unregister/update method. So every native registration carries its own
+// controller, and updating a tool means aborting the old one before
+// registering the new.
 function toSpecShape(def) {
   return {
     name: def.name,
+    title: def.title,
     description: def.description,
-    inputSchema: def.schema,
+    inputSchema: def.schema || { type: 'object', properties: {} },
+    annotations: { readOnlyHint: !!def.readOnlyHint },
     execute: def.exec,
-    annotations: {
-      title: def.title,
-      readOnlyHint: def.readOnlyHint,
-      idempotentHint: def.idempotentHint,
-      destructiveHint: def.destructiveHint,
-      openWorldHint: def.openWorldHint,
-    },
   };
 }
 
+function mirrorToNative(def) {
+  if (!('modelContext' in document)) return; // no WebMCP support in this browser — silent no-op, per the spec's own feature-detect guidance
+  const spec = toSpecShape(def);
+  const shapeKey = JSON.stringify({ d: spec.description, s: spec.inputSchema, a: spec.annotations });
+  if (nativeShapes.get(def.name) === shapeKey) return; // unchanged since last mirror — don't re-register for nothing
+  nativeControllers.get(def.name)?.abort();
+  const controller = new AbortController();
+  nativeControllers.set(def.name, controller);
+  nativeShapes.set(def.name, shapeKey);
+  document.modelContext.registerTool(spec, { signal: controller.signal })
+    .catch(err => {
+      // Superseding a tool means aborting its old registration's signal,
+      // which rejects that old registerTool() call with AbortError — the
+      // expected shape of "cancel and replace", not a real failure.
+      if (err.name === 'AbortError') return;
+      console.warn('[tools] native registerTool rejected', def.name, err);
+    });
+}
+
+function unmirrorFromNative(name) {
+  nativeControllers.get(name)?.abort();
+  nativeControllers.delete(name);
+  nativeShapes.delete(name);
+}
+
+// Static tools: registered once, mirrored once. Call at mount with the
+// page's fixed TOOL_DEFS.
 export function registerTools(defs) {
   for (const d of defs) {
     registry.set(d.name, d);
-    // Best-effort mirror to native. Specs and browser implementations are
-    // still in flux — if validation rejects our adapted shape, log and
-    // continue rather than break the page.
-    try { mcHost.modelContext.registerTool(toSpecShape(d)); }
-    catch (err) { console.warn('[tools] native registerTool rejected', d.name, err); }
+    mirrorToNative(d);
+  }
+}
+
+// State-dependent tools: call from `refresh()` with the same snapshot the
+// tools panel renders (adjustTool-rewritten + getDynamicTools() entries).
+// Unchanged tools no-op via the shape-diff cache above; a tool whose schema
+// actually changed (e.g. compare_countries' enum) gets unregistered and
+// re-registered; a dynamic tool no longer in the list (e.g. clear_all_flags
+// after the last flag is removed) gets unregistered.
+export function syncDynamicTools(effectiveList) {
+  const desired = new Set(effectiveList.map(t => t.name));
+  for (const name of [...dynamicNames]) {
+    if (!desired.has(name)) { unmirrorFromNative(name); dynamicNames.delete(name); }
+  }
+  for (const t of effectiveList) {
+    mirrorToNative(t);
+    if (!registry.has(t.name)) dynamicNames.add(t.name);
   }
 }
 

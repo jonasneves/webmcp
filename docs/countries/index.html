@@ -8,12 +8,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
   <title>WebMCP PoC — World Development</title>
   <link rel="stylesheet" href="../app.css">
-  <link rel="stylesheet" href="../chat.css">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <link rel="stylesheet" href="../ui.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
-  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -38,20 +34,6 @@
               <button class="theme-opt" data-theme="light">Light</button>
               <button class="theme-opt" data-theme="dark">Dark</button>
             </div>
-          </div>
-
-          <div class="settings-section">
-            <div class="settings-section-label">Local agent</div>
-            <select class="chat-model-select" id="model-select" aria-label="Model">
-              <option value="termd:default">Daemon default</option>
-              <option value="termd:sonnet">Claude Sonnet 5</option>
-              <option value="termd:opus">Claude Opus 5</option>
-              <option value="termd:haiku">Claude Haiku 4.5</option>
-            </select>
-            <p class="settings-note" id="termd-status" hidden>
-              Not detected. These demos run the model on your own machine &mdash;
-              <a href="https://jonasneves.com/termd/" target="_blank" rel="noopener">install termd and the bridge extension</a>, then reload.
-            </p>
           </div>
 
         </div>
@@ -83,30 +65,6 @@
       <div id="display"></div>
     </main>
   </div>
-
-  <aside class="chat-panel">
-    <div class="chat-header">
-      <span class="chat-header-title">AI Chat</span>
-      <span class="chat-model-label" id="chat-model-label">Claude</span>
-      <button class="btn btn-sm" id="chat-reset" aria-label="Clear chat">Clear</button>
-    </div>
-    <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
-    <div class="chat-input-area">
-      <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chat-input" placeholder="Ask about world development&#8230;" rows="1" aria-label="Chat message"></textarea>
-        <button class="chat-send-btn" id="chat-send" aria-label="Send message" title="Send">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button class="chat-abort-btn" id="chat-abort" hidden aria-label="Stop generating" title="Stop">
-          <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
-            <rect width="11" height="11" rx="2" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
@@ -143,9 +101,7 @@
     })();
   </script>
   <script type="module">
-    import { mount, showToast, showConfirmDialog, showPromptDialog, appendMessage } from '../runtime/index.js';
-
-    marked.use({ gfm: true, breaks: true });
+    import { mount, showToast, showConfirmDialog, showPromptDialog } from '../runtime/index.js';
 
     /* ── State ── */
 
@@ -768,7 +724,7 @@
           },
           required: ['name']
         },
-        exec: async (input, client) => {
+        exec: async (input) => {
           const c = COUNTRIES.find(x => matchName(x, input.name));
           if (!c) return { summary: `No country found matching "${input.name}".` };
 
@@ -777,24 +733,28 @@
             flaggedCountries.delete(c.name);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             showToast('Flag removed', () => {
               flaggedCountries.set(c.name, previous || { note: 'Flagged for review', timestamp: Date.now() });
               persistFlags();
               refreshCurrentView();
+              runtime?.refresh();
             });
             return { summary: `Removed flag from ${c.name}.` };
           }
 
           let note = input.note;
-          if (!note) note = await client.requestUserInteraction(() => showPromptDialog(`Add a note for flagging ${c.name} (optional)`));
+          if (!note) note = await showPromptDialog(`Add a note for flagging ${c.name} (optional)`);
           const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
           flaggedCountries.set(c.name, flagData);
           persistFlags();
           refreshCurrentView();
+          runtime?.refresh();
           showToast('Country flagged', () => {
             flaggedCountries.delete(c.name);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
           });
           return { summary: `Flagged ${c.name}: "${flagData.note}".` };
         }
@@ -824,91 +784,13 @@
       }
     ];
 
-    /* ── System prompt + page context ── */
-
-    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores world country data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page \u2014 the user already sees the full result. You only receive a brief summary.
-
-Rules:
-- Chain tools proactively \u2014 don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
-- For analysis or "compare regions" requests: call summarize_data first for raw numbers, then filter or chart as needed.
-- For "what's interesting / notable" questions: summarize_data \u2192 render a chart showing the key distribution \u2192 note the standout outlier.
-- Infer intent from context. Viewing a detail card + "compare it" \u2192 compare with the most similar or most contrasting country. Viewing a filtered table + "chart it" \u2192 render a chart of the visible data.
-- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain \u2014 add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
-- No markdown formatting \u2014 plain text only. No greetings, filler, or preamble.
-- All tools run immediately \u2014 do not ask permission before calling them. Only flag_country may request a user note via interaction.
-- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
-- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
-- Your available tools change dynamically based on page state. When countries are flagged, review_flags and clear_all_flags become available.`;
-
-    function getSystemPrompt() {
-      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
-      switch (currentView.type) {
-        case 'table': {
-          const data = currentView.data || COUNTRIES;
-          lines.push(`- Viewing: table of ${data.length} countries`);
-          const names = data.slice(0, 8).map(c => c.name);
-          lines.push(`- Visible: ${names.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
-          break;
-        }
-        case 'detail':
-          if (currentView.data) {
-            const c = currentView.data;
-            lines.push(`- Viewing: detail card for ${c.name} (${c.region}, population: ${c.population.toLocaleString()}, income group: ${c.income})`);
-          }
-          break;
-        case 'chart': lines.push('- Viewing: region distribution chart'); break;
-        case 'comparison':
-          if (currentView.data) lines.push(`- Viewing: comparison of ${currentView.data[0].name} vs ${currentView.data[1].name}`);
-          break;
-      }
-      if (currentView.filters?.region) lines.push(`- Filtered by region: ${currentView.filters.region}`);
-      if (currentView.filters?.size) lines.push(`- Filtered by size: ${currentView.filters.size}`);
-      if (flaggedCountries.size > 0) lines.push(`- Flagged countries (${flaggedCountries.size}): ${[...flaggedCountries.keys()].join(', ')}`);
-      return lines.join('\n');
-    }
-
-    function getDividerContext() {
-      const parts = [];
-      switch (currentView.type) {
-        case 'table': parts.push('Table'); if (currentView.data) parts.push(`${currentView.data.length} countries`); break;
-        case 'chart': parts.push('Chart'); break;
-        case 'detail': if (currentView.data) parts.push(`Detail: ${currentView.data.name}`); break;
-        case 'comparison': if (currentView.data) parts.push(`${currentView.data[0].name} vs ${currentView.data[1].name}`); break;
-      }
-      if (currentView.filters?.region) parts.push(currentView.filters.region);
-      if (currentView.filters?.size) parts.push(`${currentView.filters.size} countries`);
-      if (flaggedCountries.size > 0) parts.push(`${flaggedCountries.size} flagged`);
-      return parts;
-    }
-
-    function getFollowupSuggestions() {
-      switch (currentView.type) {
-        case 'table': {
-          const out = ['Show population chart'];
-          const large = (currentView.data || COUNTRIES)
-            .filter(c => sizeTier(c.population) === 'large')
-            .sort((a, b) => b.population - a.population);
-          if (large.length >= 2) out.push(`Compare ${large[0].name} and ${large[1].name}`);
-          return out;
-        }
-        case 'chart': return ['Show table view', 'Filter to large countries only'];
-        case 'detail': {
-          const c = currentView.data;
-          const out = [`Flag ${c.name}`];
-          const sameRegion = COUNTRIES
-            .filter(o => o.name !== c.name && o.region === c.region)
-            .sort((a, b) => Math.abs(a.population - c.population) - Math.abs(b.population - c.population));
-          if (sameRegion.length) out.push(`Compare with ${sameRegion[0].name}`);
-          return out;
-        }
-        case 'comparison': {
-          const [c1, c2] = currentView.data;
-          const larger = c1.population > c2.population ? c1 : c2;
-          return [`Show detail for ${larger.name}`, `Flag ${larger.name}`];
-        }
-      }
-      return [];
-    }
+    /* ── Dynamic + adjusted tools ── */
+    //
+    // There is no system prompt here — nothing sends one anywhere. Per-tool
+    // guidance lives on each tool's own description (e.g. render_chart's
+    // palette line, below); a native WebMCP agent reads descriptions, never
+    // a page-level prompt, so cross-tool tone or chaining guidance has
+    // nowhere to live and is simply left unstated.
 
     function getDynamicTools() {
       if (flaggedCountries.size === 0) return [];
@@ -936,10 +818,15 @@ Rules:
           readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false,
           schema: { type: 'object', properties: {} },
           exec: async () => {
+            // Nothing outside this function gates destructive tools — the
+            // confirm lives here, unconditionally, on every call.
             const count = flaggedCountries.size;
+            const ok = await showConfirmDialog('Clear All Flags', { count });
+            if (!ok) return { summary: 'Cancelled — flags left in place.' };
             flaggedCountries.clear();
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             return { summary: `Cleared ${count} flag(s).` };
           }
         }
@@ -962,23 +849,6 @@ Rules:
       };
     }
 
-    const SCENARIO_PROMPTS = {
-      'Run global development analysis': `Analyse world development data \u2014 chain all steps without pausing:
-1. Call summarize_data for global totals and the population-weighted averages
-2. Call plot_development_scatter to show wealth against lifespan across all countries
-3. Call rank_countries for the bottom 10 by life expectancy
-4. Call show_country_trend for life expectancy in the two lowest-ranked countries since 1960
-5. Write 2-3 sentences on where the gap is closing and where it is not\u2014 cite the numbers you saw`
-    };
-
-    const QUICK_ACTIONS = [
-      'Run global development analysis',
-      'Wealth vs lifespan, all countries',
-      'Top 10 by GDP per capita',
-      'Life expectancy in Brazil vs Portugal since 1960',
-      'Which income group has the fastest internet adoption?'
-    ];
-
     /* ── Mount ── */
 
     // Declared before mount(), which renders the source bar synchronously —
@@ -990,12 +860,7 @@ Rules:
       tools: TOOL_DEFS,
       getDynamicTools,
       adjustTool,
-      getSystemPrompt,
-      getDividerContext,
       dataSource: () => SOURCE,
-      quickActions: QUICK_ACTIONS,
-      promptFor: (label) => SCENARIO_PROMPTS[label] || label,
-      getFollowupSuggestions,
     });
 
     /* ── Init ── */

@@ -1,15 +1,10 @@
-// Data provenance — one declaration, two renderers.
+// Data provenance — the source bar under the header.
 //
 // A demo hands mount() a dataSource() describing what it actually loaded:
 // who published it, what period the values cover, how many rows survived
-// filtering. That one object becomes both the bar under the header and a
-// block appended to every system prompt, so the page and the model cannot
-// end up describing the same numbers differently.
-//
-// They already had. For two commits after the hospital demo switched to
-// national HHS bed counts, its system prompt still told the model it was
-// looking at California hospital *financial* data. Nothing on screen could
-// have revealed that, because nothing on screen named the source either.
+// filtering. This is the only place provenance is stated — there is no
+// system prompt to also carry it to a model, so an agent sharing the tab
+// only sees it if it reads the page like a person would.
 //
 // It's a function, not an object: for these demos provenance is state. The
 // row count, the year span, and the excluded count aren't known until the
@@ -98,22 +93,3 @@ export function renderSourceBar(getDescriptor) {
   }
 }
 
-// The same descriptor, addressed to the model. The imperative matters more
-// than the fields: a model handed a 2024 snapshot with no vintage will
-// narrate it in the present tense, and be fluent about it.
-export function sourcePromptBlock(getDescriptor) {
-  const d = getDescriptor?.();
-  if (!d) return '';
-
-  const lines = [
-    'Data source — describe it exactly as stated here. Never imply the data is more',
-    'current, more complete, or more uniform than these lines say it is.',
-    `- Published by: ${d.publisher} — ${d.dataset}`,
-  ];
-  if (d.coverage) lines.push(`- Coverage: ${d.coverage}`);
-  if (d.rows) lines.push(`- Loaded: ${d.rows}`);
-  if (d.excluded) lines.push(`- Excluded before you saw it: ${d.excluded}`);
-  if (d.retrieved) lines.push(`- Retrieved: ${new Date(d.retrieved).toISOString()}`);
-  if (d.caveat) lines.push(`- Caveat: ${d.caveat}`);
-  return lines.join('\n');
-}

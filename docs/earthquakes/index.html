@@ -8,12 +8,8 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
   <title>WebMCP PoC — Earthquake Monitor</title>
   <link rel="stylesheet" href="../app.css">
-  <link rel="stylesheet" href="../chat.css">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <link rel="stylesheet" href="../ui.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
-  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -38,20 +34,6 @@
               <button class="theme-opt" data-theme="light">Light</button>
               <button class="theme-opt" data-theme="dark">Dark</button>
             </div>
-          </div>
-
-          <div class="settings-section">
-            <div class="settings-section-label">Local agent</div>
-            <select class="chat-model-select" id="model-select" aria-label="Model">
-              <option value="termd:default">Daemon default</option>
-              <option value="termd:sonnet">Claude Sonnet 5</option>
-              <option value="termd:opus">Claude Opus 5</option>
-              <option value="termd:haiku">Claude Haiku 4.5</option>
-            </select>
-            <p class="settings-note" id="termd-status" hidden>
-              Not detected. These demos run the model on your own machine &mdash;
-              <a href="https://jonasneves.com/termd/" target="_blank" rel="noopener">install termd and the bridge extension</a>, then reload.
-            </p>
           </div>
 
         </div>
@@ -79,30 +61,6 @@
       <div id="display"></div>
     </main>
   </div>
-
-  <aside class="chat-panel">
-    <div class="chat-header">
-      <span class="chat-header-title">AI Chat</span>
-      <span class="chat-model-label" id="chat-model-label"></span>
-      <button class="btn btn-sm" id="chat-reset" aria-label="Clear chat">Clear</button>
-    </div>
-    <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
-    <div class="chat-input-area">
-      <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chat-input" placeholder="Ask about earthquakes…" rows="1" aria-label="Chat message"></textarea>
-        <button class="chat-send-btn" id="chat-send" aria-label="Send message" title="Send">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button class="chat-abort-btn" id="chat-abort" hidden aria-label="Stop generating" title="Stop">
-          <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
-            <rect width="11" height="11" rx="2" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
@@ -139,9 +97,7 @@
     })();
   </script>
   <script type="module">
-    import { mount, showToast, showConfirmDialog, showPromptDialog, appendMessage } from '../runtime/index.js';
-
-    marked.use({ gfm: true, breaks: true });
+    import { mount, showToast, showConfirmDialog, showPromptDialog } from '../runtime/index.js';
 
     /* ── State ── */
 
@@ -589,7 +545,7 @@
           },
           required: ['place']
         },
-        exec: async (input, client) => {
+        exec: async (input) => {
           const matches = EARTHQUAKES.filter(q => matchPlace(q, input.place));
           if (!matches.length) return { summary: `No earthquake found matching "${input.place}".` };
           const q = matches.sort((a, b) => b.magnitude - a.magnitude)[0];
@@ -599,24 +555,28 @@
             flaggedQuakes.delete(q.id);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             showToast('Flag removed', () => {
               flaggedQuakes.set(q.id, previous || { note: 'Flagged for review', timestamp: Date.now() });
               persistFlags();
               refreshCurrentView();
+              runtime?.refresh();
             });
             return { summary: `Removed flag from ${q.place}.` };
           }
 
           let note = input.note;
-          if (!note) note = await client.requestUserInteraction(() => showPromptDialog(`Add a note for flagging ${q.place} (optional)`));
+          if (!note) note = await showPromptDialog(`Add a note for flagging ${q.place} (optional)`);
           const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
           flaggedQuakes.set(q.id, flagData);
           persistFlags();
           refreshCurrentView();
+          runtime?.refresh();
           showToast('Earthquake flagged', () => {
             flaggedQuakes.delete(q.id);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
           });
           return { summary: `Flagged ${q.place}: "${flagData.note}".` };
         }
@@ -646,99 +606,13 @@
       }
     ];
 
-    /* ── System prompt + page context ── */
-
-    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that monitors recent earthquake activity from USGS data. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page \u2014 the user already sees the full result. You only receive a brief summary.
-
-Rules:
-- Chain tools proactively \u2014 don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
-- For analysis or "what's happening" requests: call summarize_data first for raw numbers, then filter or chart as needed.
-- For "what's notable / most dangerous" questions: summarize_data \u2192 filter_earthquakes for high magnitude \u2192 flag the worst one \u2192 render a chart of the distribution.
-- Infer intent from context. Viewing a detail card + "flag it" \u2192 flag that earthquake. Viewing a filtered table + "compare the top two" \u2192 compare the two highest-magnitude earthquakes visible.
-- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain \u2014 add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
-- No markdown formatting \u2014 plain text only. No greetings, filler, or preamble.
-- Flag notable earthquakes proactively. Use flag_earthquake for high-magnitude or unusually shallow events \u2014 don't wait to be asked.
-- All tools run immediately \u2014 do not ask permission before calling them. Only flag_earthquake may request a user note via interaction.
-- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
-- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
-- Your available tools change dynamically based on page state. When earthquakes are flagged, review_flags and clear_all_flags become available.`;
-
-    function getSystemPrompt() {
-      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
-      switch (currentView.type) {
-        case 'table': {
-          const data = currentView.data || EARTHQUAKES;
-          lines.push(`- Viewing: table of ${data.length} earthquakes`);
-          const places = data.slice(0, 8).map(q => `${q.place} (M${fmt(q.magnitude)})`);
-          lines.push(`- Visible: ${places.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
-          const major = data.filter(q => q.magnitude >= 5);
-          if (major.length > 0) lines.push(`- Attention: ${major.length} major earthquake(s) (M5+) in current view`);
-          break;
-        }
-        case 'detail':
-          if (currentView.data) {
-            const q = currentView.data;
-            lines.push(`- Viewing: detail card for ${q.place} (M${fmt(q.magnitude)}, depth ${fmt(q.depth)}km)`);
-          }
-          break;
-        case 'chart': lines.push('- Viewing: magnitude distribution chart'); break;
-        case 'comparison':
-          if (currentView.data) lines.push(`- Viewing: comparison of ${currentView.data[0].place} vs ${currentView.data[1].place}`);
-          break;
-      }
-      if (currentView.filters?.min_magnitude) lines.push(`- Filtered by: magnitude ${currentView.filters.min_magnitude}+`);
-      if (currentView.filters?.time_range) lines.push(`- Filtered by: last ${currentView.filters.time_range}`);
-      if (currentView.filters?.felt) lines.push(`- Filtered by: felt earthquakes only`);
-      if (flaggedQuakes.size > 0) {
-        const places = [...flaggedQuakes.keys()].map(id => EARTHQUAKES.find(q => q.id === id)?.place || id);
-        lines.push(`- Flagged earthquakes (${flaggedQuakes.size}): ${places.join(', ')}`);
-      }
-      return lines.join('\n');
-    }
-
-    function getDividerContext() {
-      const parts = [];
-      switch (currentView.type) {
-        case 'table': parts.push('Table'); if (currentView.data) parts.push(`${currentView.data.length} earthquakes`); break;
-        case 'chart': parts.push('Chart'); break;
-        case 'detail': if (currentView.data) parts.push(`Detail: ${currentView.data.place}`); break;
-        case 'comparison': if (currentView.data) parts.push(`${currentView.data[0].place} vs ${currentView.data[1].place}`); break;
-      }
-      if (currentView.filters?.min_magnitude) parts.push(`mag ${currentView.filters.min_magnitude}+`);
-      if (currentView.filters?.time_range) parts.push(`last ${currentView.filters.time_range}`);
-      if (currentView.filters?.felt) parts.push('felt');
-      if (flaggedQuakes.size > 0) parts.push(`${flaggedQuakes.size} flagged`);
-      return parts;
-    }
-
-    function getFollowupSuggestions() {
-      switch (currentView.type) {
-        case 'table': {
-          const out = ['Show magnitude chart'];
-          const strong = (currentView.data || EARTHQUAKES)
-            .filter(q => q.magnitude >= 5)
-            .sort((a, b) => b.magnitude - a.magnitude);
-          if (strong.length >= 2) out.push(`Compare ${strong[0].place} and ${strong[1].place}`);
-          return out;
-        }
-        case 'chart': return ['Show table view', 'Filter to magnitude 5+'];
-        case 'detail': {
-          const q = currentView.data;
-          const out = [`Flag this earthquake`];
-          const similar = EARTHQUAKES
-            .filter(o => o.id !== q.id)
-            .sort((a, b) => Math.abs(a.magnitude - q.magnitude) - Math.abs(b.magnitude - q.magnitude));
-          if (similar.length) out.push(`Compare with ${similar[0].place}`);
-          return out;
-        }
-        case 'comparison': {
-          const [q1, q2] = currentView.data;
-          const stronger = q1.magnitude > q2.magnitude ? q1 : q2;
-          return [`Show detail for ${stronger.place}`, `Flag ${stronger.place}`];
-        }
-      }
-      return [];
-    }
+    /* ── Dynamic + adjusted tools ── */
+    //
+    // There is no system prompt here — nothing sends one anywhere. Per-tool
+    // guidance lives on each tool's own description (e.g. render_chart's
+    // palette line, below); a native WebMCP agent reads descriptions, never
+    // a page-level prompt, so cross-tool tone or chaining guidance has
+    // nowhere to live and is simply left unstated.
 
     function getDynamicTools() {
       if (flaggedQuakes.size === 0) return [];
@@ -766,10 +640,15 @@ Rules:
           readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false,
           schema: { type: 'object', properties: {} },
           exec: async () => {
+            // Nothing outside this function gates destructive tools — the
+            // confirm lives here, unconditionally, on every call.
             const count = flaggedQuakes.size;
+            const ok = await showConfirmDialog('Clear All Flags', { count });
+            if (!ok) return { summary: 'Cancelled — flags left in place.' };
             flaggedQuakes.clear();
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             return { summary: `Cleared ${count} flag(s).` };
           }
         }
@@ -792,23 +671,6 @@ Rules:
       };
     }
 
-    const SEISMIC_TRIAGE_PROMPT = `Run a full seismic triage of the recent earthquake data. Chain all steps without pausing or asking \u2014 execute each in sequence:
-1. Call summarize_data for a statistical overview of recent activity
-2. Filter to magnitude 5+ earthquakes using filter_earthquakes
-3. Flag the most powerful earthquake with a note on its depth and risk level
-4. Render a magnitude distribution bar chart using render_chart
-5. Write a 2-3 sentence triage verdict: overall activity level, the most notable event, and any geographic pattern to watch`;
-
-    const SCENARIO_PROMPTS = { 'Run seismic triage': SEISMIC_TRIAGE_PROMPT };
-
-    const QUICK_ACTIONS = [
-      'Run seismic triage',
-      'Show strong earthquakes (5+)',
-      'Magnitude distribution as a bar chart',
-      'Depth vs magnitude scatter plot',
-      'Earthquake severity as a pie chart'
-    ];
-
     /* ── Mount ── */
 
     // Declared before mount(), which renders the source bar synchronously —
@@ -819,12 +681,7 @@ Rules:
       tools: TOOL_DEFS,
       getDynamicTools,
       adjustTool,
-      getSystemPrompt,
-      getDividerContext,
       dataSource: () => SOURCE,
-      quickActions: QUICK_ACTIONS,
-      promptFor: (label) => SCENARIO_PROMPTS[label] || label,
-      getFollowupSuggestions,
     });
 
     /* ── Init ── */

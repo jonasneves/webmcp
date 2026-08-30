@@ -1,8 +1,5 @@
-// UI primitives — toast, dialogs, markdown. Used by the chat loop and tools.
-
-export function renderMarkdown(text) {
-  return DOMPurify.sanitize(marked.parse(text));
-}
+// UI primitives — toast, dialogs, markdown. Used by tool exec bodies for
+// human-in-the-loop moments (an optional note, a destructive confirm).
 
 export function scrollDisplayIntoView() {
   const display = document.getElementById('display');
@@ -70,24 +67,6 @@ export async function showConfirmDialog(toolName, args) {
   // Default focus to cancel — destructive actions shouldn't be one Enter away.
   const cancelBtn = dialog.querySelector('.btn-cancel');
   const result = await openDialog(dialog, cancelBtn);
-  return result === 'confirm';
-}
-
-// Generic yes/no confirm for non-tool actions (e.g. clearing the chat).
-// showConfirmDialog's signature is tool-shaped (name + args rendered into
-// their own fields); reuse its dialog chrome but drive the accessible
-// title directly instead of contorting a message into "toolName". Restores
-// the title afterward so a later real tool confirm doesn't inherit it.
-export async function showConfirm(message) {
-  const dialog = document.getElementById('confirm-dialog');
-  const titleEl = document.getElementById('confirm-title');
-  const prevTitle = titleEl.textContent;
-  titleEl.textContent = message;
-  document.getElementById('confirm-tool').textContent = '';
-  document.getElementById('confirm-args').textContent = '';
-  const cancelBtn = dialog.querySelector('.btn-cancel');
-  const result = await openDialog(dialog, cancelBtn);
-  titleEl.textContent = prevTitle;
   return result === 'confirm';
 }
 

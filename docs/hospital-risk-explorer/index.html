@@ -29,12 +29,8 @@
 
   </style>
   <link rel="stylesheet" href="../app.css">
-  <link rel="stylesheet" href="../chat.css">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
-  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
+  <link rel="stylesheet" href="../ui.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
-  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 </head>
 <body>
@@ -59,20 +55,6 @@
               <button class="theme-opt" data-theme="light">Light</button>
               <button class="theme-opt" data-theme="dark">Dark</button>
             </div>
-          </div>
-
-          <div class="settings-section">
-            <div class="settings-section-label">Local agent</div>
-            <select class="chat-model-select" id="model-select" aria-label="Model">
-              <option value="termd:default">Daemon default</option>
-              <option value="termd:sonnet">Claude Sonnet 5</option>
-              <option value="termd:opus">Claude Opus 5</option>
-              <option value="termd:haiku">Claude Haiku 4.5</option>
-            </select>
-            <p class="settings-note" id="termd-status" hidden>
-              Not detected. These demos run the model on your own machine &mdash;
-              <a href="https://jonasneves.com/termd/" target="_blank" rel="noopener">install termd and the bridge extension</a>, then reload.
-            </p>
           </div>
 
         </div>
@@ -102,30 +84,6 @@
       <div id="display"></div>
     </main>
   </div>
-
-  <aside class="chat-panel">
-    <div class="chat-header">
-      <span class="chat-header-title">AI Chat</span>
-      <span class="chat-model-label" id="chat-model-label">Claude</span>
-      <button class="btn btn-sm" id="chat-reset" aria-label="Clear chat">Clear</button>
-    </div>
-    <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="Chat messages"></div>
-    <div class="chat-input-area">
-      <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chat-input" placeholder="Ask about hospital capacity&#8230;" rows="1" aria-label="Chat message"></textarea>
-        <button class="chat-send-btn" id="chat-send" aria-label="Send message" title="Send">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button class="chat-abort-btn" id="chat-abort" hidden aria-label="Stop generating" title="Stop">
-          <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">
-            <rect width="11" height="11" rx="2" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
@@ -163,9 +121,7 @@
     })();
   </script>
   <script type="module">
-    import { mount, showToast, showConfirmDialog, showPromptDialog, appendMessage } from '../runtime/index.js';
-
-    marked.use({ gfm: true, breaks: true });
+    import { mount, showToast, showConfirmDialog, showPromptDialog } from '../runtime/index.js';
 
     /* ── State ── */
 
@@ -550,7 +506,7 @@
           },
           required: ['name']
         },
-        exec: async (input, client) => {
+        exec: async (input) => {
           const h = HOSPITALS.find(x => matchName(x, input.name));
           if (!h) return { summary: `No hospital found matching "${input.name}".` };
 
@@ -559,26 +515,30 @@
             flaggedHospitals.delete(h.name);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             showToast('Flag removed', () => {
               flaggedHospitals.set(h.name, previous || { note: 'Flagged for review', timestamp: Date.now() });
               persistFlags();
               refreshCurrentView();
+              runtime?.refresh();
             });
             return { summary: `Removed flag from ${h.name}.` };
           }
 
           let note = input.note;
           if (!note) {
-            note = await client.requestUserInteraction(() => showPromptDialog(`Add a note for flagging ${h.name} (optional)`));
+            note = await showPromptDialog(`Add a note for flagging ${h.name} (optional)`);
           }
           const flagData = { note: note || 'Flagged for review', timestamp: Date.now() };
           flaggedHospitals.set(h.name, flagData);
           persistFlags();
           refreshCurrentView();
+          runtime?.refresh();
           showToast('Hospital flagged', () => {
             flaggedHospitals.delete(h.name);
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
           });
           return { summary: `Flagged ${h.name}: "${flagData.note}".` };
         }
@@ -664,105 +624,13 @@
       },
     ];
 
-    /* ── System prompt + page context ── */
-
-    const SYSTEM_PROMPT_BASE = `You are embedded in a WebMCP proof-of-concept that explores US hospital inpatient and ICU bed capacity. Your tools render visuals (tables, charts, detail cards, comparisons) directly on the page — the user already sees the full result. You only receive a brief summary.
-
-Rules:
-- Chain tools proactively — don't announce what you're about to do, just do it. Call multiple tools in sequence to fully answer a question.
-- For analysis or "how is X doing" requests: call summarize_data first for raw numbers, then filter or chart as needed.
-- For "what's notable / what stands out" questions: summarize_data → filter to the high occupancy band → render a chart showing the pattern.
-- Infer intent from context. Viewing a detail card + "flag it" → flag that hospital. Viewing a filtered table + "compare the top two" → compare the two most-occupied hospitals visible.
-- Be concise: 1-2 sentences after a single tool call. 2-4 sentences after a multi-tool chain — add insight the visualization doesn't already show. Always end with one specific next-step suggestion.
-- No markdown formatting — plain text only. No greetings, filler, or preamble.
-- Flag notable hospitals proactively — those at or above capacity, or reporting inconsistently — don't wait to be asked.
-- All tools run immediately — do not ask permission before calling them. Only flag_hospital may request a user note via interaction.
-- Use summarize_data to compute aggregate statistics before writing analysis. Returns numbers without rendering.
-- Use render_chart for Apache ECharts visualizations. Generate a full ECharts option object with the best chart type. Palette: ["#38bdf8", "#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#ec4899"]. backgroundColor is transparent.
-- Your available tools change dynamically based on page state. When hospitals are flagged, review_flags and clear_all_flags become available.`;
-
-    function getSystemPrompt() {
-      const lines = [SYSTEM_PROMPT_BASE, '', 'Current page state:'];
-      switch (currentView.type) {
-        case 'table': {
-          const data = currentView.data || HOSPITALS;
-          lines.push(`- Viewing: table of ${data.length} hospitals`);
-          const names = data.slice(0, 8).map(h => h.name);
-          lines.push(`- Visible: ${names.join(', ')}${data.length > 8 ? ` (+${data.length - 8} more)` : ''}`);
-          const highRisk = data.filter(h => occTier(h.occupancy) === 'high');
-          if (highRisk.length > 0) lines.push(`- Attention: ${highRisk.length} high-risk hospital(s) in current view`);
-          break;
-        }
-        case 'detail':
-          if (currentView.data) {
-            const h = currentView.data;
-            lines.push(`- Viewing: detail card for ${h.name} (${h.city}, ${h.state} — ${num(h.beds)} beds, ${num(h.occupancy, '%')} occupied)`);
-          }
-          break;
-        case 'chart': lines.push('- Viewing: risk distribution chart'); break;
-        case 'comparison':
-          if (currentView.data) lines.push(`- Viewing: comparison of ${currentView.data[0].name} vs ${currentView.data[1].name}`);
-          break;
-      }
-      if (currentView.filters?.state) lines.push(`- Filtered by state: ${currentView.filters.state}`);
-      if (currentView.filters?.risk) lines.push(`- Filtered by risk: ${currentView.filters.risk}`);
-      if (flaggedHospitals.size > 0) lines.push(`- Flagged hospitals (${flaggedHospitals.size}): ${[...flaggedHospitals.keys()].join(', ')}`);
-      return lines.join('\n');
-    }
-
-    function getDividerContext() {
-      const parts = [];
-      switch (currentView.type) {
-        case 'table':
-          parts.push('Table');
-          if (currentView.data) parts.push(`${currentView.data.length} hospitals`);
-          break;
-        case 'chart': parts.push('Chart'); break;
-        case 'detail':
-          if (currentView.data) parts.push(`Detail: ${currentView.data.name}`);
-          break;
-        case 'comparison':
-          if (currentView.data) parts.push(`${currentView.data[0].name} vs ${currentView.data[1].name}`);
-          break;
-      }
-      if (currentView.filters?.state) parts.push(currentView.filters.state);
-      if (currentView.filters?.risk) parts.push(`${currentView.filters.risk} risk`);
-      if (flaggedHospitals.size > 0) parts.push(`${flaggedHospitals.size} flagged`);
-      return parts;
-    }
-
-    /* ── Follow-up suggestions ── */
-
-    function getFollowupSuggestions() {
-      switch (currentView.type) {
-        case 'table': {
-          const out = ['Show risk chart'];
-          const highRisk = (currentView.data || HOSPITALS)
-            .filter(h => occTier(h.occupancy) === 'high')
-            .sort((a, b) => (b.occupancy ?? -1) - (a.occupancy ?? -1));
-          if (highRisk.length >= 2) out.push(`Compare ${highRisk[0].name} and ${highRisk[1].name}`);
-          return out;
-        }
-        case 'chart': return ['Show table view', 'Filter to high risk only'];
-        case 'detail': {
-          const h = currentView.data;
-          const out = [`Flag ${h.name}`];
-          const similar = HOSPITALS
-            .filter(o => o.name !== h.name)
-            .sort((a, b) => Math.abs((a.occupancy ?? 0) - (h.occupancy ?? 0)) - Math.abs((b.occupancy ?? 0) - (h.occupancy ?? 0)));
-          if (similar.length) out.push(`Compare with ${similar[0].name}`);
-          return out;
-        }
-        case 'comparison': {
-          const [h1, h2] = currentView.data;
-          const worse = (h1.occupancy ?? 0) > (h2.occupancy ?? 0) ? h1 : h2;
-          return [`Show detail for ${worse.name}`, `Flag ${worse.name}`];
-        }
-      }
-      return [];
-    }
-
     /* ── Dynamic + adjusted tools ── */
+    //
+    // There is no system prompt here — nothing sends one anywhere. Per-tool
+    // guidance lives on each tool's own description (e.g. render_chart's
+    // palette line, below); a native WebMCP agent reads descriptions, never
+    // a page-level prompt, so cross-tool tone or chaining guidance has
+    // nowhere to live and is simply left unstated.
 
     function getDynamicTools() {
       if (flaggedHospitals.size === 0) return [];
@@ -790,10 +658,15 @@ Rules:
           readOnlyHint: false, idempotentHint: true, destructiveHint: true, openWorldHint: false,
           schema: { type: 'object', properties: {} },
           exec: async () => {
+            // Nothing outside this function gates destructive tools — the
+            // confirm lives here, unconditionally, on every call.
             const count = flaggedHospitals.size;
+            const ok = await showConfirmDialog('Clear All Flags', { count });
+            if (!ok) return { summary: 'Cancelled — flags left in place.' };
             flaggedHospitals.clear();
             persistFlags();
             refreshCurrentView();
+            runtime?.refresh();
             return { summary: `Cleared ${count} flag(s).` };
           }
         }
@@ -816,35 +689,6 @@ Rules:
       };
     }
 
-    /* ── Quick actions ── */
-
-    const TRIAGE_PROMPT = `Run a full triage analysis of the hospital dataset. Chain all steps without pausing or asking — execute each in sequence:
-1. Call summarize_data for a statistical overview of the full dataset
-2. Filter to high-risk hospitals using filter_hospitals with risk "high"
-3. Compare the two highest-risk hospitals using compare_hospitals
-4. Flag the worst-performing hospital with a note explaining the key risk factors
-5. Write a 2-3 sentence verdict: what's alarming, what's stable, and the top priority action`;
-
-    const SCENARIO_PROMPTS = {
-      'What stands out in the data?': `Find the most notable patterns — chain without pausing:
-1. Call summarize_data for the national picture
-2. Filter to the high occupancy band to surface the fullest hospitals
-3. Render a chart of the occupancy distribution using render_chart
-4. Write 2-3 sentences: the top pattern, the biggest outlier, and one caveat about the data`,
-      'Compare California and Texas': `Compare two states — chain without pausing:
-1. Call summarize_data with state CA, then again with state TX
-2. Render a chart contrasting their bed counts and overall occupancy
-3. Write 2-3 sentences on how they differ and what that does not tell us`,
-    };
-
-    const QUICK_ACTIONS = [
-      'What stands out in the data?',
-      'Compare California and Texas',
-      'Which hospitals are at or over capacity?',
-      'Show ICU occupancy against total beds',
-      'Summarise hospital capacity in California',
-    ];
-
     /* ── Mount runtime ── */
 
     // Declared before mount(), which renders the source bar synchronously —
@@ -855,12 +699,7 @@ Rules:
       tools: TOOL_DEFS,
       getDynamicTools,
       adjustTool,
-      getSystemPrompt,
-      getDividerContext,
       dataSource: () => SOURCE,
-      quickActions: QUICK_ACTIONS,
-      promptFor: (label) => label === 'Run triage analysis' ? TRIAGE_PROMPT : (SCENARIO_PROMPTS[label] || label),
-      getFollowupSuggestions,
     });
 
     /* ── Init ── */
