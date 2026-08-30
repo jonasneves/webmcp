@@ -96,9 +96,10 @@
 
 .theme-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
 
-/* ── Tools toggle caret ──────────────────────────────────────────── */
-/* Base .tools-toggle button lives in app.css; these two spans (written by
-   tools.js) let the caret rotate independent of the "N tools" text. */
+/* ── Tools toggle caret + status dot ─────────────────────────────── */
+/* Base .tools-toggle button lives in app.css; these spans (written by
+   tools.js) let the caret rotate and the dot color independent of the
+   "N tools" text. */
 
 .tools-toggle-caret {
   display: inline-block;
@@ -106,6 +107,32 @@
 }
 
 .tools-toggle[aria-expanded="true"] .tools-toggle-caret { transform: rotate(180deg); }
+
+/* Decoration on top of words, never the only carrier — the toggle's title
+ * and the panel's status line both say the same thing in text. */
+.tools-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.tools-status-dot[data-active="true"] { background: var(--risk-low); }
+
+.tools-panel-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.tools-panel-status .tools-status-dot { width: 8px; height: 8px; flex-shrink: 0; }
+.tools-panel-status[data-active="true"] { color: var(--risk-low); }
 
 /* ── Toast (undo affordance for tool-driven mutations) ─────────────── */
 

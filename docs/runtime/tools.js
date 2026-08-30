@@ -20,6 +20,13 @@ const nativeControllers = new Map(); // name -> AbortController backing its nati
 const nativeShapes = new Map();      // name -> last-mirrored shape fingerprint, to skip no-op re-registers
 const dynamicNames = new Set();      // names mirrored natively that aren't in `registry` (state-only tools)
 
+// Checked once: an extension that injects document.modelContext does it
+// before this script runs, and nothing removes the property mid-session.
+// This is what the tools panel's status dot reflects — a page can define
+// tools with nobody around to reach them, and that's worth saying out loud
+// rather than showing the same "N tools" either way.
+const hasNativeHost = 'modelContext' in document;
+
 // registerTool() throws InvalidStateError on a name that's already
 // registered, and the only way to replace one is to abort the
 // AbortController passed at registration time — there is no public
@@ -38,7 +45,7 @@ function toSpecShape(def) {
 }
 
 function mirrorToNative(def) {
-  if (!('modelContext' in document)) return; // no WebMCP support in this browser — silent no-op, per the spec's own feature-detect guidance
+  if (!hasNativeHost) return; // no WebMCP support in this browser — silent no-op, per the spec's own feature-detect guidance
   const spec = toSpecShape(def);
   const shapeKey = JSON.stringify({ d: spec.description, s: spec.inputSchema, a: spec.annotations });
   if (nativeShapes.get(def.name) === shapeKey) return; // unchanged since last mirror — don't re-register for nothing
@@ -118,13 +125,19 @@ function firstSentence(text) {
   return m ? text.slice(0, m.index + 1) : text;
 }
 
-// Trigger label is two spans — caret + count — instead of one text node, so
-// the caret can be targeted by CSS (rotation on open) independent of the
-// count text. Shared across every write-site so they can't drift.
+// Trigger label is three spans — caret, status dot, count — instead of one
+// text node, so each can be targeted/animated by CSS independently. Shared
+// across every write-site so they can't drift. The dot is decoration on top
+// of words, never the only carrier: the button's title/aria-label below
+// state the same status in text, for anyone who can't see or hover it.
 function setToggleLabel(toggle, count) {
   toggle.innerHTML =
     `<span class="tools-toggle-caret">&#9660;</span>` +
+    `<span class="tools-status-dot" data-active="${hasNativeHost}" aria-hidden="true"></span>` +
     `<span class="tools-toggle-count">${count} tools</span>`;
+  toggle.title = hasNativeHost
+    ? 'This browser can hand these tools to a WebMCP-aware agent sharing the tab.'
+    : 'No document.modelContext here — no agent sharing this tab can reach these tools.';
 }
 
 function renderToolsPanel(tools, newNames) {
@@ -134,7 +147,16 @@ function renderToolsPanel(tools, newNames) {
   if (!inner || !toggle || !panel) return;
   setToggleLabel(toggle, tools.length);
 
-  inner.innerHTML = tools.map(t => {
+  const statusLine = `
+    <div class="tools-panel-status" data-active="${hasNativeHost}">
+      <span class="tools-status-dot" data-active="${hasNativeHost}" aria-hidden="true"></span>
+      <span>${hasNativeHost
+        ? 'Reachable by any WebMCP-aware agent sharing this tab.'
+        : 'Not reachable here — no document.modelContext in this browser.'}</span>
+    </div>
+  `;
+
+  inner.innerHTML = statusLine + tools.map(t => {
     const badges = [];
     if (t.readOnlyHint) badges.push('<span class="annotation-badge read-only">read-only</span>');
     if (t.idempotentHint) badges.push('<span class="annotation-badge idempotent">idempotent</span>');
