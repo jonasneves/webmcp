@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#eef0e6">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
-  <title>WebMCP PoC — World Development</title>
+  <title>WebMCP — World Development</title>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="../app.css">
@@ -18,7 +18,7 @@
   <div class="main-column">
     <header>
       <div class="header-left">
-        <h1><a class="home-link" href="../">WebMCP PoC</a></h1>
+        <h1><a class="home-link" href="../">WebMCP</a></h1>
         <button class="tools-toggle" id="tools-toggle" aria-expanded="false" aria-controls="tools-panel">&#9660; 10 tools</button>
       </div>
       <div class="settings-wrap">
@@ -67,6 +67,22 @@
       <div id="display"></div>
     </main>
   </div>
+
+  <button class="discovery-tab" id="discovery-tab" aria-expanded="false" aria-controls="discovery-panel">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+      <path d="M10.5 5.5L9 9L5.5 10.5L7 7L10.5 5.5Z" fill="currentColor"/>
+    </svg>
+    Guide
+  </button>
+  <aside class="discovery-panel" id="discovery-panel" data-collapsed="true" aria-label="Guide and activity">
+    <div class="discovery-panel-tabs" role="tablist">
+      <button class="discovery-panel-tab active" data-view="guide" role="tab" aria-selected="true">Guide</button>
+      <button class="discovery-panel-tab" data-view="activity" role="tab" aria-selected="false">Activity</button>
+    </div>
+    <div class="discovery-guide" id="discovery-guide"></div>
+    <div class="discovery-activity" id="discovery-activity" hidden></div>
+  </aside>
 
   <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
@@ -863,6 +879,16 @@
       getDynamicTools,
       adjustTool,
       dataSource: () => SOURCE,
+      guide: {
+        intro: 'This page tracks 217 countries against World Bank development indicators — population, wealth, life expectancy, fertility, connectivity, and emissions. An agent sharing this tab can filter, chart, rank, and compare any of it directly.',
+        prompts: [
+          'Compare GDP per capita between Brazil and Portugal',
+          'Plot wealth against life expectancy for Sub-Saharan Africa',
+          'Which countries have the fastest internet adoption?',
+          'Rank the bottom 10 by life expectancy',
+          'How has life expectancy changed in India since 1960?',
+        ],
+      },
     });
 
     /* ── Init ── */

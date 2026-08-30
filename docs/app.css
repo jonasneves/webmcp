@@ -194,17 +194,27 @@ header h1 {
   color: var(--text);
 }
 
+/* A background tint on hover, not an underline — the wordmark is a bold
+ * condensed display face, and an underline sitting that close to a thick
+ * baseline reads as a heavy strike, not a link affordance. Every other
+ * hover state in this system (chips, cards, buttons) is a surface change,
+ * not text-decoration, so this keeps the wordmark consistent with them
+ * rather than looking like a stray paragraph link. */
 .home-link {
+  display: inline-block;
+  margin: -4px -6px;
+  padding: 4px 6px;
   color: inherit;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
+  transition: background var(--duration) var(--ease);
 }
 
-.home-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.home-link:hover { background: var(--surface-alt); }
 
 .home-link:focus-visible {
   outline: 2px solid var(--signal);
-  outline-offset: 3px;
+  outline-offset: 1px;
 }
 
 header .settings-btn { color: var(--text-muted); }
@@ -232,11 +242,18 @@ header .settings-btn[aria-expanded="true"] {
   border-bottom-color: var(--border);
 }
 
+/* Grid, not flex-wrap: flex-wrap hands each row's leftover space to that
+ * row's own items, so a row of two wide cards and a row of four narrow
+ * ones end up on different widths with no shared column line — it reads
+ * as items landing wherever they fit, not a layout. A fixed column grid
+ * gives every card in every row the same width, which is what makes rows
+ * actually read as rows. */
 .tools-panel-inner {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
+  align-items: start;
 }
 
 .tools-toggle {
@@ -262,8 +279,6 @@ header .settings-btn[aria-expanded="true"] {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: var(--space-3) var(--space-4);
-  flex: 1 1 280px;
-  max-width: 400px;
 }
 
 .tool-item-name {

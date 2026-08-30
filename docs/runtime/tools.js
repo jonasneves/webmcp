@@ -27,6 +27,30 @@ const dynamicNames = new Set();      // names mirrored natively that aren't in `
 // rather than showing the same "N tools" either way.
 const hasNativeHost = 'modelContext' in document;
 
+// Every call to a tool's real exec — from whichever agent is sharing the
+// tab — is announced on `document` as a `webmcp-tool-call` event, settled
+// or errored. This is the only instrumentation point: since the removed
+// chat loop, exec runs exactly once per call, straight from
+// document.modelContext, so wrapping it here is the one place that sees
+// every call regardless of caller. The discovery panel's Activity view is
+// the only current listener.
+function announceCall(name, input, detail) {
+  document.dispatchEvent(new CustomEvent('webmcp-tool-call', { detail: { name, input, ...detail } }));
+}
+
+function withAnnouncement(def) {
+  return async (input) => {
+    try {
+      const result = await def.exec(input);
+      announceCall(def.name, input, { result, endedAt: Date.now() });
+      return result;
+    } catch (err) {
+      announceCall(def.name, input, { error: err.message || String(err), endedAt: Date.now() });
+      throw err;
+    }
+  };
+}
+
 // registerTool() throws InvalidStateError on a name that's already
 // registered, and the only way to replace one is to abort the
 // AbortController passed at registration time — there is no public
@@ -40,7 +64,7 @@ function toSpecShape(def) {
     description: def.description,
     inputSchema: def.schema || { type: 'object', properties: {} },
     annotations: { readOnlyHint: !!def.readOnlyHint },
-    execute: def.exec,
+    execute: withAnnouncement(def),
   };
 }
 
@@ -132,7 +156,8 @@ function firstSentence(text) {
 // state the same status in text, for anyone who can't see or hover it.
 function setToggleLabel(toggle, count) {
   toggle.innerHTML =
-    `<span class="tools-toggle-caret">&#9660;</span>` +
+    `<svg class="tools-toggle-caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">` +
+    `<path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
     `<span class="tools-status-dot" data-active="${hasNativeHost}" aria-hidden="true"></span>` +
     `<span class="tools-toggle-count">${count} tools</span>`;
   toggle.title = hasNativeHost

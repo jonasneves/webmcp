@@ -126,12 +126,16 @@
 
 .tools-status-dot[data-active="true"] { background: var(--risk-low); }
 
+/* grid-column spans every column of .tools-panel-inner's grid — without
+ * it this sits in the first cell beside the first tool card, sized to its
+ * own content, with the rest of that row's width sitting empty next to it. */
 .tools-panel-status {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  grid-column: 1 / -1;
   padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   font-size: var(--text-xs);
   font-family: var(--mono);
   color: var(--text-muted);
@@ -305,3 +309,169 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -
 }
 
 .flash-new { animation: row-flash 0.6s ease-out; }
+
+/* ── Discovery panel (Guide + Activity) ──────────────────────────────
+ * Collapsed by default: an edge tab, not a rail that eats layout width.
+ * Overlays the page rather than pushing it, since it's occasional
+ * reading, not a permanent part of the shell. */
+
+.discovery-tab {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  /* Lower than .discovery-panel's z-index — when the panel slides open it
+   * needs to cover this, not float above it. */
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--h-touch);
+  padding: 0 var(--space-3) 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-family: var(--font);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease);
+}
+
+.discovery-tab:hover { color: var(--text); background: var(--surface-alt); }
+.discovery-tab:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.discovery-tab svg { flex-shrink: 0; }
+
+.discovery-panel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 81;
+  width: 320px;
+  max-width: 85vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-100%);
+  transition: transform var(--duration-slow) var(--ease);
+}
+
+.discovery-panel[data-collapsed="false"] { transform: translateX(0); }
+
+.discovery-panel-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) 0;
+  flex-shrink: 0;
+}
+
+.discovery-panel-tab {
+  flex: 1;
+  height: var(--h-control);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease);
+}
+
+.discovery-panel-tab:hover { color: var(--text); }
+.discovery-panel-tab.active { color: var(--signal); border-bottom-color: var(--signal); font-weight: 600; }
+.discovery-panel-tab:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+
+.discovery-guide,
+.discovery-activity {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.discovery-intro {
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: var(--space-5);
+}
+
+.discovery-section-label {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.discovery-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.discovery-prompts li {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--signal);
+}
+
+.discovery-empty {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.discovery-activity-item {
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-2);
+  border-radius: var(--r-sm);
+  border-left: 2px solid var(--risk-low);
+  background: var(--surface-alt);
+}
+
+.discovery-activity-item.error { border-left-color: var(--risk-high); }
+
+.discovery-activity-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.discovery-activity-name {
+  font-family: var(--mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--signal);
+}
+
+.discovery-activity-time {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.discovery-activity-item.error .discovery-activity-name { color: var(--risk-high); }
+
+.discovery-activity-summary {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}

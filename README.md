@@ -78,6 +78,7 @@ docs/
     index.js            mount() entry — registers tools, wires refresh()
     tools.js            document.modelContext mirror + registry + tool panel
     source.js           data provenance — the source bar
+    panel.js            discovery panel — Guide + live Activity of tool calls
     ui.js theme.js
   countries/ earthquakes/ hospital-risk-explorer/
 ```

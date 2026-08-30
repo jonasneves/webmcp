@@ -9,6 +9,7 @@
 //   theme.js  — light/dark/system theme
 //   tools.js  — document.modelContext mirror, tools-panel sidebar
 //   source.js — data provenance: the source bar
+//   panel.js  — discovery panel: Guide + live Activity of tool calls
 //
 // Per-demo: HTML structure, dataset, TOOL_DEFS, render functions,
 //           hash routing, init.
@@ -16,6 +17,7 @@
 import { initTheme } from './theme.js';
 import { registerTools, listTools, syncToolsPanel, syncDynamicTools, initToolsToggle } from './tools.js';
 import { renderSourceBar } from './source.js';
+import { initDiscoveryPanel } from './panel.js';
 import { dismissToast } from './ui.js';
 
 /**
@@ -27,10 +29,12 @@ import { dismissToast } from './ui.js';
  * @param {(tool)=>tool} [cfg.adjustTool]    Optional: rewrite a tool's schema based on current view
  * @param {()=>object} [cfg.dataSource]      Provenance of the loaded data — see source.js. Rendered
  *                                           under the header.
+ * @param {object} [cfg.guide]               Discovery panel Guide content: { intro, prompts: [] }
  */
 export function mount(cfg) {
   initTheme();
   initSettingsPopover();
+  if (cfg.guide) initDiscoveryPanel(cfg.guide);
 
   registerTools(cfg.tools);
 
@@ -64,6 +68,11 @@ export function mount(cfg) {
       const panel = document.getElementById('tools-panel');
       if (panel?.dataset.collapsed === 'false') {
         document.getElementById('tools-toggle').click();
+        return;
+      }
+      const discovery = document.getElementById('discovery-panel');
+      if (discovery?.dataset.collapsed === 'false') {
+        document.getElementById('discovery-tab').click();
         return;
       }
       dismissToast();
