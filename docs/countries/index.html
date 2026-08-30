@@ -853,8 +853,15 @@
 
     function adjustTool(t) {
       if (t.name !== 'compare_countries') return t;
-      const visible = (currentView.type === 'table' && currentView.data) ? currentView.data : COUNTRIES;
-      const names = visible.map(c => c.name);
+      // The dataset, not the current view. matchName already searches all
+      // of COUNTRIES regardless of what's filtered into view, so scoping
+      // the enum to "currently visible" never restricted anything real —
+      // it only made the schema change on every render (including this
+      // tool's own), which is exactly what a turn-scoped agent (one that
+      // snapshots a tool's schema once and refuses to run it if that
+      // schema has since changed) can't tolerate. COUNTRIES loads once
+      // and never mutates, so this enum is now stable for the session.
+      const names = COUNTRIES.map(c => c.name);
       return {
         ...t,
         schema: {

@@ -678,8 +678,12 @@
 
     function adjustTool(t) {
       if (t.name !== 'compare_hospitals') return t;
-      const visible = (currentView.type === 'table' && currentView.data) ? currentView.data : HOSPITALS;
-      const names = visible.map(h => h.name);
+      // The dataset, not the current view — see countries/index.html's
+      // adjustTool for why: a schema tied to currentView churns on every
+      // render (including this tool's own), which a turn-scoped agent
+      // that snapshots a schema once and refuses stale re-reads can't
+      // tolerate. HOSPITALS only changes on a fresh page load.
+      const names = HOSPITALS.map(h => h.name);
       return {
         ...t,
         schema: {

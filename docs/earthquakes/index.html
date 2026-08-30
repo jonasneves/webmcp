@@ -675,8 +675,12 @@
 
     function adjustTool(t) {
       if (t.name !== 'compare_earthquakes') return t;
-      const visible = (currentView.type === 'table' && currentView.data) ? currentView.data : EARTHQUAKES;
-      const places = visible.slice(0, 50).map(q => q.place);
+      // The dataset, not the current view — see countries/index.html's
+      // adjustTool for why: a schema tied to currentView churns on every
+      // render (including this tool's own), which a turn-scoped agent
+      // that snapshots a schema once and refuses stale re-reads can't
+      // tolerate. EARTHQUAKES only changes on a fresh page load.
+      const places = EARTHQUAKES.slice(0, 50).map(q => q.place);
       return {
         ...t,
         schema: {
