@@ -68,25 +68,25 @@ function toSpecShape(def) {
   };
 }
 
-function mirrorToNative(def) {
+// Confirmed 2026-08-30, not just theorized: every static tool on a fresh
+// load failed "parse input arguments" on first real call, while
+// registerTool() itself resolved clean and document.modelContext.getTools()
+// reported the correct schema straight back — so the corruption is in
+// whatever the extension cached from that call, invisible from this side,
+// not in anything a rejection here could catch. Deferring by one macrotask
+// (below) is still worth doing — it's free and covers the same-tick case —
+// but it is not a wait long enough for a cold MV3 service worker's
+// handshake, and there's no event to await instead. registerTools() below
+// re-sends the whole batch once more, later, as the actual mitigation.
+function mirrorToNative(def, { force = false } = {}) {
   if (!hasNativeHost) return; // no WebMCP support in this browser — silent no-op, per the spec's own feature-detect guidance
   const spec = toSpecShape(def);
   const shapeKey = JSON.stringify({ d: spec.description, s: spec.inputSchema, a: spec.annotations });
-  if (nativeShapes.get(def.name) === shapeKey) return; // unchanged since last mirror — don't re-register for nothing
+  if (!force && nativeShapes.get(def.name) === shapeKey) return; // unchanged since last mirror — don't re-register for nothing
   nativeControllers.get(def.name)?.abort();
   const controller = new AbortController();
   nativeControllers.set(def.name, controller);
   nativeShapes.set(def.name, shapeKey);
-  // Working theory for a reproduced failure: a registerTool() call fired in
-  // the same tick document.modelContext appears can race the extension's
-  // content-script-to-background handshake. The property exists, but a call
-  // landing before that handshake settles seems to get its schema mangled on
-  // the extension side — every later invocation then fails at call time with
-  // no rejection here to catch. Deferring one macrotask cleared it in
-  // testing, but there's no delivery guarantee from the extension (a
-  // suspended MV3 service worker can take far longer to wake), so this is a
-  // heuristic delay, not a proven bound — treat a resurfacing of the same
-  // symptom as this guess being wrong before assuming a regression.
   setTimeout(() => {
     document.modelContext.registerTool(spec, { signal: controller.signal })
       .catch(err => {
@@ -105,13 +105,30 @@ function unmirrorFromNative(name) {
   nativeShapes.delete(name);
 }
 
-// Static tools: registered once, mirrored once. Call at mount with the
+// How long to give a cold extension handshake before the forced retry
+// below. Not a proven bound — a suspended MV3 service worker's wake time
+// isn't observable from here — just generous enough that a first attempt
+// landing before it clears is the unusual case, not the common one.
+const NATIVE_HANDSHAKE_RETRY_MS = 2000;
+
+// Static tools: registered once, mirrored once, then unconditionally
+// re-mirrored after NATIVE_HANDSHAKE_RETRY_MS. Call at mount with the
 // page's fixed TOOL_DEFS.
 export function registerTools(defs) {
   for (const d of defs) {
     registry.set(d.name, d);
     mirrorToNative(d);
   }
+  if (!hasNativeHost) return;
+  // Self-healing pass: force past the shape-diff cache and re-send every
+  // definition, regardless of whether the first attempt looked fine. A
+  // tool that already registered correctly just gets re-registered with an
+  // identical shape (cheap, and invisible to whatever agent is sharing the
+  // tab); the point is guaranteeing at least one attempt lands after the
+  // extension's handshake is actually done.
+  setTimeout(() => {
+    for (const d of defs) mirrorToNative(d, { force: true });
+  }, NATIVE_HANDSHAKE_RETRY_MS);
 }
 
 // State-dependent tools: call from `refresh()` with the same snapshot the
