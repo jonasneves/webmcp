@@ -77,14 +77,26 @@ function mirrorToNative(def) {
   const controller = new AbortController();
   nativeControllers.set(def.name, controller);
   nativeShapes.set(def.name, shapeKey);
-  document.modelContext.registerTool(spec, { signal: controller.signal })
-    .catch(err => {
-      // Superseding a tool means aborting its old registration's signal,
-      // which rejects that old registerTool() call with AbortError — the
-      // expected shape of "cancel and replace", not a real failure.
-      if (err.name === 'AbortError') return;
-      console.warn('[tools] native registerTool rejected', def.name, err);
-    });
+  // Working theory for a reproduced failure: a registerTool() call fired in
+  // the same tick document.modelContext appears can race the extension's
+  // content-script-to-background handshake. The property exists, but a call
+  // landing before that handshake settles seems to get its schema mangled on
+  // the extension side — every later invocation then fails at call time with
+  // no rejection here to catch. Deferring one macrotask cleared it in
+  // testing, but there's no delivery guarantee from the extension (a
+  // suspended MV3 service worker can take far longer to wake), so this is a
+  // heuristic delay, not a proven bound — treat a resurfacing of the same
+  // symptom as this guess being wrong before assuming a regression.
+  setTimeout(() => {
+    document.modelContext.registerTool(spec, { signal: controller.signal })
+      .catch(err => {
+        // Superseding a tool means aborting its old registration's signal,
+        // which rejects that old registerTool() call with AbortError — the
+        // expected shape of "cancel and replace", not a real failure.
+        if (err.name === 'AbortError') return;
+        console.warn('[tools] native registerTool rejected', def.name, err);
+      });
+  }, 0);
 }
 
 function unmirrorFromNative(name) {
