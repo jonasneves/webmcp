@@ -863,7 +863,13 @@
       // tool's own), which is exactly what a turn-scoped agent (one that
       // snapshots a tool's schema once and refuses to run it if that
       // schema has since changed) can't tolerate. COUNTRIES loads once
-      // and never mutates, so this enum is now stable for the session.
+      // and never mutates, so this enum is now stable for the session —
+      // except across the load itself: registering an empty enum before
+      // the fetch resolves, then the real one after, is the same kind of
+      // mid-session schema change this whole function exists to avoid.
+      // Skip adjusting until there's a dataset to draw the enum from, so
+      // the only registration that ever happens is the final, true one.
+      if (!COUNTRIES.length) return t;
       const names = COUNTRIES.map(c => c.name);
       return {
         ...t,

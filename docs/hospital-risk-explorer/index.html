@@ -685,7 +685,12 @@
       // adjustTool for why: a schema tied to currentView churns on every
       // render (including this tool's own), which a turn-scoped agent
       // that snapshots a schema once and refuses stale re-reads can't
-      // tolerate. HOSPITALS only changes on a fresh page load.
+      // tolerate. HOSPITALS only changes on a fresh page load — except
+      // across the load itself: registering an empty enum before the
+      // fetch resolves, then the real one after, is the same kind of
+      // mid-session schema change this function exists to avoid. Skip
+      // adjusting until there's a dataset to draw the enum from.
+      if (!HOSPITALS.length) return t;
       const names = HOSPITALS.map(h => h.name);
       return {
         ...t,
