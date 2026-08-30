@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#e8ebf2">
+  <meta name="theme-color" content="#eef0e6">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
   <title>WebMCP PoC — US Hospital Capacity</title>
   <style>
@@ -12,22 +12,9 @@
       color: var(--risk-low);
       font-weight: 700;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="../app.css">
   <link rel="stylesheet" href="../ui.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
@@ -222,7 +209,7 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Hospital</th><th>City</th><th>State</th><th>Beds</th><th>Occupied</th><th>Occupancy</th>
+              <th>Hospital</th><th>City</th><th>State</th><th class="num">Beds</th><th class="num">Occupied</th><th class="num">Occupancy</th>
             </tr>
           </thead>
           <tbody>
@@ -233,9 +220,9 @@
                 <td><span class="name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${h.name}</span></td>
                 <td>${h.city}</td>
                 <td>${h.state}</td>
-                <td>${num(h.beds)}</td>
-                <td>${num(h.used)}</td>
-                <td><span class="risk-badge ${occTier(h.occupancy)}">${num(h.occupancy, '%')}</span>${h.inconsistent ? ' <span class="detail-suffix" title="The source reports more beds occupied than the facility reports having">⚠</span>' : ''}</td>
+                <td class="num">${num(h.beds)}</td>
+                <td class="num">${num(h.used)}</td>
+                <td class="num"><span class="risk-badge ${occTier(h.occupancy)}">${num(h.occupancy, '%')}</span>${h.inconsistent ? ' <span class="detail-suffix" title="The source reports more beds occupied than the facility reports having">⚠</span>' : ''}</td>
               </tr>`;
             }).join('')}
           </tbody>

@@ -1,83 +1,138 @@
 /* Shared page shell for the WebMCP demos — tokens, header, tools panel,
- * controls, data table, cards. Paired with chat.css (the chat surface).
+ * controls, data table, cards. Paired with ui.css (settings/toast/dialogs).
  *
  * These three demos were copy-paste forks: ~530 of each page's ~570 style
  * lines were byte-identical, including three data-table rule sets that
  * differed only in class name. That is why a fix landed on one page and
  * not the others. Page files now carry only what is genuinely theirs.
+ *
+ * Design language: these aren't dashboards, they're readouts — a seismic
+ * feed, a development-indicators table, a hospital capacity feed, each
+ * reporting a real source with its own caveats. Every scale below is a
+ * fixed step set (spacing, control height, radius, type) used without
+ * exception, rather than a value picked per-component — that discipline
+ * is what "harmony" actually is; it's not a font or a color.
  */
 
 :root {
-  --bg: #e8ebf2;
+  /* ── Color: instrument panel, not SaaS teal ──────────────────────
+   * Amber (signal) is the primary accent — a seismograph-paper, warning-
+   * lamp amber, not the teal every dashboard defaults to. Cyan (trace)
+   * is a second, cooler category color for "live"/felt-style states, so
+   * amber isn't overloaded into meaning two different things. */
+  --bg: #eef0e6;
   --surface: #ffffff;
-  --surface-alt: #eef0f7;
-  --border: #c8cdd9;
-  --text: #111827;
-  --text-muted: #64748b;
-  /* Darker than --text-muted on purpose: muted lands at 3.99:1 on this
-   * background, under the 4.5:1 floor, and the source bar is small text a
-   * reader is meant to actually read. 6.34:1. */
-  --text-source: #4b5563;
-  /* --risk-med (#d97706) is 2.80:1 here — amber never clears a light
-   * background as text. Same signal, amber-800. 6.23:1. */
-  --text-caveat: #92400e;
-  --accent: #0d9488;
-  --accent-dim: #c8f0eb;
-  --risk-low: #16a34a;
-  --risk-med: #d97706;
-  --risk-high: #dc2626;
-  --flag: #d97706;
-  --badge-green-bg: #dcfce7;
-  --badge-amber-bg: #fef3c7;
-  --badge-red-bg: #fee2e2;
-  --badge-cyan-bg: #c8f0eb;
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
-  --text-xs: 0.6875rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
-  --space-2xl: 48px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.08);
+  --surface-alt: #e5e8dd;
+  --border: #cbd0c2;
+  --text: #1b1f16;
+  --text-muted: #5b6155;
+  /* Darker than --text-muted on purpose: muted lands under 4.5:1 on this
+   * background, and the source bar is small text meant to be read. ~7.4:1. */
+  --text-source: #3c4137;
+  --text-caveat: #7a4a0d;   /* amber-as-text needs to go this dark to clear 4.5:1 on --bg */
+  --signal: #a6690f;        /* ~4.6:1 on --bg — amber-as-text floor on light */
+  --signal-dim: #f3e6c9;
+  --trace: #0f7c8f;         /* ~4.7:1 on --bg */
+  --trace-dim: #d9eef1;
+  --risk-low: #2f7a4d;
+  --risk-med: #a6690f;
+  --risk-high: #b13a3a;
+  --flag: #a6690f;
+  --badge-signal-bg: #f3e6c9;
+  --badge-trace-bg: #d9eef1;
+  --badge-green-bg: #dfeee2;
+  --badge-amber-bg: #f6ead2;
+  --badge-red-bg: #f6dede;
+
+  /* ── Radius: three roles, nothing between ────────────────────────
+   * sm = inputs/pills/badges, md = cards/panels, lg = dialogs/hero cards. */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --radius-sm: var(--r-sm);
+  --radius: var(--r-md);
+  --radius-lg: var(--r-lg);
+
+  /* ── Type: IBM Plex — a family built for technical/data reading, with a
+   * matching mono, instead of the system-ui default every page reaches
+   * for. Condensed carries headers and labels (a technical-readout
+   * character); Sans carries body copy; Mono carries every number, tool
+   * name, and schema fragment — data reads as data throughout. */
+  --font-display: 'IBM Plex Sans Condensed', var(--font);
+  --font: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --text-2xs: 0.6875rem;  /* 11px — eyebrows, micro labels */
+  --text-xs: 0.75rem;     /* 12px — captions, badges */
+  --text-sm: 0.8125rem;   /* 13px — secondary text */
+  --text-base: 0.9375rem; /* 15px — body, table rows */
+  --text-lg: 1.125rem;    /* 18px — card titles */
+  --text-xl: 1.375rem;    /* 22px — section headings */
+  --text-2xl: 1.75rem;    /* 28px — page headings */
+  --text-3xl: 2.375rem;   /* 38px — hero */
+
+  /* ── Space: one 4px-rooted scale, used without exception. A component's
+   * *interior* padding sits at 2–3; the gap *between* sibling sections
+   * sits at 4–6. That two-tier rule is most of what "rhythm" means here. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  /* Old names, kept because ui.css and every demo still spell them this
+   * way — aliases onto the scale above, not a second system. */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
+  --space-xl: var(--space-8);
+  --space-2xl: var(--space-12);
+
+  /* ── Control height: three roles, everything else is content ─────
+   * compact = icon buttons and status pills; control = the default for
+   * chips/selects/buttons; touch = the 44px platform floor, spent only
+   * where the input is primary or the pointer is coarse. */
+  --h-compact: 28px;
+  --h-control: 36px;
+  --h-touch: 44px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 20, 10, 0.08);
+  --shadow: 0 4px 16px rgba(20, 20, 10, 0.10);
+  --shadow-lg: 0 12px 32px rgba(20, 20, 10, 0.16);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration: 150ms;
   --duration-slow: 300ms;
 }
 
 html[data-theme="dark"] {
-  --bg: #0f1117;
-  --surface: #1a1d24;
-  --surface-alt: #21252d;
-  --border: #2d3139;
-  --text: #e8eaf0;
-  --text-muted: #8b92a5;
-  --text-source: #8b92a5;   /* 4.94:1 on --surface-alt — already clears it */
-  --text-caveat: #f59e0b;   /* 7.15:1 — amber is only a problem on light */
-  --accent: #2dd4bf;
-  --accent-dim: #0f3935;
-  --risk-low: #22c55e;
-  --risk-med: #f59e0b;
-  --risk-high: #ef4444;
-  --flag: #f59e0b;
-  --badge-green-bg: #052e16;
-  --badge-amber-bg: #3d1f00;
-  --badge-red-bg: #3d0a0a;
-  --badge-cyan-bg: #0f3935;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+  --bg: #12151a;
+  --surface: #1a1e25;
+  --surface-alt: #21262f;
+  --border: #2c323c;
+  --text: #eeeae0;
+  --text-muted: #8a8f9c;
+  --text-source: #a2a7b2;  /* ~6.9:1 on --surface-alt */
+  --text-caveat: #eab35c;  /* ~8.8:1 — amber only needs the light-mode floor */
+  --signal: #e2a33d;
+  --signal-dim: #362a12;
+  --trace: #52c4d6;
+  --trace-dim: #0e2b30;
+  --risk-low: #5fb87a;
+  --risk-med: #e2a33d;
+  --risk-high: #e0585c;
+  --flag: #e2a33d;
+  --badge-signal-bg: #362a12;
+  --badge-trace-bg: #0e2b30;
+  --badge-green-bg: #17301f;
+  --badge-amber-bg: #3a2c13;
+  --badge-red-bg: #3a1c1c;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -85,7 +140,7 @@ html[data-theme="dark"] {
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 body {
   font-family: var(--font);
@@ -97,6 +152,7 @@ body {
   display: flex;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
 }
 
 .main-column {
@@ -106,42 +162,38 @@ body {
   min-width: 0;
 }
 
+/* ── Header ───────────────────────────────────────────────────────
+ * Height and inset are the two numbers every section below aligns to:
+ * --h-touch (44) plus a --space-2 (8) collar = 52... no — fixed at a
+ * clean 56 (a --space-4/--space-10 multiple) so it reads as chosen, not
+ * derived from an unrelated control's height. Horizontal padding matches
+ * <main>'s, so the wordmark, the table, and the source bar all start at
+ * the same left edge — the one alignment every section shares. */
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 52px;
-  padding: 0 var(--space-lg);
-  border-bottom: none;
-  background: #111827;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
-}
-
-html[data-theme="dark"] header {
+  height: 56px;
+  padding: 0 var(--space-6);
   background: var(--surface);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 header h1 {
-  font-size: var(--text-base);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
-html[data-theme="dark"] header h1 { color: var(--text); }
-
-/* The wordmark is the way back to the demo index. Underline on hover
- * rather than always-on, so the header stays quiet, but keep a visible
- * focus ring — this is the first tab stop on every page. */
 .home-link {
   color: inherit;
   text-decoration: none;
@@ -151,95 +203,104 @@ html[data-theme="dark"] header h1 { color: var(--text); }
 .home-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .home-link:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--signal);
   outline-offset: 3px;
 }
 
-header .settings-btn { color: rgba(255, 255, 255, 0.5); }
+header .settings-btn { color: var(--text-muted); }
 header .settings-btn:hover,
 header .settings-btn[aria-expanded="true"] {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.9);
-}
-html[data-theme="dark"] header .settings-btn { color: var(--text-muted); }
-html[data-theme="dark"] header .settings-btn:hover,
-html[data-theme="dark"] header .settings-btn[aria-expanded="true"] {
   background: var(--surface-alt);
   border-color: var(--border);
   color: var(--text);
 }
 
-/* Tools panel */
+/* ── Tools panel ──────────────────────────────────────────────────
+ * The toggle lives in the header row, at --h-control height, aligned to
+ * its own text baseline rather than centered by eye. */
 .tools-panel {
   max-height: 0;
   overflow: hidden;
   transition: max-height var(--duration-slow) var(--ease), border-color var(--duration-slow) var(--ease);
   border-bottom: 1px solid transparent;
+  background: var(--surface-alt);
 }
 
 .tools-panel[data-collapsed="false"] {
   max-height: 600px;
+  overflow-y: auto;
   border-bottom-color: var(--border);
 }
 
 .tools-panel-inner {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: var(--space-md) var(--space-lg);
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
 }
 
 .tools-toggle {
-  min-height: 44px;
-  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--h-control);
+  padding: 0 var(--space-2);
   font-size: var(--text-sm);
-  font-family: var(--font);
-  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--mono);
+  color: var(--text-muted);
   background: none;
   border: none;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  transition: color var(--duration) var(--ease);
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease);
 }
 
-.tools-toggle:hover { color: rgba(255, 255, 255, 0.9); }
-html[data-theme="dark"] .tools-toggle { color: var(--text-muted); }
-html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
+.tools-toggle:hover { color: var(--text); background: var(--surface-alt); }
 
 .tool-item {
   background: var(--surface);
-  border-radius: var(--radius);
-  padding: 12px var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
   flex: 1 1 280px;
   max-width: 400px;
-  box-shadow: var(--shadow-sm);
 }
 
 .tool-item-name {
   font-family: var(--mono);
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--accent);
-  margin-bottom: var(--space-xs);
+  color: var(--signal);
+  margin-bottom: var(--space-1);
 }
 
 .tool-item-badges {
   display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
 }
 
-.annotation-badge {
-  font-size: var(--text-xs);
+/* One padding recipe for every pill in the system — badges, tags, the
+ * risk indicator. Previously three near-identical components each had
+ * their own hand-picked padding; this is the one component now. */
+.annotation-badge,
+.risk-badge,
+.demo-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 2px var(--space-sm);
   border-radius: 100px;
+  white-space: nowrap;
 }
 
 .annotation-badge.read-only { background: var(--badge-green-bg); color: var(--risk-low); }
-.annotation-badge.idempotent { background: var(--badge-cyan-bg); color: var(--accent); }
+.annotation-badge.idempotent { background: var(--badge-trace-bg); color: var(--trace); }
 .annotation-badge.destructive { background: var(--badge-red-bg); color: var(--risk-high); }
 .annotation-badge.closed-world { background: var(--badge-amber-bg); color: var(--risk-med); }
 
@@ -249,47 +310,44 @@ html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
   line-height: 1.5;
 }
 
-.tool-item.new {
-  border: 1px solid var(--accent);
-}
+.tool-item.new { border-color: var(--signal); }
 
 .tool-item-params {
   font-size: var(--text-xs);
-  color: var(--accent);
-  margin-top: var(--space-xs);
+  color: var(--signal);
+  margin-top: var(--space-1);
   font-family: var(--mono);
 }
 
 @media (max-width: 900px) {
   body { flex-direction: column; }
-  .chat-panel { border-left: none; border-top: 1px solid var(--border); max-height: 50dvh; width: 100%; }
 }
 
 /* ── Source bar ───────────────────────────────────────────────────
  * Who published the numbers below, what period they cover, and what was
  * dropped on the way in. Sits between the header and the data because
- * that is the order the questions arrive in.
+ * that is the order the questions arrive in. Same horizontal inset as
+ * the header and <main>, and enough vertical room (space-3) that it
+ * reads as its own row rather than an overflow line stuck to the header.
  *
  * Deliberately not a live region: it re-renders on every filter click,
  * and a screen reader hearing "World Bank · 217 countries · retrieved 4
  * minutes ago" on each one would be worse than silence. It is standing
  * description, not a state change. */
 .source-bar {
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-3) var(--space-6);
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border);
   font-size: var(--text-xs);
-  line-height: 1.6;
+  font-family: var(--mono);
+  line-height: 1.7;
   color: var(--text-source);
   flex-shrink: 0;
 }
 
-.source-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-xs); }
+.source-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2); }
 
 .source-origin { font-weight: 600; color: var(--text); text-decoration: none; }
-/* Underline only. Swapping in --accent on hover reads well and lands at
- * 3.29:1 on this background — the underline already carries the affordance,
- * so the colour change was buying nothing and costing the floor. */
 .source-origin:hover { text-decoration: underline; }
 .source-arrow { font-size: 0.9em; }
 .source-sep { opacity: 0.5; }
@@ -297,8 +355,8 @@ html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
 .source-caveat {
   display: flex;
   align-items: baseline;
-  gap: var(--space-xs);
-  margin-top: 2px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
   color: var(--text-caveat);
 }
 .source-caveat-mark { flex-shrink: 0; }
@@ -312,65 +370,60 @@ html[data-theme="dark"] .tools-toggle:hover { color: var(--text); }
   white-space: nowrap;
 }
 
-main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
+main { padding: var(--space-6); overflow-y: auto; flex: 1; min-height: 0; }
 
 /* ── Controls ─────────────────────────────────────────────────────
  * One wrapping row of mutually-exclusive options — which is what they
  * actually are: selecting any one clears the rest, whether it filters
- * the table or swaps in a chart. A hairline separator used to imply
- * two independent axes that combine; they never did.
- *
- * Wraps rather than scrolls. The old row was a horizontal scroller
- * masked by a fade, so on the widest page the last control sat off
- * the edge with nothing to suggest it existed. */
+ * the table or swaps in a chart. Every chip sits at --h-control so the
+ * row has one height, not a mix of button sizes. */
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
+  height: var(--h-control);
+  padding: 0 var(--space-3);
   font-size: var(--text-sm);
   font-family: var(--font);
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--r-sm);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
   transition: background var(--duration) var(--ease), color var(--duration) var(--ease), border-color var(--duration) var(--ease);
 }
 
-/* A pointer-agnostic 44px target made every page open with a wall of
- * pills. SC 2.5.8 puts the floor at 24px; the 44px platform number is
- * what touch needs, so spend the height only where it is the input. */
+/* SC 2.5.8 puts the floor at 24px; --h-control (36) already clears it, so
+ * the coarse-pointer bump only needs to reach the 44px platform number. */
 @media (pointer: coarse) {
-  .chip { min-height: 44px; padding: 0 var(--space-md); }
+  .chip { height: var(--h-touch); padding: 0 var(--space-4); }
 }
 
 .chip:hover { background: var(--surface-alt); color: var(--text); }
-.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
 /* Selection carries on weight and border as well as fill — fill alone
  * is a colour-only encoding (SC 1.4.1). aria-pressed is the state the
- * assistive tech reads; .active is kept only as the styling hook. */
+ * assistive tech reads; the styling below just follows it. */
 .chip[aria-pressed="true"] {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--signal-dim);
+  color: var(--signal);
+  border-color: var(--signal);
   font-weight: 600;
 }
 
 #display { min-height: 200px; }
 
 .empty-state {
-  padding: var(--space-2xl) var(--space-lg);
+  padding: var(--space-12) var(--space-6);
   text-align: center;
   color: var(--text-muted);
   font-size: var(--text-sm);
@@ -385,19 +438,26 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
 .loading-skeleton {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .skeleton-row {
-  height: 44px;
-  border-radius: var(--radius);
+  height: var(--h-touch);
+  border-radius: var(--r-md);
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-alt) 50%, var(--surface) 75%);
   background-size: 800px 44px;
   animation: shimmer 1.5s infinite linear;
 }
 
-/* Table view — one .data-table. Each demo previously carried its own
- * .quake-table / .country-table / .hospital-table with identical rules. */
+/* ── Data table ───────────────────────────────────────────────────
+ * One .data-table. Each demo previously carried its own .quake-table /
+ * .country-table / .hospital-table with identical rules.
+ *
+ * Numeric columns (.num) right-align. Left-aligned numbers were the
+ * single biggest source of "this doesn't look intentional" — a column
+ * of right-ragged digits reads as a list, not a measurement, and the
+ * ragged gap before it varied with every label's length. Right-aligned,
+ * every value in a column shares one edge regardless of digit count. */
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -410,46 +470,42 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   min-width: 640px;
 }
 
-.data-table th { padding: 10px 12px; white-space: nowrap; }
+.data-table th { padding: var(--space-2) var(--space-3); white-space: nowrap; }
 
 .data-table td {
-  padding: 10px 12px;
+  padding: var(--space-3);
   border-bottom: 1px solid var(--surface-alt);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
+
+.data-table th.num,
+.data-table td.num { text-align: right; }
 
 .data-table tbody tr {
   cursor: pointer;
   transition: background var(--duration) var(--ease);
 }
 
-.data-table tbody tr:hover { background: var(--surface); }
-.data-table tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.data-table tbody tr:hover { background: var(--surface-alt); }
+.data-table tbody tr:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
 
 .name-cell {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-2);
 }
 
 .data-table th,
 .compare-table th {
   text-align: left;
+  font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
-}
-
-.risk-badge {
-  display: inline-block;
-  padding: 2px 10px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  border-radius: 100px;
-  letter-spacing: 0.04em;
 }
 
 .risk-badge.low { background: var(--badge-green-bg); color: var(--risk-low); }
@@ -466,7 +522,7 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
 }
 
 .flag-note {
-  padding: var(--space-sm) var(--space-lg) 0;
+  padding: var(--space-2) var(--space-6) 0;
   font-size: var(--text-sm);
   color: var(--flag);
   font-style: italic;
@@ -480,53 +536,46 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   font-size: var(--text-sm);
 }
 
-.compare-table th {
-  padding: 10px var(--space-md);
-}
+.compare-table th { padding: var(--space-2) var(--space-4); }
 
 .compare-table td {
-  padding: 12px var(--space-md);
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--surface-alt);
-}
-
-.compare-metric {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-
-.compare-value {
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
 }
+
+.compare-table th.num,
+.compare-table td.num { text-align: right; }
+
+.compare-metric { color: var(--text-muted); font-size: var(--text-sm); }
+.compare-value { font-weight: 500; }
 
 /* Detail view */
 .detail-card {
   max-width: 640px;
   background: var(--surface);
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
   overflow: hidden;
-  box-shadow: var(--shadow);
 }
 
 .detail-header {
-  padding: 20px var(--space-lg);
+  padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--surface-alt);
 }
 
 .detail-header h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
+  font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--space-xs);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-1);
 }
 
-.detail-meta {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
+.detail-meta { font-size: var(--text-sm); color: var(--text-muted); }
 
 .detail-grid {
   display: grid;
@@ -535,10 +584,7 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   background: var(--surface-alt);
 }
 
-.detail-cell {
-  padding: var(--space-md) var(--space-lg);
-  background: var(--surface);
-}
+.detail-cell { padding: var(--space-4) var(--space-6); background: var(--surface); }
 
 .detail-cell-label {
   font-size: var(--text-xs);
@@ -546,81 +592,65 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-1);
 }
 
 .detail-cell-value {
+  font-family: var(--mono);
   font-size: var(--text-lg);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .color-risk-low { color: var(--risk-low); }
 .color-risk-medium { color: var(--risk-med); }
 .color-risk-high { color: var(--risk-high); }
 
-.detail-suffix {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
+.detail-suffix { font-size: var(--text-sm); color: var(--text-muted); }
 
-.view-label {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-bottom: var(--space-md);
-}
+.view-label { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-4); }
 
-.chart-container {
-  width: 100%;
-  min-height: 400px;
-}
+.chart-container { width: 100%; min-height: 400px; }
 
 .back-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 var(--space-md);
+  gap: var(--space-1);
+  height: var(--h-touch);
+  padding: 0 var(--space-4);
   font-size: var(--text-sm);
   font-family: var(--font);
-  color: var(--accent);
+  color: var(--signal);
   background: none;
-  border: 1px solid var(--accent-dim);
-  border-radius: var(--radius);
+  border: 1px solid var(--signal-dim);
+  border-radius: var(--r-md);
   cursor: pointer;
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-4);
   transition: background var(--duration) var(--ease);
 }
 
-.back-btn:hover { background: var(--accent-dim); }
+.back-btn:hover { background: var(--signal-dim); }
 
 /* Summary grid */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-md);
+  gap: var(--space-4);
 }
 
 .summary-card {
   background: var(--surface);
-  border-radius: var(--radius-lg);
-  padding: 20px var(--space-lg);
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--duration) var(--ease), transform var(--duration) var(--ease);
-}
-
-.summary-card:hover {
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--space-5) var(--space-6);
 }
 
 .summary-card-value {
+  font-family: var(--mono);
   font-size: var(--text-2xl);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--space-xs);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-1);
 }
 
 .summary-card-label {
@@ -629,20 +659,17 @@ main { padding: var(--space-lg); overflow-y: auto; flex: 1; min-height: 0; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: var(--space-xs);
+  margin-bottom: var(--space-1);
 }
 
-.summary-card-meta {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
+.summary-card-meta { font-size: var(--text-sm); color: var(--text-muted); }
 
 /* Shown only when the local agent doesn't answer — the one failure a visitor
  * can hit, so it carries the install link rather than a dead Send button. */
 .settings-note {
-  margin: var(--space-sm) 0 0;
-  font-size: 0.8125rem;
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--text-muted);
 }
-.settings-note a { color: var(--accent); }
+.settings-note a { color: var(--signal); }

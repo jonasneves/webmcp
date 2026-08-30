@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#e8ebf2">
+  <meta name="theme-color" content="#eef0e6">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='15'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
   <title>WebMCP PoC — World Development</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="../app.css">
   <link rel="stylesheet" href="../ui.css">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" as="script">
@@ -230,7 +232,7 @@
         <div class="table-scroll">
         <table class="data-table">
           <thead>
-            <tr><th>Country</th><th>Region</th><th>Income group</th><th>Population</th><th>GDP per capita</th><th>Life expectancy</th></tr>
+            <tr><th>Country</th><th>Region</th><th>Income group</th><th class="num">Population</th><th class="num">GDP per capita</th><th class="num">Life expectancy</th></tr>
           </thead>
           <tbody>
             ${countries.map(c => {
@@ -240,9 +242,9 @@
                 <td><span class="name-cell">${isFlagged ? '<span class="flag-dot" title="Flagged"></span>' : ''}${c.name}</span></td>
                 <td>${shortRegion(c.region)}</td>
                 <td>${c.income}</td>
-                <td>${cell('population')}</td>
-                <td>${cell('gdpPerCapita')}</td>
-                <td>${cell('lifeExpectancy')}</td>
+                <td class="num">${cell('population')}</td>
+                <td class="num">${cell('gdpPerCapita')}</td>
+                <td class="num">${cell('lifeExpectancy')}</td>
               </tr>`;
             }).join('')}
           </tbody>
