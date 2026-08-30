@@ -62,6 +62,7 @@ export function initDiscoveryPanel(guide) {
     const collapsed = panel.dataset.collapsed !== 'false';
     panel.dataset.collapsed = collapsed ? 'false' : 'true';
     tab.setAttribute('aria-expanded', String(collapsed));
+    tab.title = collapsed ? 'Close guide and activity' : 'Guide and activity';
   });
 
   panel.querySelectorAll('.discovery-panel-tab').forEach(btn => {

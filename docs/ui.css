@@ -320,8 +320,10 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  /* Lower than .discovery-panel's z-index — when the panel slides open it
-   * needs to cover this, not float above it. */
+  /* Lower than .discovery-panel's z-index by default so a stray render
+   * before JS attaches doesn't float the label over the panel — but the
+   * rule below moves this to the panel's own edge once it's open, so the
+   * two never actually overlap and this stays reachable either way. */
   z-index: 80;
   display: flex;
   align-items: center;
@@ -338,12 +340,22 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -
   border-radius: 0 var(--r-md) var(--r-md) 0;
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: color var(--duration) var(--ease), background var(--duration) var(--ease);
+  transition: color var(--duration) var(--ease), background var(--duration) var(--ease),
+              left var(--duration-slow) var(--ease);
 }
 
 .discovery-tab:hover { color: var(--text); background: var(--surface-alt); }
 .discovery-tab:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .discovery-tab svg { flex-shrink: 0; }
+
+/* Rides along the panel's own edge when open, instead of sitting under it
+ * — min() mirrors .discovery-panel's own width/max-width so the two never
+ * drift out of sync on narrow screens. Icon flips compass → × so the same
+ * control visibly means "close" once it does. */
+.discovery-tab:has(+ .discovery-panel[data-collapsed="false"]) { left: min(320px, 85vw); }
+.discovery-tab-icon-close { display: none; }
+.discovery-tab:has(+ .discovery-panel[data-collapsed="false"]) .discovery-tab-icon-open { display: none; }
+.discovery-tab:has(+ .discovery-panel[data-collapsed="false"]) .discovery-tab-icon-close { display: inline-block; }
 
 .discovery-panel {
   position: fixed;
