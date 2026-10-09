@@ -2,6 +2,8 @@
 
 The [WebMCP spec](https://webmachinelearning.github.io/webmcp/) proposes `document.modelContext` — a browser API letting a page expose its own UI as typed tools a model can call. The spec covers **registration**. This repo is the **runtime** it leaves out: a tool surface that changes with app state, kept live in the browser's own registry, plus a tools panel that shows a visitor what the page can do. Client-side, no backend, no build step. No embedded chat — whatever WebMCP-aware agent shares the tab drives these tools directly.
 
+**From Claude, Cursor or VS Code.** The page loads [`relay.neves.cloud/webmcp.js`](https://github.com/jonasneves/mcp-relay): a visitor who presses **Use in Claude** gets one-click Add buttons, and their AI app can then call these tools while the tab is open. In a browser without `document.modelContext`, that script provides one so the tools register anyway.
+
 **[Live demos →](https://jonasneves.com/webmcp/)**
 
 ## A page declares a tool
