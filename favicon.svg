@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- A puzzle piece, the demo pages' favicon glyph drawn flat: a page exposing its UI as tools an agent can fit in. -->
+  <rect x="1" y="1" width="126" height="126" rx="28" fill="#2a1d52"/>
+  <g fill="#a5e05a">
+    <rect x="26" y="38" width="62" height="62" rx="7"/>
+    <circle cx="57" cy="34" r="13"/>
+    <circle cx="92" cy="69" r="13"/>
+  </g>
+  <g fill="#2a1d52">
+    <circle cx="26" cy="69" r="11"/>
+    <circle cx="57" cy="100" r="11"/>
+  </g>
+</svg>
